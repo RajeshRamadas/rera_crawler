@@ -289,6 +289,45 @@ def resolve_project_id(search_html: str, reg_no: str = "", project_name: str = "
     return candidates[0][0], candidates
 
 
+def parse_search_result_row(search_html: str, reg_no: str = "", project_name: str = "") -> dict:
+    """
+    Parse search result table row from /projectViewDetails.
+    Extracts status, district, taluk, dates, and PDF certificate download URLs.
+    """
+    soup = BeautifulSoup(search_html, "html.parser")
+    tables = soup.find_all("table")
+    if not tables:
+        return {}
+
+    for table in tables:
+        headers = [th.get_text(" ", strip=True) for th in table.find_all("th")]
+        if not headers:
+            continue
+
+        for tr in table.find_all("tr"):
+            tds = tr.find_all("td")
+            if not tds:
+                continue
+            row_text = tr.get_text(" ", strip=True)
+            if (reg_no and reg_no in row_text) or (project_name and project_name in row_text) or (not reg_no and not project_name):
+                row_data = {}
+                for header, td in zip(headers, tds):
+                    val = td.get_text(" ", strip=True)
+                    clean_header = re.sub(r"[^\w\s]", "", header.strip().lower())
+                    clean_header = re.sub(r"\s+", "_", clean_header).strip("_")
+                    if not clean_header or clean_header in ("sno", "s_no", "view_project_details"):
+                        continue
+                    if val:
+                        row_data[clean_header] = val
+                    links = extract_cell_links(td)
+                    if links:
+                        row_data[f"{clean_header}_url"] = links[0] if len(links) == 1 else links
+                if row_data:
+                    return row_data
+    return {}
+
+
+
 def fetch_project_detail_html(s: requests.Session, project_id: str) -> str:
     """Fetch detail page HTML for a given internal PROJECT_ID."""
     headers = dict(HEADERS_XHR)
@@ -722,6 +761,7 @@ def continuous_crawl(args):
         try:
             search_html = search_projects(s, hidden_fields, reg_no=reg_no)
             project_id, candidates = resolve_project_id(search_html, reg_no=reg_no, project_name=name)
+            search_listing_details = parse_search_result_row(search_html, reg_no=reg_no, project_name=name)
 
             if not project_id:
                 raise CrawlerError(f"Could not resolve project_id for reg_no={reg_no}")
@@ -729,12 +769,16 @@ def continuous_crawl(args):
             html_text = fetch_project_detail_html(s, project_id)
             data = normalize_project_detail(html_text)
 
+            # Attach search result table data (status, district, taluk, dates, certificate URLs)
+            data["search_listing_details"] = search_listing_details
+
             # Attach top-level metadata from discovery
             data["_project_id"] = project_id
             data["_registration_no"] = reg_no
             data["_acknowledgement_no"] = proj["acknowledgement_no"]
             data["_firm_name_from_listing"] = proj["firm_name"]
             data["_crawled_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+
 
             state.append_record(data)
             if pg_db:
@@ -817,6 +861,7 @@ def main():
         s, hidden_fields = new_session()
         project_id = args.project_id
 
+        search_listing_details = {}
         if not project_id:
             print("[*] Searching rera.karnataka.gov.in...")
             search_html = search_projects(
@@ -827,6 +872,9 @@ def main():
                 subdistrict=args.subdistrict,
             )
             project_id, candidates = resolve_project_id(
+                search_html, reg_no=args.reg_no or "", project_name=args.project
+            )
+            search_listing_details = parse_search_result_row(
                 search_html, reg_no=args.reg_no or "", project_name=args.project
             )
             if not project_id:
@@ -842,7 +890,10 @@ def main():
             print(f"[*] Raw HTML saved to: {Path(args.save_raw_html).resolve()}")
 
         data = normalize_project_detail(html_text)
+        if search_listing_details:
+            data["search_listing_details"] = search_listing_details
         _write_single_outputs(data)
+
 
     except CrawlerError as exc:
         print(f"\n[!] Crawler error: {exc}\n", file=sys.stderr)
