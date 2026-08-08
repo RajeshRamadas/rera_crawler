@@ -1,0 +1,16 @@
+[Unit]
+Description=RERA Crawler Auto-Runner with Local PostgreSQL on EBS
+After=network.target network-online.target postgresql.service
+Wants=network-online.target postgresql.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/rera_crawler
+# Connects to local PostgreSQL running on the same EC2 instance (EBS storage)
+Environment="DATABASE_URL=postgresql://postgres:postgres@localhost:5432/rera_db"
+ExecStart=/usr/bin/python3 /home/ubuntu/rera_crawler/rera_crawler.py --all --auto-shutdown
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
