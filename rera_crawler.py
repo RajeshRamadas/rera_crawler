@@ -507,14 +507,29 @@ def normalize_project_detail(html_text: str) -> dict:
         "registration_number": header_field(header, "Registration Number"),
     }
 
-    # Promoter Details & Project Details tabs
-    for key in ("promoter_details", "project_details"):
-        div = soup.find("div", id=TAB_IDS[key])
-        if div is None:
-            _warn_missing(key, TAB_IDS[key])
-            result[key] = {}
-        else:
-            result[key] = parse_label_value_sections(div)
+    # Promoter Details tab
+    div = soup.find("div", id=TAB_IDS["promoter_details"])
+    if div is None:
+        _warn_missing("promoter_details", TAB_IDS["promoter_details"])
+        result["promoter_details"] = {}
+    else:
+        result["promoter_details"] = parse_label_value_sections(div)
+
+    # Project Details tab
+    div = soup.find("div", id=TAB_IDS["project_details"])
+    if div is None:
+        _warn_missing("project_details", TAB_IDS["project_details"])
+        result["project_details"] = {}
+    else:
+        sections = parse_label_value_sections(div)
+        tables = parse_tables(div)
+        if tables:
+            all_table_rows = []
+            for t in tables:
+                all_table_rows.extend(t.get("rows", []))
+            sections["survey_land_tables"] = all_table_rows
+        result["project_details"] = sections
+
 
     # Uploaded Documents tab
     div = soup.find("div", id=TAB_IDS["uploaded_documents"])
@@ -570,6 +585,115 @@ def normalize_project_detail(html_text: str) -> dict:
     return result
 
 
+def clean_value(val):
+    """Recursively strip excessive whitespace, newlines, and tabs from strings and nested dicts/lists."""
+    if isinstance(val, str):
+        return re.sub(r"\s+", " ", val).strip()
+    elif isinstance(val, dict):
+        return {clean_value(k): clean_value(v) for k, v in val.items() if k}
+    elif isinstance(val, list):
+        return [clean_value(x) for x in val]
+    return val
+
+
+def extract_location_details(raw_data: dict, search_info: dict) -> dict:
+    """Extract and consolidate geographic, survey, and address details into a clean location object."""
+    district = search_info.get("district")
+    taluk = search_info.get("taluk")
+
+    promoter_section = raw_data.get("promoter_details", {}).get("Promoter Details", {})
+    p_district = promoter_section.get("District")
+    p_taluk = promoter_section.get("Taluk")
+    pin_code = promoter_section.get("PIN Code")
+    promoter_address = promoter_section.get("Promoter Address")
+
+    survey_tables = raw_data.get("project_details", {}).get("survey_land_tables", [])
+
+    survey_nos = []
+    sub_registrars = []
+    land_addresses = []
+
+    for row in survey_tables:
+        cols = row.get("columns", [])
+        if cols:
+            first = str(cols[0]).strip()
+            # Detect survey number column (e.g., '59/1', '59/2', 'Sy No 12')
+            if "/" in first or (first.isdigit() and len(first) > 1 and first not in ("100.0", "150200400200320378")):
+                if first not in survey_nos:
+                    survey_nos.append(first)
+            
+            for cell in cols:
+                cell_str = str(cell).strip()
+                if cell_str in ("Indiranagar", "Koramangala", "Jayanagar", "Yelahanka", "Rajajinagar") or "Sub Registrar" in cell_str:
+                    if cell_str not in sub_registrars:
+                        sub_registrars.append(cell_str)
+                if ("Karnataka" in cell_str or "Pin" in cell_str or "560" in cell_str) and len(cell_str) > 20:
+                    if cell_str not in land_addresses:
+                        land_addresses.append(cell_str)
+
+    full_address = land_addresses[0] if land_addresses else promoter_address
+
+    return {
+        "district": district or p_district,
+        "taluk": taluk or p_taluk,
+        "pin_code": pin_code,
+        "survey_numbers": survey_nos,
+        "sub_registrar_office": sub_registrars[0] if sub_registrars else None,
+        "address": full_address
+    }
+
+
+
+def build_clean_structured_record(
+    raw_data: dict,
+    reg_no: str,
+    project_name: str,
+    acknowledgement_no: str = None,
+    promoter_name: str = None,
+    project_id: str = None,
+    search_listing_details: dict = None
+) -> dict:
+    """Build a clean, standardized, highly structured RERA project record."""
+    search_info = search_listing_details or raw_data.get("search_listing_details") or {}
+    location_info = extract_location_details(raw_data, search_info)
+
+    record = {
+        "registration_no": reg_no or raw_data.get("registration_number") or raw_data.get("_registration_no"),
+        "acknowledgement_no": acknowledgement_no or raw_data.get("acknowledgement_number") or raw_data.get("_acknowledgement_no"),
+        "project_name": project_name or raw_data.get("project_name"),
+        "promoter_name": promoter_name or search_info.get("promoter_name") or raw_data.get("_firm_name_from_listing"),
+        "status": search_info.get("status"),
+        "district": location_info.get("district"),
+        "taluk": location_info.get("taluk"),
+        "project_type": search_info.get("project_type"),
+        "approved_on": search_info.get("approved_on"),
+        "proposed_completion_date": search_info.get("proposed_completion_date"),
+        "proposed_completion_date_at_registration": search_info.get("proposed_completion_date_at_the_time_of_registration"),
+        "certificate_url": search_info.get("certificate_url"),
+        "covid_certificate_url": search_info.get("covid_certificate_url"),
+        "renewed_certificate_url": search_info.get("renewed_certificate_url"),
+        "further_extension_order_url": search_info.get("further_extension_order_url"),
+        "internal_project_id": project_id or raw_data.get("_project_id"),
+        "crawled_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "project_location": location_info,
+        "search_listing_details": search_info,
+        "promoter_details": raw_data.get("promoter_details", {}),
+        "project_details": raw_data.get("project_details", {}),
+        "uploaded_documents": raw_data.get("uploaded_documents", []),
+        "enquired_documents": raw_data.get("enquired_documents", []),
+        "quarterly_updates": raw_data.get("quarterly_updates", []),
+        "completion_details": raw_data.get("completion_details", {}),
+        "complaints": {
+            "on_promoter": raw_data.get("complaints_on_promoter", []),
+            "on_project": raw_data.get("complaints_on_project", [])
+        }
+    }
+
+    return clean_value(record)
+
+
+
+
 # --------------------------------------------------------------------------- #
 # CSV & Storage Helpers
 # --------------------------------------------------------------------------- #
@@ -623,12 +747,13 @@ class PostgresStorage:
             """)
 
     def upsert_record(self, record: dict):
-        reg_no = record.get("_registration_no") or record.get("registration_number")
-        ack_no = record.get("_acknowledgement_no") or record.get("acknowledgement_number")
+        reg_no = record.get("registration_no") or record.get("_registration_no") or record.get("registration_number")
+        ack_no = record.get("acknowledgement_no") or record.get("_acknowledgement_no") or record.get("acknowledgement_number")
         project_name = record.get("project_name")
-        firm_name = record.get("_firm_name_from_listing")
-        project_id = record.get("_project_id")
-        crawled_at = record.get("_crawled_at")
+        firm_name = record.get("promoter_name") or record.get("_firm_name_from_listing")
+        project_id = record.get("internal_project_id") or record.get("_project_id")
+        crawled_at = record.get("crawled_at") or record.get("_crawled_at")
+
 
         with self.conn.cursor() as cur:
             cur.execute("""
@@ -767,26 +892,26 @@ def continuous_crawl(args):
                 raise CrawlerError(f"Could not resolve project_id for reg_no={reg_no}")
 
             html_text = fetch_project_detail_html(s, project_id)
-            data = normalize_project_detail(html_text)
+            raw_data = normalize_project_detail(html_text)
 
-            # Attach search result table data (status, district, taluk, dates, certificate URLs)
-            data["search_listing_details"] = search_listing_details
+            record = build_clean_structured_record(
+                raw_data=raw_data,
+                reg_no=reg_no,
+                project_name=name,
+                acknowledgement_no=proj["acknowledgement_no"],
+                promoter_name=proj["firm_name"],
+                project_id=project_id,
+                search_listing_details=search_listing_details
+            )
 
-            # Attach top-level metadata from discovery
-            data["_project_id"] = project_id
-            data["_registration_no"] = reg_no
-            data["_acknowledgement_no"] = proj["acknowledgement_no"]
-            data["_firm_name_from_listing"] = proj["firm_name"]
-            data["_crawled_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
-
-
-            state.append_record(data)
+            state.append_record(record)
             if pg_db:
                 try:
-                    pg_db.upsert_record(data)
+                    pg_db.upsert_record(record)
                 except Exception as db_err:
                     print(f"[!] DB upsert error for {reg_no}: {db_err}", file=sys.stderr)
             state.mark_done(reg_no)
+
 
         except CrawlerError as exc:
             print(f"[!] {reg_no} crawler error: {exc}", file=sys.stderr)
@@ -889,10 +1014,16 @@ def main():
             Path(args.save_raw_html).write_text(html_text, encoding="utf-8")
             print(f"[*] Raw HTML saved to: {Path(args.save_raw_html).resolve()}")
 
-        data = normalize_project_detail(html_text)
-        if search_listing_details:
-            data["search_listing_details"] = search_listing_details
-        _write_single_outputs(data)
+        raw_data = normalize_project_detail(html_text)
+        record = build_clean_structured_record(
+            raw_data=raw_data,
+            reg_no=args.reg_no or "",
+            project_name=args.project or "",
+            project_id=project_id,
+            search_listing_details=search_listing_details
+        )
+        _write_single_outputs(record)
+
 
 
     except CrawlerError as exc:
