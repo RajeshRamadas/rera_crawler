@@ -9,7 +9,8 @@ User=ubuntu
 WorkingDirectory=/home/ubuntu/rera_crawler
 Environment="DATABASE_URL=postgresql://rera_user:rera_password@localhost:5432/rera_db"
 
-ExecStart=/usr/bin/python3 /home/ubuntu/rera_crawler/rera_crawler.py --all --auto-shutdown
+ExecStart=/home/ubuntu/rera_crawler/venv/bin/python3 /home/ubuntu/rera_crawler/rera_crawler.py --all --auto-shutdown
+
 Restart=no
 
 [Install]
