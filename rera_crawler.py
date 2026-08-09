@@ -866,7 +866,8 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
     # point and legal-schedule text for the four cardinal boundaries.
     #
     # We produce two levels of geometry:
-    #   1. "center"  — GeoJSON Point (authoritative, from HTML fields)
+    #   1. "center"  — GeoJSON Point from the selected coordinate source.
+    #                  Prefer RERA HTML coordinates; Google Maps iframe is fallback.
     #   2. "bbox_polygon" — GeoJSON Polygon approximated from the total
     #      land area (sq m) as a square centred on the Point.
     #      This is clearly flagged as an approximation so downstream
@@ -879,15 +880,21 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
     # ------------------------------------------------------------------
     import math as _math
 
-    def _build_geometry(center_lat, center_lng, area_sq_m=None):
+    def _build_geometry(center_lat, center_lng, area_sq_m=None, coord_source=None):
         """
         Return a dict with:
-          center       -- GeoJSON Point  {type, coordinates}
-          bbox_polygon -- GeoJSON Polygon (approximate square, or None)
-          area_source  -- label for how the bbox was derived
+          center            -- GeoJSON Point  {type, coordinates}
+          bbox_polygon      -- GeoJSON Polygon (approximate square, or None)
+          area_source       -- label for how the bbox was derived
+          coordinate_source -- label for coordinate origin ("rera_html", "google_maps_iframe", or None)
         """
         if center_lat is None or center_lng is None:
-            return {"center": None, "bbox_polygon": None, "area_source": None}
+            return {
+                "center": None,
+                "bbox_polygon": None,
+                "area_source": None,
+                "coordinate_source": coord_source,
+            }
 
         geojson_point = {
             "type": "Point",
@@ -921,6 +928,7 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
             "center": geojson_point,
             "bbox_polygon": bbox_poly,
             "area_source": area_source,
+            "coordinate_source": coord_source,
             "_note": (
                 "bbox_polygon is an equal-area square approximation centred on the "
                 "project point. RERA Karnataka does not publish polygon boundary "
@@ -938,7 +946,7 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
         except ValueError:
             pass
 
-    geometry = _build_geometry(lat, lng, _area_sq_m)
+    geometry = _build_geometry(lat, lng, _area_sq_m, coordinate_source)
 
     # ------------------------------------------------------------------
     # Boundary schedules -- accept both plain and prefixed key variants
