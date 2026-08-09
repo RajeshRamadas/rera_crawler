@@ -1022,12 +1022,26 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
         re.IGNORECASE,
     )
 
+    _INVALID_SRO_TERMS = {
+        "residential", "e khatha", "own land", "by sale", "dc office",
+        "dc office bengaluru", "dc office benglauru", "village development and panchayat raj"
+    }
+
+    def _is_valid_sro(val: str) -> bool:
+        v = val.strip()
+        if not v or v.isdigit():
+            return False
+        if re.search(r"\b\d+\s*(?:acres?|guntas?|sq\s*mtr|sqft)\b", v, re.I):
+            return False
+        if re.search(r"\b(?:tower|flat|apt|apartment|khatha|residential)\b", v, re.I):
+            return False
+        if v.lower() in _INVALID_SRO_TERMS:
+            return False
+        return True
+
     def _normalize_sro(raw: str) -> str:
         """Return the meaningful part of an SRO name, stripping generic boilerplate."""
         cleaned = _SRO_STRIP_RE.sub(" ", raw).strip(" ,;-")
-        # Also strip trailing district/state/pincode fragments that appear after
-        # a comma in verbose addresses (e.g., "JP Nagar, Bengaluru South, Karnataka")
-        # Keep only the first comma-separated token (the SRO location name itself).
         first_token = cleaned.split(",")[0].strip()
         return first_token if first_token else cleaned
 
@@ -1044,6 +1058,13 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
                 val_str = str(val).strip()
                 h_norm  = h.strip()
 
+                # Extract survey number embedded in multi-level header string
+                m_hdr_sy = re.search(r"Survey\s+Number\s+([0-9]+(?:/[0-9A-Za-z]+)?)", h_norm, re.I)
+                if m_hdr_sy:
+                    sy_val = m_hdr_sy.group(1)
+                    if sy_val not in survey_nos:
+                        survey_nos.append(sy_val)
+
                 # Check exact header or suffix/substring match (supporting multi-level headers)
                 h_lower = h_norm.lower()
                 is_sy = h_norm in _SY_HEADERS or any(h_lower.endswith(" " + sy.lower()) for sy in _SY_HEADERS)
@@ -1058,10 +1079,8 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
                             survey_nos.append(token)
 
                 elif is_subreg:
-                    # Normalise: strip "Sub Registrar Office," boilerplate so the
-                    # stored value is the meaningful location name only.
                     normed = _normalize_sro(val_str)
-                    if normed and normed not in sub_registrars:
+                    if normed and _is_valid_sro(normed) and normed not in sub_registrars:
                         sub_registrars.append(normed)
 
                 elif is_addr:
@@ -1102,6 +1121,13 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
                         land_addresses.append(cell_str)
 
     full_address = overview.get("Project Address") or (land_addresses[0] if land_addresses else promoter_address)
+
+    # Address survey number regex fallback
+    if not survey_nos:
+        addr_text = full_address or ""
+        for sn in re.findall(r"\b(\d+/\d+[A-Za-z]?)\b", addr_text):
+            if sn not in survey_nos:
+                survey_nos.append(sn)
 
     return {
         "district": district or overview.get("District") or p_district,
@@ -1256,15 +1282,19 @@ def build_clean_structured_record(
     search_info = search_listing_details or raw_data.get("search_listing_details") or {}
     location_info = extract_location_details(raw_data, search_info)
 
+    overview_details = raw_data.get("project_overview_details", {})
+    promoter_sec = raw_data.get("promoter_details", {})
+    p_details = promoter_sec.get("Promoter Details", {}) if isinstance(promoter_sec, dict) else {}
+
     record = {
-        "registration_no": reg_no or raw_data.get("registration_number") or raw_data.get("_registration_no"),
-        "acknowledgement_no": acknowledgement_no or raw_data.get("acknowledgement_number") or raw_data.get("_acknowledgement_no"),
-        "project_name": project_name or raw_data.get("project_name"),
-        "promoter_name": promoter_name or search_info.get("promoter_name") or raw_data.get("_firm_name_from_listing"),
-        "status": search_info.get("status"),
+        "registration_no": reg_no or raw_data.get("registration_number") or raw_data.get("_registration_no") or overview_details.get("Registration Number"),
+        "acknowledgement_no": acknowledgement_no or raw_data.get("acknowledgement_number") or raw_data.get("_acknowledgement_no") or overview_details.get("Acknowledgement Number"),
+        "project_name": project_name or raw_data.get("project_name") or overview_details.get("Project Name"),
+        "promoter_name": promoter_name or search_info.get("promoter_name") or raw_data.get("_firm_name_from_listing") or p_details.get("Promoter Name"),
+        "status": search_info.get("status") or overview_details.get("Project Status"),
         "district": location_info.get("district"),
         "taluk": location_info.get("taluk"),
-        "project_type": search_info.get("project_type"),
+        "project_type": search_info.get("project_type") or overview_details.get("Project Type"),
         "approved_on": search_info.get("approved_on"),
         "proposed_completion_date": search_info.get("proposed_completion_date"),
         "proposed_completion_date_at_registration": search_info.get("proposed_completion_date_at_the_time_of_registration"),
