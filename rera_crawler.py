@@ -466,6 +466,38 @@ def parse_documents_matrix(container) -> list[dict]:
     return out
 
 
+def parse_all_label_value_pairs(container) -> tuple[dict, list[str]]:
+    """Parse all label-value pairs and iframe URLs across any column layout (col-md-6, col-md-3, etc.)."""
+    if not container:
+        return {}, []
+    data = {}
+    iframes = []
+    for iframe in container.find_all("iframe", src=True):
+        src = iframe["src"].strip()
+        if src:
+            iframes.append(src)
+
+    for r in container.find_all("div", class_="row"):
+        ps = r.find_all("p", recursive=True)
+        i = 0
+        while i < len(ps) - 1:
+            p1, p2 = ps[i], ps[i + 1]
+            t1 = p1.get_text(" ", strip=True)
+            t2 = p2.get_text(" ", strip=True)
+            if ":" in t1 or "text-right" in p1.get("class", []):
+                label = re.sub(r"[\s:]+$", "", t1).strip()
+                val = t2.strip()
+                if label and label not in data:
+                    data[label] = val
+                    links = extract_cell_links(p2)
+                    if links:
+                        data[f"{label} URL"] = links[0] if len(links) == 1 else links
+                i += 2
+            else:
+                i += 1
+    return data, iframes
+
+
 TAB_IDS = {
     "promoter_details": "home",
     "project_details": "menu1",
@@ -530,14 +562,18 @@ def normalize_project_detail(html_text: str) -> dict:
             sections["survey_land_tables"] = all_table_rows
         result["project_details"] = sections
 
-
-    # Uploaded Documents tab
+    # Uploaded Documents tab (menu2) - contains both Location/Overview specs and Document Matrix
     div = soup.find("div", id=TAB_IDS["uploaded_documents"])
     if div is None:
         _warn_missing("uploaded_documents", TAB_IDS["uploaded_documents"])
         result["uploaded_documents"] = []
+        result["project_overview_details"] = {}
+        result["map_iframes"] = []
     else:
         result["uploaded_documents"] = parse_documents_matrix(div)
+        overview_pairs, map_iframes = parse_all_label_value_pairs(div)
+        result["project_overview_details"] = overview_pairs
+        result["map_iframes"] = map_iframes
 
     # Enquired Documents tab
     div = soup.find("div", id=TAB_IDS["enquired_documents"])
@@ -597,7 +633,7 @@ def clean_value(val):
 
 
 def extract_location_details(raw_data: dict, search_info: dict) -> dict:
-    """Extract and consolidate geographic, survey, and address details into a clean location object."""
+    """Extract and consolidate geographic, survey, coordinates, boundaries, and address details."""
     district = search_info.get("district")
     taluk = search_info.get("taluk")
 
@@ -606,6 +642,19 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
     p_taluk = promoter_section.get("Taluk")
     pin_code = promoter_section.get("PIN Code")
     promoter_address = promoter_section.get("Promoter Address")
+
+    overview = raw_data.get("project_overview_details", {})
+    map_iframes = raw_data.get("map_iframes", [])
+
+    lat_val = overview.get("Latitude")
+    lng_val = overview.get("Longitude")
+    lat = float(lat_val) if lat_val and lat_val.replace(".", "", 1).isdigit() else lat_val
+    lng = float(lng_val) if lng_val and lng_val.replace(".", "", 1).isdigit() else lng_val
+
+    b_north = overview.get("North Schedule")
+    b_south = overview.get("South Schedule")
+    b_east = overview.get("East Schedule")
+    b_west = overview.get("West Schedule")
 
     survey_tables = raw_data.get("project_details", {}).get("survey_land_tables", [])
 
@@ -631,15 +680,24 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
                     if cell_str not in land_addresses:
                         land_addresses.append(cell_str)
 
-    full_address = land_addresses[0] if land_addresses else promoter_address
+    full_address = overview.get("Project Address") or (land_addresses[0] if land_addresses else promoter_address)
 
     return {
-        "district": district or p_district,
-        "taluk": taluk or p_taluk,
-        "pin_code": pin_code,
+        "district": district or overview.get("District") or p_district,
+        "taluk": taluk or overview.get("Taluk") or p_taluk,
+        "pin_code": overview.get("Pin Code") or pin_code,
         "survey_numbers": survey_nos,
         "sub_registrar_office": sub_registrars[0] if sub_registrars else None,
-        "address": full_address
+        "address": full_address,
+        "latitude": lat,
+        "longitude": lng,
+        "google_maps_url": map_iframes[0] if map_iframes else None,
+        "boundaries": {
+            "north_schedule": b_north,
+            "south_schedule": b_south,
+            "east_schedule": b_east,
+            "west_schedule": b_west,
+        }
     }
 
 
@@ -677,6 +735,7 @@ def build_clean_structured_record(
         "crawled_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "project_location": location_info,
         "search_listing_details": search_info,
+        "project_overview_details": raw_data.get("project_overview_details", {}),
         "promoter_details": raw_data.get("promoter_details", {}),
         "project_details": raw_data.get("project_details", {}),
         "uploaded_documents": raw_data.get("uploaded_documents", []),
@@ -978,8 +1037,9 @@ def main():
     # Single-property or offline mode
     if args.from_html:
         html_text = Path(args.from_html).read_text(encoding="utf-8", errors="ignore")
-        data = normalize_project_detail(html_text)
-        _write_single_outputs(data)
+        raw_data = normalize_project_detail(html_text)
+        record = build_clean_structured_record(raw_data=raw_data, reg_no="", project_name="")
+        _write_single_outputs(record)
         return
 
     try:
