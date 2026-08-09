@@ -1373,6 +1373,7 @@ class PostgresStorage:
             raise CrawlerError("psycopg2-binary package is required for PostgreSQL support. Install with: pip install psycopg2-binary")
         
         self.db_uri = db_uri
+        self._db_lock = threading.Lock()
         self.conn = psycopg2.connect(db_uri)
         self.conn.autocommit = True
         self._init_db(force=force_init)
@@ -1508,18 +1509,19 @@ class PostgresStorage:
         crawled_at = record.get("crawled_at") or record.get("_crawled_at")
 
 
-        with self.conn.cursor() as cur:
-            cur.execute("""
-                INSERT INTO rera_projects (registration_no, acknowledgement_no, project_name, firm_name, project_id, crawled_at, data)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (registration_no) DO UPDATE SET
-                    acknowledgement_no = EXCLUDED.acknowledgement_no,
-                    project_name = EXCLUDED.project_name,
-                    firm_name = EXCLUDED.firm_name,
-                    project_id = EXCLUDED.project_id,
-                    crawled_at = EXCLUDED.crawled_at,
-                    data = EXCLUDED.data;
-            """, (reg_no, ack_no, project_name, firm_name, project_id, crawled_at, json.dumps(record, ensure_ascii=False)))
+        with self._db_lock:
+            with self.conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO rera_projects (registration_no, acknowledgement_no, project_name, firm_name, project_id, crawled_at, data)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (registration_no) DO UPDATE SET
+                        acknowledgement_no = EXCLUDED.acknowledgement_no,
+                        project_name = EXCLUDED.project_name,
+                        firm_name = EXCLUDED.firm_name,
+                        project_id = EXCLUDED.project_id,
+                        crawled_at = EXCLUDED.crawled_at,
+                        data = EXCLUDED.data;
+                """, (reg_no, ack_no, project_name, firm_name, project_id, crawled_at, json.dumps(record, ensure_ascii=False)))
 
     def refresh_materialized_views(self):
         """Refresh LATERAL-unnest materialized views without blocking concurrent reads.
@@ -1528,10 +1530,11 @@ class PostgresStorage:
         or vw_rera_surveys are never blocked. Requires the unique indexes created in
         _init_db() (idx_vw_rera_documents_uniq, idx_vw_rera_surveys_uniq).
         """
-        with self.conn.cursor() as cur:
-            for view in ("vw_rera_documents", "vw_rera_surveys"):
-                print(f"[*] Refreshing materialized view concurrently: {view}...")
-                cur.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {view};")
+        with self._db_lock:
+            with self.conn.cursor() as cur:
+                for view in ("vw_rera_documents", "vw_rera_surveys"):
+                    print(f"[*] Refreshing materialized view concurrently: {view}...")
+                    cur.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {view};")
         print("[+] Materialized views refreshed.")
 
 
