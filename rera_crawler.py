@@ -1515,7 +1515,9 @@ def continuous_crawl(args):
             state.mark_failed(reg_no, f"unexpected: {exc}")
 
         new_since_rebuild += 1
-        if new_since_rebuild >= REBUILD_EVERY:
+        total_done = len(state.done_regnos)
+        rebuild_interval = 25 if total_done < 500 else (100 if total_done < 5000 else 500)
+        if new_since_rebuild >= rebuild_interval:
             rebuild_csv(state)
             new_since_rebuild = 0
 
