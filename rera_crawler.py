@@ -803,6 +803,65 @@ class PostgresStorage:
                 );
                 CREATE INDEX IF NOT EXISTS idx_rera_projects_name ON rera_projects (project_name);
                 CREATE INDEX IF NOT EXISTS idx_rera_projects_crawled_at ON rera_projects (crawled_at);
+                CREATE INDEX IF NOT EXISTS idx_rera_projects_jsonb ON rera_projects USING GIN (data);
+
+                -- Analytical View for BI Dashboards & Visualization Tools (Metabase, Grafana, Tableau)
+                CREATE OR REPLACE VIEW vw_rera_projects_analytics AS
+                SELECT 
+                    registration_no,
+                    acknowledgement_no,
+                    COALESCE(project_name, data->'project_overview_details'->>'Project Name') AS project_name,
+                    COALESCE(firm_name, data->'promoter_details'->'Promoter Details'->>'Promoter Name') AS promoter_name,
+                    COALESCE(data->>'status', data->'project_overview_details'->>'Project Status') AS status,
+                    data->'project_overview_details'->>'Project Sub Type' AS project_sub_type,
+                    data->'project_location'->>'district' AS district,
+                    data->'project_location'->>'taluk' AS taluk,
+                    data->'project_location'->>'pin_code' AS pin_code,
+                    data->'project_location'->>'address' AS address,
+                    (data->'project_location'->>'latitude')::numeric AS latitude,
+                    (data->'project_location'->>'longitude')::numeric AS longitude,
+                    data->'project_location'->>'google_maps_url' AS google_maps_url,
+                    data->'project_location'->'boundaries'->>'north_schedule' AS north_schedule,
+                    data->'project_location'->'boundaries'->>'south_schedule' AS south_schedule,
+                    data->'project_location'->'boundaries'->>'east_schedule' AS east_schedule,
+                    data->'project_location'->'boundaries'->>'west_schedule' AS west_schedule,
+                    data->'project_overview_details'->>'Approving Authority' AS approving_authority,
+                    data->'project_overview_details'->>'Approved Plan Number' AS approved_plan_number,
+                    data->'project_overview_details'->>'Plan Approval Date' AS plan_approval_date,
+                    (data->'project_overview_details'->>'Total Area Of Land (Sq Mtr) (A1+A2)')::numeric AS total_land_area_sq_mtr,
+                    (data->'project_overview_details'->>'Total Built-up Area of all the Floors (Sq Mtr)')::numeric AS total_builtup_area_sq_mtr,
+                    (data->'project_overview_details'->>'Total Carpet Area of all the Floors (Sq Mtr)')::numeric AS total_carpet_area_sq_mtr,
+                    (data->'project_overview_details'->>'Total Number of Inventories/Flats/Villas')::integer AS total_units,
+                    (data->'project_overview_details'->>'Total Project Cost (INR) (C1+C2)')::numeric AS total_project_cost_inr,
+                    data->>'approved_on' AS approved_on,
+                    data->>'proposed_completion_date' AS proposed_completion_date,
+                    certificate_url,
+                    crawled_at
+                FROM rera_projects;
+
+                -- Relational View for Extracted Documents & Download Links
+                CREATE OR REPLACE VIEW vw_rera_documents AS
+                SELECT 
+                    p.registration_no,
+                    p.project_name,
+                    doc->>'document_type' AS document_type,
+                    doc->>'financial_year' AS financial_year_or_context,
+                    doc->>'file' AS file_name,
+                    doc->>'file_url' AS file_url
+                FROM rera_projects p,
+                LATERAL jsonb_array_elements(p.data->'uploaded_documents') doc
+                WHERE doc->>'file_url' IS NOT NULL;
+
+                -- Relational View for Extracted Survey Numbers
+                CREATE OR REPLACE VIEW vw_rera_surveys AS
+                SELECT 
+                    p.registration_no,
+                    p.project_name,
+                    p.data->'project_location'->>'district' AS district,
+                    p.data->'project_location'->>'taluk' AS taluk,
+                    s.survey_no
+                FROM rera_projects p,
+                LATERAL jsonb_array_elements_text(p.data->'project_location'->'survey_numbers') s(survey_no);
             """)
 
     def upsert_record(self, record: dict):
