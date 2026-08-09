@@ -824,31 +824,20 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
         },
     }
 
-    _LAT_KEYS = [
-        "Latitude",
-        "Latitude North", "North Latitude", "Latitude(N)", "Latitude (N)", "Lat North", "North Lat",
-        "Latitude South", "South Latitude", "Latitude(S)", "Latitude (S)", "Lat South", "South Lat",
-    ]
-    _LNG_KEYS = [
-        "Longitude",
-        "Longitude East", "East Longitude", "Longitude(E)", "Longitude (E)", "Long East", "East Long",
-        "East Latitude", "East Lat",
-        "Longitude West", "West Longitude", "Longitude(W)", "Longitude (W)", "Long West", "West Long",
-        "West Latitude", "West Lat",
-    ]
+    # Authoritative center coordinates (extracted strictly from "Latitude" & "Longitude")
+    lat = _extract_coord_by_keys(["Latitude"])
+    lng = _extract_coord_by_keys(["Longitude"])
 
-    lat = _extract_coord_by_keys(_LAT_KEYS)
-    lng = _extract_coord_by_keys(_LNG_KEYS)
+    coordinate_source = "rera_html" if (lat is not None and lng is not None) else None
 
     # ------------------------------------------------------------------
-    # Iframe fallback: if the HTML fields gave us nothing, try parsing
-    # the Google Maps embed src (e.g. maps.google.com/maps?q=12.97,77.59)
+    # Iframe fallback: if HTML missed at least one coordinate, try parsing
+    # the Google Maps embed src as a COMPLETE PAIR only (no partial mixing).
     # ------------------------------------------------------------------
     def _coords_from_iframe(iframe_src: str):
         """Return (lat, lng) floats parsed from a Google Maps embed URL, or (None, None)."""
         if not iframe_src:
             return None, None
-        # Patterns: ?q=LAT,LNG  or  &ll=LAT,LNG  or  @LAT,LNG,
         for pat in (
             r"[?&]q=([-\.\d]+),([-\.\d]+)",
             r"[?&]ll=([-\.\d]+),([-\.\d]+)",
@@ -866,8 +855,8 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
         for src in map_iframes:
             fb_lat, fb_lng = _coords_from_iframe(src)
             if fb_lat is not None and fb_lng is not None:
-                lat = lat if lat is not None else fb_lat
-                lng = lng if lng is not None else fb_lng
+                lat, lng = fb_lat, fb_lng
+                coordinate_source = "google_maps_iframe"
                 break
 
     # ------------------------------------------------------------------
@@ -1115,6 +1104,7 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
         "address": full_address,
         "latitude": lat,
         "longitude": lng,
+        "coordinate_source": coordinate_source,
         "boundary_coordinates": boundary_coordinates,
         "geometry": geometry,
         "google_maps_url": map_iframes[0] if map_iframes else None,
@@ -1136,10 +1126,11 @@ def validate_record(record: dict) -> dict:
     loc = record.get("project_location", {})
     lat = loc.get("latitude")
     lng = loc.get("longitude")
+    coord_src = loc.get("coordinate_source")
     
     # Karnataka geographic coordinate bounds check
     valid_coords = False
-    if lat is not None and lng is not None:
+    if lat is not None and lng is not None and coord_src is not None:
         try:
             f_lat, f_lng = float(lat), float(lng)
             if 11.0 <= f_lat <= 19.0 and 74.0 <= f_lng <= 79.5:
@@ -1183,6 +1174,20 @@ def validate_record(record: dict) -> dict:
                 f"Malformed boundary coordinates: East longitude ({east_lng}) must be greater than West longitude ({west_lng})"
             )
 
+    # Absolute geographic bounding-box validation on all boundary points
+    for direction in ("north", "south", "east", "west"):
+        point = b_coords.get(direction, {})
+        p_lat = point.get("latitude")
+        p_lng = point.get("longitude")
+        if p_lat is not None:
+            if not (11.0 <= float(p_lat) <= 19.0):
+                valid_boundary_rel = False
+                warnings.append(f"Boundary coordinate out of Karnataka bounds: {direction} latitude ({p_lat})")
+        if p_lng is not None:
+            if not (74.0 <= float(p_lng) <= 79.5):
+                valid_boundary_rel = False
+                warnings.append(f"Boundary coordinate out of Karnataka bounds: {direction} longitude ({p_lng})")
+
     checks = {
         "has_registration_no": bool(reg_no),
         "has_project_name": bool(proj_name),
@@ -1197,7 +1202,10 @@ def validate_record(record: dict) -> dict:
     }
     
     if not valid_coords:
-        warnings.append("Missing or out-of-bounds geographic coordinates")
+        if coord_src is None:
+            warnings.append("Missing authoritative center geographic coordinates (coordinate_source is null)")
+        else:
+            warnings.append("Missing or out-of-bounds geographic coordinates")
     if not survey_nos:
         warnings.append("Missing land survey numbers")
     if not sros:
