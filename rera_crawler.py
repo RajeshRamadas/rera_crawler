@@ -61,6 +61,7 @@ import re
 import signal
 import sys
 import time
+from datetime import datetime, timezone
 from collections import defaultdict
 from pathlib import Path
 
@@ -182,10 +183,38 @@ def discover_projects(s: requests.Session, save_discovery_page: Path | None = No
         save_discovery_page.mkdir(parents=True, exist_ok=True)
         (save_discovery_page / "discovery_page.html").write_text(html_text, encoding="utf-8")
 
+    # Strategy 1: Primary contiguous JS push regex match
     matches = _DISCOVERY_PATTERN.findall(html_text)
+
+    # Strategy 2: Relaxed independent JS array extraction (resilient to JS refactoring/intervening code)
+    if not matches:
+        a1 = re.findall(r"applicationNameList\s*\.push\('([^']*)'\)", html_text)
+        a2 = re.findall(r"applicationNameList2\s*\.push\('([^']*)'\)", html_text)
+        a3 = re.findall(r"applicationNameList3\s*\.push\('([^']*)'\)", html_text)
+        a4 = re.findall(r"applicationNameList4\s*\.push\('([^']*)'\)", html_text)
+        if a1 and len(a1) == len(a2) == len(a3) == len(a4):
+            matches = list(zip(a1, a2, a3, a4))
+
+    # Strategy 3: HTML DOM table parsing fallback (if page switches to HTML rendering)
+    if not matches:
+        soup = BeautifulSoup(html_text, "html.parser")
+        dom_matches = []
+        for tr in soup.find_all("tr"):
+            tds = [td.get_text(" ", strip=True) for td in tr.find_all("td")]
+            if len(tds) >= 4:
+                reg_candidate = None
+                for col in tds:
+                    if "PRM/KA/RERA" in col or "ACK/KA/RERA" in col or "RERA" in col:
+                        reg_candidate = col
+                        break
+                if reg_candidate:
+                    dom_matches.append((tds[0], tds[1] if len(tds)>1 else reg_candidate, tds[2] if len(tds)>2 else "", tds[3] if len(tds)>3 else ""))
+        if dom_matches:
+            matches = dom_matches
+
     if not matches:
         raise CrawlerError(
-            "Discovery found 0 projects in /viewAllProjects page. Markup pattern may have changed."
+            "Discovery found 0 projects in /viewAllProjects page across all 3 extraction strategies (JS push, independent arrays, DOM table)."
         )
 
     projects = []
@@ -289,6 +318,45 @@ def resolve_project_id(search_html: str, reg_no: str = "", project_name: str = "
     return candidates[0][0], candidates
 
 
+def parse_search_result_row(search_html: str, reg_no: str = "", project_name: str = "") -> dict:
+    """
+    Parse search result table row from /projectViewDetails.
+    Extracts status, district, taluk, dates, and PDF certificate download URLs.
+    """
+    soup = BeautifulSoup(search_html, "html.parser")
+    tables = soup.find_all("table")
+    if not tables:
+        return {}
+
+    for table in tables:
+        headers = [th.get_text(" ", strip=True) for th in table.find_all("th")]
+        if not headers:
+            continue
+
+        for tr in table.find_all("tr"):
+            tds = tr.find_all("td")
+            if not tds:
+                continue
+            row_text = tr.get_text(" ", strip=True)
+            if (reg_no and reg_no in row_text) or (project_name and project_name in row_text) or (not reg_no and not project_name):
+                row_data = {}
+                for header, td in zip(headers, tds):
+                    val = td.get_text(" ", strip=True)
+                    clean_header = re.sub(r"[^\w\s]", "", header.strip().lower())
+                    clean_header = re.sub(r"\s+", "_", clean_header).strip("_")
+                    if not clean_header or clean_header in ("sno", "s_no", "view_project_details"):
+                        continue
+                    if val:
+                        row_data[clean_header] = val
+                    links = extract_cell_links(td)
+                    if links:
+                        row_data[f"{clean_header}_url"] = links
+                if row_data:
+                    return row_data
+    return {}
+
+
+
 def fetch_project_detail_html(s: requests.Session, project_id: str) -> str:
     """Fetch detail page HTML for a given internal PROJECT_ID."""
     headers = dict(HEADERS_XHR)
@@ -363,9 +431,7 @@ def parse_label_value_sections(container) -> dict:
             current_record[label] = value
             value_urls = links[i + 1] if i + 1 < len(links) else []
             if value_urls:
-                current_record[f"{label} URL"] = (
-                    value_urls[0] if len(value_urls) == 1 else value_urls
-                )
+                current_record[f"{label} URL"] = value_urls
 
     flush()
 
@@ -376,30 +442,116 @@ def parse_label_value_sections(container) -> dict:
 
 
 def parse_tables(container) -> list[dict]:
-    """Parse html tables into rows of dicts, including column URLs."""
+    """Parse html tables into rows of dicts, expanding colspan/rowspan into a 2D grid
+    so column headers and values remain correctly aligned.
+    """
+    if not container:
+        return []
     all_tables = []
     for table in container.find_all("table"):
-        headers = [th.get_text(" ", strip=True) for th in table.find_all("th")]
+        trs = table.find_all("tr")
+        if not trs:
+            continue
+
+        # 1. Build a 2D grid to resolve rowspan and colspan spanning
+        grid = {}
+        max_col = 0
+
+        for r_idx, tr in enumerate(trs):
+            c_idx = 0
+            cells = tr.find_all(["th", "td"])
+            for cell in cells:
+                while (r_idx, c_idx) in grid:
+                    c_idx += 1
+
+                try:
+                    rowspan = max(1, int(cell.get("rowspan", 1)))
+                except (ValueError, TypeError):
+                    rowspan = 1
+                try:
+                    colspan = max(1, int(cell.get("colspan", 1)))
+                except (ValueError, TypeError):
+                    colspan = 1
+
+                text = cell.get_text(" ", strip=True)
+                links = extract_cell_links(cell)
+                is_header = (cell.name == "th")
+
+                cell_info = {"text": text, "links": links, "is_header": is_header}
+
+                for r_offset in range(rowspan):
+                    for c_offset in range(colspan):
+                        curr_r = r_idx + r_offset
+                        curr_c = c_idx + c_offset
+                        grid[(curr_r, curr_c)] = cell_info
+                        if curr_c > max_col:
+                            max_col = curr_c
+
+                c_idx += colspan
+
+        num_rows = len(trs)
+        num_cols = max_col + 1 if grid else 0
+        if num_cols == 0:
+            continue
+
+        # 2. Separate header rows from data rows
+        header_rows = []
+        data_row_indices = []
+
+        for r in range(num_rows):
+            row_cells = [grid.get((r, c)) for c in range(num_cols)]
+            has_headers = any(cell and cell["is_header"] for cell in row_cells)
+            all_headers = all(cell and cell["is_header"] for cell in row_cells if cell and cell["text"])
+
+            if has_headers and (r == 0 or all_headers):
+                header_rows.append(row_cells)
+            else:
+                if any(cell and cell["text"] for cell in row_cells):
+                    data_row_indices.append(r)
+
+        # 3. Construct headers list (combining multi-level header rows if present)
+        headers = []
+        if header_rows:
+            combined = []
+            for c in range(num_cols):
+                parts = []
+                for h_row in header_rows:
+                    cell = h_row[c]
+                    if cell and cell["text"] and cell["text"] not in parts:
+                        parts.append(cell["text"])
+                combined.append(" ".join(parts).strip())
+            headers = combined
+
+        # 4. Extract data rows mapped to header keys
         rows = []
-        for tr in table.find_all("tr"):
-            tds = tr.find_all("td")
-            if not tds:
-                continue
-            values = [td.get_text(" ", strip=True) for td in tds]
-            links = [extract_cell_links(td) for td in tds]
+        for r in data_row_indices:
+            row_cells = [grid.get((r, c)) for c in range(num_cols)]
+            values = [cell["text"] if cell else "" for cell in row_cells]
+            links = [cell["links"] if cell else [] for cell in row_cells]
 
             if headers and len(headers) == len(values):
-                row = dict(zip(headers, values))
-                for header, url_list in zip(headers, links):
+                row = {}
+                for header, val, url_list in zip(headers, values, links):
+                    if not header:
+                        header = "unnamed_column"
+                    key = header
+                    dup_cnt = 1
+                    while key in row:
+                        dup_cnt += 1
+                        key = f"{header}_{dup_cnt}"
+                    row[key] = val
                     if url_list:
-                        row[f"{header} URL"] = url_list[0] if len(url_list) == 1 else url_list
+                        row[f"{key} URL"] = url_list
+                if row:
+                    rows.append(row)
             else:
                 row = {"columns": values}
                 if any(links):
                     row["column_urls"] = links
+                rows.append(row)
 
-            rows.append(row)
         all_tables.append({"headers": headers, "rows": rows})
+
     return all_tables
 
 
@@ -422,9 +574,41 @@ def parse_documents_matrix(container) -> list[dict]:
                 if value or urls:
                     entry = {"document_type": doc_type, "financial_year": year, "file": value}
                     if urls:
-                        entry["file_url"] = urls[0] if len(urls) == 1 else urls
+                        entry["file_url"] = urls
                     out.append(entry)
     return out
+
+
+def parse_all_label_value_pairs(container) -> tuple[dict, list[str]]:
+    """Parse all label-value pairs and iframe URLs across any column layout (col-md-6, col-md-3, etc.)."""
+    if not container:
+        return {}, []
+    data = {}
+    iframes = []
+    for iframe in container.find_all("iframe", src=True):
+        src = iframe["src"].strip()
+        if src:
+            iframes.append(src)
+
+    for r in container.find_all("div", class_="row"):
+        ps = r.find_all("p", recursive=True)
+        i = 0
+        while i < len(ps) - 1:
+            p1, p2 = ps[i], ps[i + 1]
+            t1 = p1.get_text(" ", strip=True)
+            t2 = p2.get_text(" ", strip=True)
+            if ":" in t1 or "text-right" in p1.get("class", []):
+                label = re.sub(r"[\s:]+$", "", t1).strip()
+                val = t2.strip()
+                if label and label not in data:
+                    data[label] = val
+                    links = extract_cell_links(p2)
+                    if links:
+                        data[f"{label} URL"] = links
+                i += 2
+            else:
+                i += 1
+    return data, iframes
 
 
 TAB_IDS = {
@@ -468,22 +652,41 @@ def normalize_project_detail(html_text: str) -> dict:
         "registration_number": header_field(header, "Registration Number"),
     }
 
-    # Promoter Details & Project Details tabs
-    for key in ("promoter_details", "project_details"):
-        div = soup.find("div", id=TAB_IDS[key])
-        if div is None:
-            _warn_missing(key, TAB_IDS[key])
-            result[key] = {}
-        else:
-            result[key] = parse_label_value_sections(div)
+    # Promoter Details tab
+    div = soup.find("div", id=TAB_IDS["promoter_details"])
+    if div is None:
+        _warn_missing("promoter_details", TAB_IDS["promoter_details"])
+        result["promoter_details"] = {}
+    else:
+        result["promoter_details"] = parse_label_value_sections(div)
 
-    # Uploaded Documents tab
+    # Project Details tab
+    div = soup.find("div", id=TAB_IDS["project_details"])
+    if div is None:
+        _warn_missing("project_details", TAB_IDS["project_details"])
+        result["project_details"] = {}
+    else:
+        sections = parse_label_value_sections(div)
+        tables = parse_tables(div)
+        if tables:
+            all_table_rows = []
+            for t in tables:
+                all_table_rows.extend(t.get("rows", []))
+            sections["survey_land_tables"] = all_table_rows
+        result["project_details"] = sections
+
+    # Uploaded Documents tab (menu2) - contains both Location/Overview specs and Document Matrix
     div = soup.find("div", id=TAB_IDS["uploaded_documents"])
     if div is None:
         _warn_missing("uploaded_documents", TAB_IDS["uploaded_documents"])
         result["uploaded_documents"] = []
+        result["project_overview_details"] = {}
+        result["map_iframes"] = []
     else:
         result["uploaded_documents"] = parse_documents_matrix(div)
+        overview_pairs, map_iframes = parse_all_label_value_pairs(div)
+        result["project_overview_details"] = overview_pairs
+        result["map_iframes"] = map_iframes
 
     # Enquired Documents tab
     div = soup.find("div", id=TAB_IDS["enquired_documents"])
@@ -531,6 +734,597 @@ def normalize_project_detail(html_text: str) -> dict:
     return result
 
 
+def clean_value(val):
+    """Recursively strip excessive whitespace, newlines, and tabs from strings and nested dicts/lists."""
+    if isinstance(val, str):
+        return re.sub(r"\s+", " ", val).strip()
+    elif isinstance(val, dict):
+        return {clean_value(k): clean_value(v) for k, v in val.items() if k}
+    elif isinstance(val, list):
+        return [clean_value(x) for x in val]
+    return val
+
+
+def extract_location_details(raw_data: dict, search_info: dict) -> dict:
+    """Extract and consolidate geographic, survey, coordinates, boundaries, and address details.
+
+    Coordinate extraction handles all RERA Karnataka key variants:
+      Plain:          "Latitude", "Longitude"
+      Directional:    "Latitude North", "Latitude South", "Longitude East", "Longitude West"
+      Parenthesised:  "Latitude(N)", "Longitude(E)", etc.
+      Degree-symbol:  values may end in degree sign, "N", etc.
+    Coordinates in Karnataka are all positive numbers (~12–18°N, ~74–78°E); direction labels refer to plot boundary edges and signs are preserved as parsed.
+    """
+    district = search_info.get("district")
+    taluk = search_info.get("taluk")
+
+    promoter_section = raw_data.get("promoter_details", {}).get("Promoter Details", {})
+    if not isinstance(promoter_section, dict):
+        promoter_section = {}
+    p_district = promoter_section.get("District")
+    p_taluk = promoter_section.get("Taluk")
+    pin_code = promoter_section.get("PIN Code")
+    promoter_address = promoter_section.get("Promoter Address")
+
+    overview = raw_data.get("project_overview_details", {})
+    if not isinstance(overview, dict):
+        overview = {}
+    map_iframes = raw_data.get("map_iframes", [])
+
+    # ------------------------------------------------------------------
+    # Coordinate extraction helpers
+    # ------------------------------------------------------------------
+    # Anchored pattern that extracts the first well-formed float from a raw
+    # coordinate string, regardless of surrounding direction labels, degree
+    # symbols, or extra whitespace.
+    #
+    # Handles all observed RERA Karnataka formats and their failure modes:
+    #   "12.9716"          → 12.9716   (plain)
+    #   "-12.9716"         → -12.9716  (negative — isdigit() would fail)
+    #   "+12.9716"         → 12.9716   (explicit plus)
+    #   "12.9716°"         → 12.9716   (degree symbol)
+    #   "12.9716° N"       → 12.9716   (direction suffix)
+    #   "N 12.9716"        → 12.9716   (direction prefix)
+    #   "12.9716 N 77.59"  → 12.9716   (first float only — caller handles sign)
+    #   "N/A", ""          → None      (garbage → None)
+    _FLOAT_RE = re.compile(r"[+-]?\d+(?:\.\d+)?")
+
+    def _parse_coord(raw_str):
+        """Extract the first valid float from a raw coordinate string, or None."""
+        if raw_str is None:
+            return None
+        m = _FLOAT_RE.search(str(raw_str))
+        return float(m.group()) if m else None
+
+    def _extract_coord_by_keys(keys):
+        for k in keys:
+            raw = overview.get(k)
+            if raw is not None and str(raw).strip():
+                val = _parse_coord(raw)
+                if val is not None:
+                    return val
+        return None
+
+    boundary_coordinates = {
+        "north": {
+            "latitude": _extract_coord_by_keys(["Latitude North", "North Latitude", "Latitude(N)", "Latitude (N)", "Lat North", "North Lat"]),
+            "longitude": _extract_coord_by_keys(["Longitude North", "North Longitude", "Longitude(N)", "Longitude (N)", "Long North", "North Long"]),
+        },
+        "south": {
+            "latitude": _extract_coord_by_keys(["Latitude South", "South Latitude", "Latitude(S)", "Latitude (S)", "Lat South", "South Lat"]),
+            "longitude": _extract_coord_by_keys(["Longitude South", "South Longitude", "Longitude(S)", "Longitude (S)", "Long South", "South Long"]),
+        },
+        "east": {
+            "latitude": _extract_coord_by_keys(["Latitude East", "East Latitude", "Latitude(E)", "Latitude (E)", "Lat East", "East Lat"]),
+            "longitude": _extract_coord_by_keys(["Longitude East", "East Longitude", "Longitude(E)", "Longitude (E)", "Long East", "East Long"]),
+        },
+        "west": {
+            "latitude": _extract_coord_by_keys(["Latitude West", "West Latitude", "Latitude(W)", "Latitude (W)", "Lat West", "West Lat"]),
+            "longitude": _extract_coord_by_keys(["Longitude West", "West Longitude", "Longitude(W)", "Longitude (W)", "Long West", "West Long"]),
+        },
+    }
+
+    # Authoritative center coordinates (extracted strictly from "Latitude" & "Longitude")
+    lat = _extract_coord_by_keys(["Latitude"])
+    lng = _extract_coord_by_keys(["Longitude"])
+
+    coordinate_source = "rera_html" if (lat is not None and lng is not None) else None
+
+    # ------------------------------------------------------------------
+    # Iframe fallback: if HTML missed at least one coordinate, try parsing
+    # the Google Maps embed src as a COMPLETE PAIR only (no partial mixing).
+    # ------------------------------------------------------------------
+    def _coords_from_iframe(iframe_src: str):
+        """Return (lat, lng) floats parsed from a Google Maps embed URL, or (None, None)."""
+        if not iframe_src:
+            return None, None
+        for pat in (
+            r"[?&]q=([-\.\d]+),([-\.\d]+)",
+            r"[?&]ll=([-\.\d]+),([-\.\d]+)",
+            r"@([-\.\d]+),([-\.\d]+)",
+        ):
+            m = re.search(pat, iframe_src)
+            if m:
+                try:
+                    return float(m.group(1)), float(m.group(2))
+                except ValueError:
+                    continue
+        return None, None
+
+    if lat is None or lng is None:
+        for src in map_iframes:
+            fb_lat, fb_lng = _coords_from_iframe(src)
+            if fb_lat is not None and fb_lng is not None:
+                lat, lng = fb_lat, fb_lng
+                coordinate_source = "google_maps_iframe"
+                break
+
+    # ------------------------------------------------------------------
+    # GeoJSON geometry:
+    #
+    # RERA Karnataka does NOT publish polygon coordinates — only a center
+    # point and legal-schedule text for the four cardinal boundaries.
+    #
+    # We produce two levels of geometry:
+    #   1. "center"  — GeoJSON Point from the selected coordinate source.
+    #                  Prefer RERA HTML coordinates; Google Maps iframe is fallback.
+    #   2. "bbox_polygon" — GeoJSON Polygon approximated from the total
+    #      land area (sq m) as a square centred on the Point.
+    #      This is clearly flagged as an approximation so downstream
+    #      consumers are not misled.
+    #
+    # Derivation of half-side from area:
+    #   side = sqrt(area_sq_m)  =>  half_side = side / 2
+    #   1 degree latitude  ~ 111,320 m  (near-constant)
+    #   1 degree longitude ~ 111,320 * cos(lat_rad) m  (varies with lat)
+    # ------------------------------------------------------------------
+    import math as _math
+
+    def _build_geometry(center_lat, center_lng, area_sq_m=None, coord_source=None):
+        """
+        Return a dict with:
+          center            -- GeoJSON Point  {type, coordinates}
+          bbox_polygon      -- GeoJSON Polygon (approximate square, or None)
+          area_source       -- label for how the bbox was derived
+          coordinate_source -- label for coordinate origin ("rera_html", "google_maps_iframe", or None)
+        """
+        if center_lat is None or center_lng is None:
+            return {
+                "center": None,
+                "bbox_polygon": None,
+                "area_source": None,
+                "coordinate_source": coord_source,
+            }
+
+        geojson_point = {
+            "type": "Point",
+            "coordinates": [round(center_lng, 7), round(center_lat, 7)],
+        }
+
+        bbox_poly = None
+        area_source = None
+        if area_sq_m and area_sq_m > 0:
+            half_side_m = _math.sqrt(area_sq_m) / 2.0
+            lat_deg = half_side_m / 111_320.0
+            lng_deg = half_side_m / (111_320.0 * _math.cos(_math.radians(center_lat)))
+            min_lat = round(center_lat - lat_deg, 7)
+            max_lat = round(center_lat + lat_deg, 7)
+            min_lng = round(center_lng - lng_deg, 7)
+            max_lng = round(center_lng + lng_deg, 7)
+            # GeoJSON Polygon: exterior ring, 5 points (closed)
+            bbox_poly = {
+                "type": "Polygon",
+                "coordinates": [[
+                    [min_lng, min_lat],
+                    [max_lng, min_lat],
+                    [max_lng, max_lat],
+                    [min_lng, max_lat],
+                    [min_lng, min_lat],
+                ]],
+            }
+            area_source = "total_land_area_sq_mtr"
+
+        return {
+            "center": geojson_point,
+            "bbox_polygon": bbox_poly,
+            "area_source": area_source,
+            "coordinate_source": coord_source,
+            "_note": (
+                "bbox_polygon is an equal-area square approximation centred on the "
+                "project point. RERA Karnataka does not publish polygon boundary "
+                "coordinates; use the legal schedule text in boundaries{} for the "
+                "authoritative description."
+            ) if bbox_poly else None,
+        }
+
+    # Try to get total land area from overview for bbox derivation
+    _area_raw = overview.get("Total Area Of Land (Sq Mtr) (A1+A2)") or overview.get("Total Area Of Land (Sq Mtr)")
+    _area_sq_m = None
+    if _area_raw:
+        try:
+            _area_sq_m = float(str(_area_raw).replace(",", "").strip())
+        except ValueError:
+            pass
+
+    geometry = _build_geometry(lat, lng, _area_sq_m, coordinate_source)
+
+    # ------------------------------------------------------------------
+    # Boundary schedules -- accept both plain and prefixed key variants
+    # ------------------------------------------------------------------
+    def _first_str(*keys):
+        for k in keys:
+            v = overview.get(k)
+            if v and str(v).strip():
+                return str(v).strip()
+        return None
+
+    b_north = _first_str("North Schedule", "North_Schedule", "Boundary North", "North Boundary")
+    b_south = _first_str("South Schedule", "South_Schedule", "Boundary South", "South Boundary")
+    b_east  = _first_str("East Schedule",  "East_Schedule",  "Boundary East",  "East Boundary")
+    b_west  = _first_str("West Schedule",  "West_Schedule",  "Boundary West",  "West Boundary")
+
+    survey_tables = raw_data.get("project_details", {}).get("survey_land_tables", [])
+
+    # ------------------------------------------------------------------
+    # Survey number and sub-registrar extraction — column-semantic, not
+    # pattern-reactive.
+    #
+    # parse_tables() produces two row shapes depending on whether the
+    # <table> had <th> headers that matched the column count:
+    #
+    #   Keyed row:      {"Survey No": "59/1", "Sub Registrar": "...", ...}
+    #   Headerless row: {"columns": ["59/1", "...", ...]}
+    #
+    # Strategy:
+    #   Phase 1 (keyed rows) — read well-known column names directly.
+    #     No pattern matching needed; the header IS the semantic label.
+    #   Phase 2 (headerless fallback) — apply the Karnataka Revenue Dept
+    #     survey-number grammar:  digits, optional suffix letter, optional
+    #     slash-sub-number repetition.  Examples: "59", "59/1", "59/1A",
+    #     "59/1A/2", "Sy.No.59/1".  A cell is accepted only if the regex
+    #     fills the entire token after stripping a "Sy" / "Sy.No." prefix.
+    #     Numeric-only values that look like areas, amounts, or IDs
+    #     (>= 6 digits, or contain a decimal point) are rejected outright.
+    # ------------------------------------------------------------------
+
+    # Karnataka Revenue Dept survey number grammar (anchored)
+    _SY_RE = re.compile(
+        r"^(?:Sy\.?\s*No\.?\s*)?(\d{1,5}[A-Za-z]?(?:/\d{1,5}[A-Za-z]?)*)$",
+        re.IGNORECASE,
+    )
+
+    # Known header variants across RERA Karnataka form versions
+    _SY_HEADERS  = {"Survey No", "Sy No", "Sy.No", "Sy.No.", "Survey Number",
+                    "SurveyNo", "Survey No.", "Sy No."}
+    _SUB_REG_HEADERS = {
+        # Exact column-header match; both plain and hyphenated forms appear
+        # across different RERA Karnataka form versions.
+        "Sub Registrar", "Sub-Registrar", "Sub Registrar Office",
+        "SubRegistrar", "Sub Registrar Name", "Sub Reg",
+        "Sub Registrar Of Assurances", "SRO",
+    }
+    _ADDR_HEADERS = {"Address", "Land Address", "Property Address",
+                     "Site Address", "Project Address"}
+
+    # ------------------------------------------------------------------
+    # SRO name normaliser: strip verbose boilerplate that RERA promoters
+    # often paste in full ("Sub Registrar Office, Basavanagudi, Bengaluru
+    # South, Karnataka - 560004").  We want just the meaningful name part.
+    # Examples:
+    #   "Sub Registrar Office, JP Nagar"  → "JP Nagar"
+    #   "JP Nagar Sub Registrar"          → "JP Nagar"
+    #   "Sub Registrar, Yelahanka"        → "Yelahanka"
+    #   "Yelahanka"                       → "Yelahanka"  (already clean)
+    # ------------------------------------------------------------------
+    _SRO_STRIP_RE = re.compile(
+        r"(?:Sub[\s\-]Registrar(?:\s+(?:Office|Of\s+Assurances))?[,\s]*"
+        r"|[,\s]*Sub[\s\-]Registrar(?:\s+(?:Office|Of\s+Assurances))?)",
+        re.IGNORECASE,
+    )
+
+    _INVALID_SRO_TERMS = {
+        "residential", "e khatha", "own land", "by sale", "dc office",
+        "dc office bengaluru", "dc office benglauru", "village development and panchayat raj"
+    }
+
+    def _is_valid_sro(val: str) -> bool:
+        v = val.strip()
+        if not v or v.isdigit():
+            return False
+        if re.search(r"\b\d+\s*(?:acres?|guntas?|sq\s*mtr|sqft)\b", v, re.I):
+            return False
+        if re.search(r"\b(?:tower|flat|apt|apartment|khatha|residential)\b", v, re.I):
+            return False
+        if v.lower() in _INVALID_SRO_TERMS:
+            return False
+        return True
+
+    def _normalize_sro(raw: str) -> str:
+        """Return the meaningful part of an SRO name, stripping generic boilerplate."""
+        cleaned = _SRO_STRIP_RE.sub(" ", raw).strip(" ,;-")
+        first_token = cleaned.split(",")[0].strip()
+        return first_token if first_token else cleaned
+
+    survey_nos    = []
+    sub_registrars = []
+    land_addresses = []
+
+    for row in survey_tables:
+        # ---- Phase 1: keyed row (headers matched) ----
+        if isinstance(row, dict) and "columns" not in row:
+            for h, val in row.items():
+                if not val or h.endswith(" URL"):
+                    continue
+                val_str = str(val).strip()
+                h_norm  = h.strip()
+
+                # Extract survey number embedded in multi-level header string
+                m_hdr_sy = re.search(r"Survey\s+Number\s+([0-9]+(?:/[0-9A-Za-z]+)?)", h_norm, re.I)
+                if m_hdr_sy:
+                    sy_val = m_hdr_sy.group(1)
+                    if sy_val not in survey_nos:
+                        survey_nos.append(sy_val)
+
+                # Check exact header or suffix/substring match (supporting multi-level headers)
+                h_lower = h_norm.lower()
+                is_sy = h_norm in _SY_HEADERS or any(h_lower.endswith(" " + sy.lower()) for sy in _SY_HEADERS)
+                is_subreg = h_norm in _SUB_REG_HEADERS or any(sro.lower() in h_lower for sro in _SUB_REG_HEADERS)
+                is_addr = h_norm in _ADDR_HEADERS or any(addr.lower() in h_lower for addr in _ADDR_HEADERS)
+
+                if is_sy:
+                    # Value may be comma/semicolon separated multi-entry
+                    for token in re.split(r"[,;\s]+", val_str):
+                        token = token.strip()
+                        if token and token not in survey_nos:
+                            survey_nos.append(token)
+
+                elif is_subreg:
+                    normed = _normalize_sro(val_str)
+                    if normed and _is_valid_sro(normed) and normed not in sub_registrars:
+                        sub_registrars.append(normed)
+
+                elif is_addr:
+                    if val_str not in land_addresses:
+                        land_addresses.append(val_str)
+
+        # ---- Phase 2: headerless fallback ----
+        else:
+            cols = row.get("columns", [])
+            for cell in cols:
+                cell_str = str(cell).strip()
+                if not cell_str:
+                    continue
+
+                # Survey number: must match grammar, must not look like a
+                # decimal area / large numeric ID
+                m = _SY_RE.match(cell_str)
+                if m:
+                    captured = m.group(1)
+                    # Reject bare integers >= 6 digits (IDs/amounts)
+                    # and anything containing a decimal point (areas)
+                    if "." not in captured and len(re.sub(r"\D", "", captured)) <= 5:
+                        if captured not in survey_nos:
+                            survey_nos.append(captured)
+
+                # Sub-registrar: the phrase "Sub Registrar" (or hyphenated) is a
+                # reliable linguistic anchor — every Karnataka SRO name contains it.
+                # We cannot do better in a headerless row without external SRO data.
+                # Normalise before storing so the value is the location name only.
+                if re.search(r"Sub[\s\-]Registrar", cell_str, re.IGNORECASE):
+                    normed = _normalize_sro(cell_str)
+                    if normed and normed not in sub_registrars:
+                        sub_registrars.append(normed)
+
+                # Address: contains a strong Karnataka locale signal
+                if re.search(r"Karnataka|Bengaluru|Bangalore", cell_str) and len(cell_str) > 20:
+                    if cell_str not in land_addresses:
+                        land_addresses.append(cell_str)
+
+    full_address = overview.get("Project Address") or (land_addresses[0] if land_addresses else promoter_address)
+
+    # Address survey number regex fallback
+    if not survey_nos:
+        addr_text = full_address or ""
+        for sn in re.findall(r"\b(\d+/\d+[A-Za-z]?)\b", addr_text):
+            if sn not in survey_nos:
+                survey_nos.append(sn)
+
+    return {
+        "district": district or overview.get("District") or p_district,
+        "taluk": taluk or overview.get("Taluk") or p_taluk,
+        "pin_code": overview.get("Pin Code") or pin_code,
+        "survey_numbers": survey_nos,
+        "sub_registrar_offices": sub_registrars,   # list; one per land parcel; normalised SRO name
+        "address": full_address,
+        "latitude": lat,
+        "longitude": lng,
+        "coordinate_source": coordinate_source,
+        "boundary_coordinates": boundary_coordinates,
+        "geometry": geometry,
+        "google_maps_url": map_iframes[0] if map_iframes else None,
+        "boundaries": {
+            "north_schedule": b_north,
+            "south_schedule": b_south,
+            "east_schedule": b_east,
+            "west_schedule": b_west,
+        }
+    }
+
+
+def validate_record(record: dict) -> dict:
+    """Assess data quality and completeness of a scraped RERA project record.
+
+    Checks spatial, identity, location, and geometry attributes.
+    Returns a structured data_quality dictionary.
+    """
+    loc = record.get("project_location", {})
+    lat = loc.get("latitude")
+    lng = loc.get("longitude")
+    coord_src = loc.get("coordinate_source")
+    
+    # Karnataka geographic coordinate bounds check
+    valid_coords = False
+    if lat is not None and lng is not None and coord_src is not None:
+        try:
+            f_lat, f_lng = float(lat), float(lng)
+            if 11.0 <= f_lat <= 19.0 and 74.0 <= f_lng <= 79.5:
+                valid_coords = True
+        except (ValueError, TypeError):
+            pass
+
+    survey_nos = loc.get("survey_numbers", [])
+    sros = loc.get("sub_registrar_offices", [])
+    address = loc.get("address") or record.get("district")
+    district = loc.get("district") or record.get("district")
+    
+    reg_no = record.get("registration_no")
+    proj_name = record.get("project_name")
+    firm_name = record.get("promoter_name")
+    
+    geom = loc.get("geometry", {})
+    has_center = bool(geom.get("center"))
+    has_bbox = bool(geom.get("bbox_polygon"))
+    
+    # Spatial relationship sanity checks on boundary coordinates
+    b_coords = loc.get("boundary_coordinates", {})
+    north_lat = b_coords.get("north", {}).get("latitude")
+    south_lat = b_coords.get("south", {}).get("latitude")
+    east_lng = b_coords.get("east", {}).get("longitude")
+    west_lng = b_coords.get("west", {}).get("longitude")
+
+    valid_boundary_rel = True
+    warnings = []
+    
+    if north_lat is not None and south_lat is not None:
+        if float(north_lat) <= float(south_lat):
+            valid_boundary_rel = False
+            warnings.append(
+                f"Malformed boundary coordinates: North latitude ({north_lat}) must be greater than South latitude ({south_lat})"
+            )
+    if east_lng is not None and west_lng is not None:
+        if float(east_lng) <= float(west_lng):
+            valid_boundary_rel = False
+            warnings.append(
+                f"Malformed boundary coordinates: East longitude ({east_lng}) must be greater than West longitude ({west_lng})"
+            )
+
+    # Absolute geographic bounding-box validation on all boundary points
+    for direction in ("north", "south", "east", "west"):
+        point = b_coords.get(direction, {})
+        p_lat = point.get("latitude")
+        p_lng = point.get("longitude")
+        if p_lat is not None:
+            if not (11.0 <= float(p_lat) <= 19.0):
+                valid_boundary_rel = False
+                warnings.append(f"Boundary coordinate out of Karnataka bounds: {direction} latitude ({p_lat})")
+        if p_lng is not None:
+            if not (74.0 <= float(p_lng) <= 79.5):
+                valid_boundary_rel = False
+                warnings.append(f"Boundary coordinate out of Karnataka bounds: {direction} longitude ({p_lng})")
+
+    checks = {
+        "has_registration_no": bool(reg_no),
+        "has_project_name": bool(proj_name),
+        "has_promoter_name": bool(firm_name),
+        "has_coordinates": valid_coords,
+        "has_survey_numbers": bool(survey_nos),
+        "has_sub_registrar": bool(sros),
+        "has_address": bool(address or district),
+        "has_geometry_center": has_center,
+        "has_geometry_bbox": has_bbox,
+        "valid_boundary_relationships": valid_boundary_rel,
+    }
+    
+    if not valid_coords:
+        if coord_src is None:
+            warnings.append("Missing authoritative center geographic coordinates (coordinate_source is null)")
+        else:
+            warnings.append("Missing or out-of-bounds geographic coordinates")
+    if not survey_nos:
+        warnings.append("Missing land survey numbers")
+    if not sros:
+        warnings.append("Missing Sub-Registrar Office jurisdiction")
+    if not (address or district):
+        warnings.append("Missing property location address/district")
+    if not has_bbox:
+        warnings.append("Missing total land area for GeoJSON bounding-box construction")
+
+    passed_checks = sum(1 for v in checks.values() if v)
+    total_checks = len(checks)
+    quality_score = int(round((passed_checks / total_checks) * 100))
+    
+    is_complete = all([
+        checks["has_registration_no"],
+        checks["has_project_name"],
+        checks["has_coordinates"],
+        checks["has_survey_numbers"],
+        checks["valid_boundary_relationships"]
+    ])
+
+    return {
+        "is_complete": is_complete,
+        "quality_score": quality_score,
+        "checks": checks,
+        "warnings": warnings,
+    }
+
+
+def build_clean_structured_record(
+    raw_data: dict,
+    reg_no: str,
+    project_name: str,
+    acknowledgement_no: str = None,
+    promoter_name: str = None,
+    project_id: str = None,
+    search_listing_details: dict = None
+) -> dict:
+    """Build a clean, standardized, highly structured RERA project record."""
+    search_info = search_listing_details or raw_data.get("search_listing_details") or {}
+    location_info = extract_location_details(raw_data, search_info)
+
+    overview_details = raw_data.get("project_overview_details", {})
+    promoter_sec = raw_data.get("promoter_details", {})
+    p_details = promoter_sec.get("Promoter Details", {}) if isinstance(promoter_sec, dict) else {}
+
+    record = {
+        "registration_no": reg_no or raw_data.get("registration_number") or raw_data.get("_registration_no") or overview_details.get("Registration Number"),
+        "acknowledgement_no": acknowledgement_no or raw_data.get("acknowledgement_number") or raw_data.get("_acknowledgement_no") or overview_details.get("Acknowledgement Number"),
+        "project_name": project_name or raw_data.get("project_name") or overview_details.get("Project Name"),
+        "promoter_name": promoter_name or search_info.get("promoter_name") or raw_data.get("_firm_name_from_listing") or p_details.get("Promoter Name"),
+        "status": search_info.get("status") or overview_details.get("Project Status"),
+        "district": location_info.get("district"),
+        "taluk": location_info.get("taluk"),
+        "project_type": search_info.get("project_type") or overview_details.get("Project Type"),
+        "approved_on": search_info.get("approved_on"),
+        "proposed_completion_date": search_info.get("proposed_completion_date"),
+        "proposed_completion_date_at_registration": search_info.get("proposed_completion_date_at_the_time_of_registration"),
+        "certificate_url": search_info.get("certificate_url"),
+        "covid_certificate_url": search_info.get("covid_certificate_url"),
+        "renewed_certificate_url": search_info.get("renewed_certificate_url"),
+        "further_extension_order_url": search_info.get("further_extension_order_url"),
+        "internal_project_id": project_id or raw_data.get("_project_id"),
+        "crawled_at": datetime.now(timezone.utc).isoformat(),
+        "project_location": location_info,
+        "search_listing_details": search_info,
+        "project_overview_details": raw_data.get("project_overview_details", {}),
+        "promoter_details": raw_data.get("promoter_details", {}),
+        "project_details": raw_data.get("project_details", {}),
+        "uploaded_documents": raw_data.get("uploaded_documents", []),
+        "enquired_documents": raw_data.get("enquired_documents", []),
+        "quarterly_updates": raw_data.get("quarterly_updates", []),
+        "completion_details": raw_data.get("completion_details", {}),
+        "complaints": {
+            "on_promoter": raw_data.get("complaints_on_promoter", []),
+            "on_project": raw_data.get("complaints_on_project", [])
+        }
+    }
+
+    record["data_quality"] = validate_record(record)
+    return clean_value(record)
+
+
+
+
 # --------------------------------------------------------------------------- #
 # CSV & Storage Helpers
 # --------------------------------------------------------------------------- #
@@ -555,7 +1349,7 @@ def write_single_csv(row: dict, output_path: Path):
 
 class PostgresStorage:
     """Manages upserting scraped project records into a PostgreSQL database."""
-    def __init__(self, db_uri: str):
+    def __init__(self, db_uri: str, force_init: bool = False):
         try:
             import psycopg2
             import psycopg2.extras
@@ -565,10 +1359,20 @@ class PostgresStorage:
         self.db_uri = db_uri
         self.conn = psycopg2.connect(db_uri)
         self.conn.autocommit = True
-        self._init_db()
+        self._init_db(force=force_init)
 
-    def _init_db(self):
+    def _init_db(self, force: bool = False):
         with self.conn.cursor() as cur:
+            if not force:
+                # Fast check: skip heavy DDL if schema already exists to prevent lock contention
+                cur.execute("""
+                    SELECT EXISTS (
+                        SELECT 1 FROM information_schema.tables 
+                        WHERE table_schema = 'public' AND table_name = 'rera_projects'
+                    );
+                """)
+                if cur.fetchone()[0]:
+                    return
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS rera_projects (
                     registration_no VARCHAR(255) PRIMARY KEY,
@@ -581,15 +1385,112 @@ class PostgresStorage:
                 );
                 CREATE INDEX IF NOT EXISTS idx_rera_projects_name ON rera_projects (project_name);
                 CREATE INDEX IF NOT EXISTS idx_rera_projects_crawled_at ON rera_projects (crawled_at);
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_rera_ack_no_unique
+                    ON rera_projects (acknowledgement_no)
+                    WHERE acknowledgement_no IS NOT NULL;
+
+                -- GIN index: accelerates containment (@>, ?) and full-document JSONB searches
+                CREATE INDEX IF NOT EXISTS idx_rera_projects_jsonb ON rera_projects USING GIN (data);
+
+                -- Expression indexes: accelerate ->> text-equality filters used by vw_rera_projects_analytics
+                -- (GIN does NOT speed these up; only a dedicated B-tree expression index does)
+                CREATE INDEX IF NOT EXISTS idx_rera_status
+                    ON rera_projects ((COALESCE(data->>'status', data->'project_overview_details'->>'Project Status')));
+                CREATE INDEX IF NOT EXISTS idx_rera_district
+                    ON rera_projects ((data->'project_location'->>'district'));
+                CREATE INDEX IF NOT EXISTS idx_rera_taluk
+                    ON rera_projects ((data->'project_location'->>'taluk'));
+                CREATE INDEX IF NOT EXISTS idx_rera_project_sub_type
+                    ON rera_projects ((data->'project_overview_details'->>'Project Sub Type'));
+                CREATE INDEX IF NOT EXISTS idx_rera_approving_authority
+                    ON rera_projects ((data->'project_overview_details'->>'Approving Authority'));
+
+                -- Analytical View for BI Dashboards & Visualization Tools (Metabase, Grafana, Tableau)
+                CREATE OR REPLACE VIEW vw_rera_projects_analytics AS
+                SELECT 
+                    registration_no,
+                    acknowledgement_no,
+                    COALESCE(project_name, data->'project_overview_details'->>'Project Name') AS project_name,
+                    COALESCE(firm_name, data->'promoter_details'->'Promoter Details'->>'Promoter Name') AS promoter_name,
+                    COALESCE(data->>'status', data->'project_overview_details'->>'Project Status') AS status,
+                    data->'project_overview_details'->>'Project Sub Type' AS project_sub_type,
+                    data->'project_location'->>'district' AS district,
+                    data->'project_location'->>'taluk' AS taluk,
+                    data->'project_location'->>'pin_code' AS pin_code,
+                    data->'project_location'->>'address' AS address,
+                    NULLIF(data->'project_location'->>'latitude', '')::numeric AS latitude,
+                    NULLIF(data->'project_location'->>'longitude', '')::numeric AS longitude,
+                    data->'project_location'->>'google_maps_url' AS google_maps_url,
+                    data->'project_location'->'boundaries'->>'north_schedule' AS north_schedule,
+                    data->'project_location'->'boundaries'->>'south_schedule' AS south_schedule,
+                    data->'project_location'->'boundaries'->>'east_schedule' AS east_schedule,
+                    data->'project_location'->'boundaries'->>'west_schedule' AS west_schedule,
+                    data->'project_overview_details'->>'Approving Authority' AS approving_authority,
+                    data->'project_overview_details'->>'Approved Plan Number' AS approved_plan_number,
+                    data->'project_overview_details'->>'Plan Approval Date' AS plan_approval_date,
+                    NULLIF(data->'project_overview_details'->>'Total Area Of Land (Sq Mtr) (A1+A2)', '')::numeric AS total_land_area_sq_mtr,
+                    NULLIF(data->'project_overview_details'->>'Total Built-up Area of all the Floors (Sq Mtr)', '')::numeric AS total_builtup_area_sq_mtr,
+                    NULLIF(data->'project_overview_details'->>'Total Carpet Area of all the Floors (Sq Mtr)', '')::numeric AS total_carpet_area_sq_mtr,
+                    NULLIF(data->'project_overview_details'->>'Total Number of Inventories/Flats/Villas', '')::integer AS total_units,
+                    NULLIF(data->'project_overview_details'->>'Total Project Cost (INR) (C1+C2)', '')::numeric AS total_project_cost_inr,
+                    data->>'approved_on' AS approved_on,
+                    data->>'proposed_completion_date' AS proposed_completion_date,
+                    data->>'certificate_url' AS certificate_url,
+                    (data->'data_quality'->>'quality_score')::integer AS data_quality_score,
+                    (data->'data_quality'->>'is_complete')::boolean AS is_complete,
+                    crawled_at
+                FROM rera_projects;
+
+                -- Materialized views for LATERAL-unnest queries (vw_rera_documents, vw_rera_surveys)
+                -- Plain views re-execute the unnest on every query — expensive at scale.
+                -- These are refreshed once per crawl batch via refresh_materialized_views().
+                CREATE MATERIALIZED VIEW IF NOT EXISTS vw_rera_documents AS
+                SELECT 
+                    p.registration_no,
+                    p.project_name,
+                    doc->>'document_type' AS document_type,
+                    doc->>'financial_year' AS financial_year_or_context,
+                    doc->>'file' AS file_name,
+                    file_url.value AS file_url
+                FROM rera_projects p,
+                LATERAL jsonb_array_elements(p.data->'uploaded_documents') doc,
+                LATERAL jsonb_array_elements_text(doc->'file_url') file_url(value)
+                WHERE doc->'file_url' IS NOT NULL
+                  AND jsonb_typeof(doc->'file_url') = 'array'
+                WITH NO DATA;
+
+                CREATE MATERIALIZED VIEW IF NOT EXISTS vw_rera_surveys AS
+                SELECT 
+                    p.registration_no,
+                    p.project_name,
+                    p.data->'project_location'->>'district' AS district,
+                    p.data->'project_location'->>'taluk' AS taluk,
+                    s.survey_no
+                FROM rera_projects p,
+                LATERAL jsonb_array_elements_text(p.data->'project_location'->'survey_numbers') s(survey_no)
+                WITH NO DATA;
+
+                -- Unique indexes required for REFRESH MATERIALIZED VIEW CONCURRENTLY
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_vw_rera_documents_uniq
+                    ON vw_rera_documents (registration_no, document_type, financial_year_or_context, file_url);
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_vw_rera_surveys_uniq
+                    ON vw_rera_surveys (registration_no, survey_no);
+
+                -- Initial populate: plain REFRESH (not CONCURRENTLY) is required here because
+                -- CONCURRENTLY cannot run inside a multi-statement transaction block.
+                -- All subsequent refreshes via refresh_materialized_views() use CONCURRENTLY.
+                REFRESH MATERIALIZED VIEW vw_rera_documents;
+                REFRESH MATERIALIZED VIEW vw_rera_surveys;
             """)
 
     def upsert_record(self, record: dict):
-        reg_no = record.get("_registration_no") or record.get("registration_number")
-        ack_no = record.get("_acknowledgement_no") or record.get("acknowledgement_number")
+        reg_no = record.get("registration_no") or record.get("_registration_no") or record.get("registration_number")
+        ack_no = record.get("acknowledgement_no") or record.get("_acknowledgement_no") or record.get("acknowledgement_number")
         project_name = record.get("project_name")
-        firm_name = record.get("_firm_name_from_listing")
-        project_id = record.get("_project_id")
-        crawled_at = record.get("_crawled_at")
+        firm_name = record.get("promoter_name") or record.get("_firm_name_from_listing")
+        project_id = record.get("internal_project_id") or record.get("_project_id")
+        crawled_at = record.get("crawled_at") or record.get("_crawled_at")
+
 
         with self.conn.cursor() as cur:
             cur.execute("""
@@ -603,6 +1504,19 @@ class PostgresStorage:
                     crawled_at = EXCLUDED.crawled_at,
                     data = EXCLUDED.data;
             """, (reg_no, ack_no, project_name, firm_name, project_id, crawled_at, json.dumps(record, ensure_ascii=False)))
+
+    def refresh_materialized_views(self):
+        """Refresh LATERAL-unnest materialized views without blocking concurrent reads.
+
+        Uses CONCURRENTLY so BI dashboards (Metabase/Grafana) querying vw_rera_documents
+        or vw_rera_surveys are never blocked. Requires the unique indexes created in
+        _init_db() (idx_vw_rera_documents_uniq, idx_vw_rera_surveys_uniq).
+        """
+        with self.conn.cursor() as cur:
+            for view in ("vw_rera_documents", "vw_rera_surveys"):
+                print(f"[*] Refreshing materialized view concurrently: {view}...")
+                cur.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {view};")
+        print("[+] Materialized views refreshed.")
 
 
 class CrawlState:
@@ -692,8 +1606,10 @@ def continuous_crawl(args):
 
     # Handle Ctrl+C gracefully
     def _handle_sigint(signum, frame):
-        print("\n[!] Interrupted - rebuilding CSV from crawled data so far...")
+        print("\n[!] Interrupted - rebuilding CSV and refreshing views from crawled data so far...")
         rebuild_csv(state)
+        if pg_db:
+            pg_db.refresh_materialized_views()
         sys.exit(130)
     signal.signal(signal.SIGINT, _handle_sigint)
 
@@ -722,27 +1638,35 @@ def continuous_crawl(args):
         try:
             search_html = search_projects(s, hidden_fields, reg_no=reg_no)
             project_id, candidates = resolve_project_id(search_html, reg_no=reg_no, project_name=name)
+            search_listing_details = parse_search_result_row(search_html, reg_no=reg_no, project_name=name)
 
             if not project_id:
                 raise CrawlerError(f"Could not resolve project_id for reg_no={reg_no}")
 
             html_text = fetch_project_detail_html(s, project_id)
-            data = normalize_project_detail(html_text)
+            raw_data = normalize_project_detail(html_text)
 
-            # Attach top-level metadata from discovery
-            data["_project_id"] = project_id
-            data["_registration_no"] = reg_no
-            data["_acknowledgement_no"] = proj["acknowledgement_no"]
-            data["_firm_name_from_listing"] = proj["firm_name"]
-            data["_crawled_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+            record = build_clean_structured_record(
+                raw_data=raw_data,
+                reg_no=reg_no,
+                project_name=name,
+                acknowledgement_no=proj["acknowledgement_no"],
+                promoter_name=proj["firm_name"],
+                project_id=project_id,
+                search_listing_details=search_listing_details
+            )
 
-            state.append_record(data)
+            state.append_record(record)
             if pg_db:
                 try:
-                    pg_db.upsert_record(data)
+                    pg_db.upsert_record(record)
                 except Exception as db_err:
                     print(f"[!] DB upsert error for {reg_no}: {db_err}", file=sys.stderr)
+                    state.mark_failed(reg_no, f"DB upsert error: {db_err}")
+                    continue
+
             state.mark_done(reg_no)
+
 
         except CrawlerError as exc:
             print(f"[!] {reg_no} crawler error: {exc}", file=sys.stderr)
@@ -752,13 +1676,17 @@ def continuous_crawl(args):
             state.mark_failed(reg_no, f"unexpected: {exc}")
 
         new_since_rebuild += 1
-        if new_since_rebuild >= REBUILD_EVERY:
+        total_done = len(state.done_regnos)
+        rebuild_interval = 25 if total_done < 500 else (100 if total_done < 5000 else 500)
+        if new_since_rebuild >= rebuild_interval:
             rebuild_csv(state)
             new_since_rebuild = 0
 
         time.sleep(args.delay)
 
     rebuild_csv(state)
+    if pg_db:
+        pg_db.refresh_materialized_views()
     print(f"\n[+] Crawl complete! {len(state.done_regnos)} properties saved to {state.output_dir.resolve()}")
 
     if args.auto_shutdown:
@@ -809,14 +1737,16 @@ def main():
     # Single-property or offline mode
     if args.from_html:
         html_text = Path(args.from_html).read_text(encoding="utf-8", errors="ignore")
-        data = normalize_project_detail(html_text)
-        _write_single_outputs(data)
+        raw_data = normalize_project_detail(html_text)
+        record = build_clean_structured_record(raw_data=raw_data, reg_no="", project_name="")
+        _write_single_outputs(record)
         return
 
     try:
         s, hidden_fields = new_session()
         project_id = args.project_id
 
+        search_listing_details = {}
         if not project_id:
             print("[*] Searching rera.karnataka.gov.in...")
             search_html = search_projects(
@@ -827,6 +1757,9 @@ def main():
                 subdistrict=args.subdistrict,
             )
             project_id, candidates = resolve_project_id(
+                search_html, reg_no=args.reg_no or "", project_name=args.project
+            )
+            search_listing_details = parse_search_result_row(
                 search_html, reg_no=args.reg_no or "", project_name=args.project
             )
             if not project_id:
@@ -841,8 +1774,17 @@ def main():
             Path(args.save_raw_html).write_text(html_text, encoding="utf-8")
             print(f"[*] Raw HTML saved to: {Path(args.save_raw_html).resolve()}")
 
-        data = normalize_project_detail(html_text)
-        _write_single_outputs(data)
+        raw_data = normalize_project_detail(html_text)
+        record = build_clean_structured_record(
+            raw_data=raw_data,
+            reg_no=args.reg_no or "",
+            project_name=args.project or "",
+            project_id=project_id,
+            search_listing_details=search_listing_details
+        )
+        _write_single_outputs(record)
+
+
 
     except CrawlerError as exc:
         print(f"\n[!] Crawler error: {exc}\n", file=sys.stderr)
