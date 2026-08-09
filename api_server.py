@@ -249,3 +249,212 @@ def get_analytics_summary():
         }
     finally:
         conn.close()
+
+
+@app.get("/api/v1/projects/geojson", summary="Export properties as standard GeoJSON FeatureCollection")
+def export_geojson(
+    district: Optional[str] = Query(None, description="Filter by district"),
+    coordinate_source: Optional[str] = Query(None, description="Filter by coordinate source ('rera_html' or 'google_maps_iframe')")
+):
+    """Export all geocoded projects as a standardized GeoJSON FeatureCollection for Mapbox, Leaflet, or QGIS."""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            query = """
+                SELECT 
+                    registration_no,
+                    project_name,
+                    firm_name as promoter_name,
+                    data->'status' as status,
+                    data->'project_location'->>'district' as district,
+                    (data->'project_location'->>'latitude')::float as latitude,
+                    (data->'project_location'->>'longitude')::float as longitude,
+                    data->'project_location'->>'coordinate_source' as coordinate_source,
+                    data->'project_location'->'geometry'->'bbox_polygon' as bbox_polygon,
+                    (data->'data_quality'->>'quality_score')::int as quality_score
+                FROM rera_projects
+                WHERE data->'project_location'->>'latitude' IS NOT NULL
+                  AND data->'project_location'->>'longitude' IS NOT NULL
+            """
+            params = []
+            if district:
+                query += " AND LOWER(data->'project_location'->>'district') LIKE %s"
+                params.append(f"%{district.lower()}%")
+            if coordinate_source:
+                query += " AND data->'project_location'->>'coordinate_source' = %s"
+                params.append(coordinate_source)
+
+            cur.execute(query, params)
+            rows = cur.fetchall()
+
+        features = []
+        for r in rows:
+            feature = {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [r["longitude"], r["latitude"]]
+                },
+                "properties": {
+                    "registration_no": r["registration_no"],
+                    "project_name": r["project_name"],
+                    "promoter_name": r["promoter_name"],
+                    "status": r["status"],
+                    "district": r["district"],
+                    "coordinate_source": r["coordinate_source"],
+                    "quality_score": r["quality_score"],
+                    "bbox_polygon": r["bbox_polygon"]
+                }
+            }
+            features.append(feature)
+
+        return {
+            "type": "FeatureCollection",
+            "features": features
+        }
+    finally:
+        conn.close()
+
+
+@app.get("/api/v1/documents", summary="Search project documents and download URLs")
+def search_documents(
+    doc_type: Optional[str] = Query(None, description="Document type filter (e.g. Encumbrance, Title, Plan)"),
+    reg_no: Optional[str] = Query(None, description="Registration number filter"),
+    limit: int = Query(50, ge=1, le=200, description="Limit results (default 50)")
+):
+    """Query uploaded property document URLs (Encumbrance Certificates, Title Deeds, Conversion Orders)."""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            query = """
+                SELECT 
+                    p.registration_no,
+                    p.project_name,
+                    doc->>'document_type' as document_type,
+                    doc->>'financial_year' as document_name,
+                    doc->>'file' as file_identifier,
+                    doc->'file_url' as file_urls
+                FROM rera_projects p,
+                     jsonb_array_elements(data->'uploaded_documents') doc
+                WHERE 1=1
+            """
+            params = []
+            if reg_no:
+                query += " AND p.registration_no = %s"
+                params.append(reg_no)
+            if doc_type:
+                query += " AND LOWER(doc->>'financial_year') LIKE %s"
+                params.append(f"%{doc_type.lower()}%")
+
+            query += " LIMIT %s;"
+            params.append(limit)
+
+            cur.execute(query, params)
+            rows = cur.fetchall()
+
+        return {
+            "count": len(rows),
+            "results": rows
+        }
+    finally:
+        conn.close()
+
+
+@app.get("/api/v1/promoters", summary="List real estate developers and promoter statistics")
+def list_promoters(
+    q: Optional[str] = Query(None, description="Search promoter by name"),
+    limit: int = Query(20, ge=1, le=100)
+):
+    """Directory of real estate promoters/builders with total project counts and quality ratings."""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            query = """
+                SELECT 
+                    firm_name as promoter_name,
+                    COUNT(*) as total_projects,
+                    COUNT(*) FILTER (WHERE (data->'data_quality'->>'is_complete')::boolean = true) as complete_projects,
+                    AVG((data->'data_quality'->>'quality_score')::int)::int as avg_quality_score
+                FROM rera_projects
+                WHERE firm_name IS NOT NULL AND firm_name != ''
+            """
+            params = []
+            if q:
+                query += " AND LOWER(firm_name) LIKE %s"
+                params.append(f"%{q.lower()}%")
+
+            query += " GROUP BY firm_name ORDER BY total_projects DESC LIMIT %s;"
+            params.append(limit)
+
+            cur.execute(query, params)
+            rows = cur.fetchall()
+
+        return {
+            "count": len(rows),
+            "results": rows
+        }
+    finally:
+        conn.close()
+
+
+@app.get("/api/v1/projects/search/by-subregistrar", summary="Search projects by Sub-Registrar jurisdiction")
+def search_by_subregistrar(
+    sro: str = Query(..., description="Sub Registrar Office name (e.g. Indiranagar, JP Nagar, Yelahanka)")
+):
+    """Lookup projects registered under a specific Sub-Registrar Office jurisdiction."""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT 
+                    registration_no,
+                    project_name,
+                    firm_name,
+                    data->'project_location'->>'district' as district,
+                    data->'project_location'->'sub_registrar_offices' as sub_registrar_offices
+                FROM rera_projects
+                WHERE EXISTS (
+                    SELECT 1 FROM jsonb_array_elements_text(data->'project_location'->'sub_registrar_offices') elem
+                    WHERE elem ILIKE %s
+                );
+            """, (f"%{sro}%",))
+            rows = cur.fetchall()
+
+        return {
+            "query_sro": sro,
+            "count": len(rows),
+            "results": rows
+        }
+    finally:
+        conn.close()
+
+
+@app.get("/api/v1/complaints", summary="Search RERA complaints on projects or promoters")
+def list_complaints(
+    limit: int = Query(20, ge=1, le=100)
+):
+    """Retrieve projects that have registered complaints against the promoter or project."""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT 
+                    registration_no,
+                    project_name,
+                    firm_name,
+                    data->'complaints'->'on_promoter' as complaints_on_promoter,
+                    data->'complaints'->'on_project' as complaints_on_project
+                FROM rera_projects
+                WHERE jsonb_array_length(data->'complaints'->'on_promoter') > 0
+                   OR jsonb_array_length(data->'complaints'->'on_project') > 0
+                LIMIT %s;
+            """, (limit,))
+            rows = cur.fetchall()
+
+        return {
+            "count": len(rows),
+            "results": rows
+        }
+    finally:
+        conn.close()
+
