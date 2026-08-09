@@ -1,0 +1,16 @@
+[Unit]
+Description=RERA Karnataka REST API Server
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/rera_crawler
+Environment="DATABASE_URL=postgresql://rera_user:rera_password@localhost:5432/rera_db"
+ExecStart=/home/ubuntu/rera_crawler/venv/bin/uvicorn api_server:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

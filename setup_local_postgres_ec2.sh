@@ -25,11 +25,15 @@ python3 -m venv /home/ubuntu/rera_crawler/venv
 # 5. Setup passwordless shutdown permission for ubuntu user
 echo "ubuntu ALL=(ALL) NOPASSWD: /sbin/shutdown, /sbin/poweroff" | sudo tee /etc/sudoers.d/crawler-shutdown
 
-# 6. Install systemd service
+# 6. Install systemd services
 sudo cp rera-crawler.service /etc/systemd/system/rera-crawler.service
+sudo cp rera-api.service /etc/systemd/system/rera-api.service
 sudo systemctl daemon-reload
 sudo systemctl enable rera-crawler.service
+sudo systemctl enable rera-api.service
+sudo systemctl start rera-api.service
 
 echo "=== Setup Complete! ==="
 echo "PostgreSQL is running locally and database data will persist on your EBS volume."
-echo "You can test the crawler with: DATABASE_URL='postgresql://rera_user:rera_password@localhost:5432/rera_db' /home/ubuntu/rera_crawler/venv/bin/python3 rera_crawler.py --all"
+echo "API Server is running on port 8000 (Docs: http://<EC2_IP>:8000/docs)"
+
