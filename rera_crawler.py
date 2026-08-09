@@ -753,7 +753,7 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
       Directional:    "Latitude North", "Latitude South", "Longitude East", "Longitude West"
       Parenthesised:  "Latitude(N)", "Longitude(E)", etc.
       Degree-symbol:  values may end in degree sign, "N", etc.
-    South/West values are automatically negated.
+    Coordinates in Karnataka are all positive numbers (~12–18°N, ~74–78°E); direction labels refer to plot boundary edges and signs are preserved as parsed.
     """
     district = search_info.get("district")
     taluk = search_info.get("taluk")
@@ -796,10 +796,34 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
         m = _FLOAT_RE.search(str(raw_str))
         return float(m.group()) if m else None
 
-    # Ordered candidate lists covering all word order variations in RERA forms
-    # Note: "South Latitude" / "West Longitude" in Indian real estate data refer to
-    # the Southern / Western boundary coordinates of the plot in Karnataka (all positive,
-    # ~12-18°N, ~74-78°E), NOT Southern/Western hemispheres. Sign is preserved as parsed.
+    def _extract_coord_by_keys(keys):
+        for k in keys:
+            raw = overview.get(k)
+            if raw is not None and str(raw).strip():
+                val = _parse_coord(raw)
+                if val is not None:
+                    return val
+        return None
+
+    boundary_coordinates = {
+        "north": {
+            "latitude": _extract_coord_by_keys(["Latitude North", "North Latitude", "Latitude(N)", "Latitude (N)", "Lat North", "North Lat"]),
+            "longitude": _extract_coord_by_keys(["Longitude North", "North Longitude", "Longitude(N)", "Longitude (N)", "Long North", "North Long"]),
+        },
+        "south": {
+            "latitude": _extract_coord_by_keys(["Latitude South", "South Latitude", "Latitude(S)", "Latitude (S)", "Lat South", "South Lat"]),
+            "longitude": _extract_coord_by_keys(["Longitude South", "South Longitude", "Longitude(S)", "Longitude (S)", "Long South", "South Long"]),
+        },
+        "east": {
+            "latitude": _extract_coord_by_keys(["Latitude East", "East Latitude", "Latitude(E)", "Latitude (E)", "Lat East", "East Lat"]),
+            "longitude": _extract_coord_by_keys(["Longitude East", "East Longitude", "Longitude(E)", "Longitude (E)", "Long East", "East Long"]),
+        },
+        "west": {
+            "latitude": _extract_coord_by_keys(["Latitude West", "West Latitude", "Latitude(W)", "Latitude (W)", "Lat West", "West Lat"]),
+            "longitude": _extract_coord_by_keys(["Longitude West", "West Longitude", "Longitude(W)", "Longitude (W)", "Long West", "West Long"]),
+        },
+    }
+
     _LAT_KEYS = [
         "Latitude",
         "Latitude North", "North Latitude", "Latitude(N)", "Latitude (N)", "Lat North", "North Lat",
@@ -813,17 +837,8 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
         "West Latitude", "West Lat",
     ]
 
-    def _first_coord(candidates):
-        for key in candidates:
-            raw = overview.get(key)
-            if raw is not None and str(raw).strip():
-                val = _parse_coord(raw)
-                if val is not None:
-                    return val
-        return None
-
-    lat = _first_coord(_LAT_KEYS)
-    lng = _first_coord(_LNG_KEYS)
+    lat = _extract_coord_by_keys(_LAT_KEYS)
+    lng = _extract_coord_by_keys(_LNG_KEYS)
 
     # ------------------------------------------------------------------
     # Iframe fallback: if the HTML fields gave us nothing, try parsing
@@ -1100,6 +1115,7 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
         "address": full_address,
         "latitude": lat,
         "longitude": lng,
+        "boundary_coordinates": boundary_coordinates,
         "geometry": geometry,
         "google_maps_url": map_iframes[0] if map_iframes else None,
         "boundaries": {
@@ -1144,6 +1160,29 @@ def validate_record(record: dict) -> dict:
     has_center = bool(geom.get("center"))
     has_bbox = bool(geom.get("bbox_polygon"))
     
+    # Spatial relationship sanity checks on boundary coordinates
+    b_coords = loc.get("boundary_coordinates", {})
+    north_lat = b_coords.get("north", {}).get("latitude")
+    south_lat = b_coords.get("south", {}).get("latitude")
+    east_lng = b_coords.get("east", {}).get("longitude")
+    west_lng = b_coords.get("west", {}).get("longitude")
+
+    valid_boundary_rel = True
+    warnings = []
+    
+    if north_lat is not None and south_lat is not None:
+        if float(north_lat) <= float(south_lat):
+            valid_boundary_rel = False
+            warnings.append(
+                f"Malformed boundary coordinates: North latitude ({north_lat}) must be greater than South latitude ({south_lat})"
+            )
+    if east_lng is not None and west_lng is not None:
+        if float(east_lng) <= float(west_lng):
+            valid_boundary_rel = False
+            warnings.append(
+                f"Malformed boundary coordinates: East longitude ({east_lng}) must be greater than West longitude ({west_lng})"
+            )
+
     checks = {
         "has_registration_no": bool(reg_no),
         "has_project_name": bool(proj_name),
@@ -1154,9 +1193,9 @@ def validate_record(record: dict) -> dict:
         "has_address": bool(address or district),
         "has_geometry_center": has_center,
         "has_geometry_bbox": has_bbox,
+        "valid_boundary_relationships": valid_boundary_rel,
     }
     
-    warnings = []
     if not valid_coords:
         warnings.append("Missing or out-of-bounds geographic coordinates")
     if not survey_nos:
@@ -1176,7 +1215,8 @@ def validate_record(record: dict) -> dict:
         checks["has_registration_no"],
         checks["has_project_name"],
         checks["has_coordinates"],
-        checks["has_survey_numbers"]
+        checks["has_survey_numbers"],
+        checks["valid_boundary_relationships"]
     ])
 
     return {
