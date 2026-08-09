@@ -61,6 +61,7 @@ import re
 import signal
 import sys
 import time
+from datetime import datetime, timezone
 from collections import defaultdict
 from pathlib import Path
 
@@ -321,7 +322,7 @@ def parse_search_result_row(search_html: str, reg_no: str = "", project_name: st
                         row_data[clean_header] = val
                     links = extract_cell_links(td)
                     if links:
-                        row_data[f"{clean_header}_url"] = links[0] if len(links) == 1 else links
+                        row_data[f"{clean_header}_url"] = links
                 if row_data:
                     return row_data
     return {}
@@ -402,9 +403,7 @@ def parse_label_value_sections(container) -> dict:
             current_record[label] = value
             value_urls = links[i + 1] if i + 1 < len(links) else []
             if value_urls:
-                current_record[f"{label} URL"] = (
-                    value_urls[0] if len(value_urls) == 1 else value_urls
-                )
+                current_record[f"{label} URL"] = value_urls
 
     flush()
 
@@ -431,7 +430,7 @@ def parse_tables(container) -> list[dict]:
                 row = dict(zip(headers, values))
                 for header, url_list in zip(headers, links):
                     if url_list:
-                        row[f"{header} URL"] = url_list[0] if len(url_list) == 1 else url_list
+                        row[f"{header} URL"] = url_list
             else:
                 row = {"columns": values}
                 if any(links):
@@ -461,7 +460,7 @@ def parse_documents_matrix(container) -> list[dict]:
                 if value or urls:
                     entry = {"document_type": doc_type, "financial_year": year, "file": value}
                     if urls:
-                        entry["file_url"] = urls[0] if len(urls) == 1 else urls
+                        entry["file_url"] = urls
                     out.append(entry)
     return out
 
@@ -491,7 +490,7 @@ def parse_all_label_value_pairs(container) -> tuple[dict, list[str]]:
                     data[label] = val
                     links = extract_cell_links(p2)
                     if links:
-                        data[f"{label} URL"] = links[0] if len(links) == 1 else links
+                        data[f"{label} URL"] = links
                 i += 2
             else:
                 i += 1
@@ -732,7 +731,7 @@ def build_clean_structured_record(
         "renewed_certificate_url": search_info.get("renewed_certificate_url"),
         "further_extension_order_url": search_info.get("further_extension_order_url"),
         "internal_project_id": project_id or raw_data.get("_project_id"),
-        "crawled_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "crawled_at": datetime.now(timezone.utc).isoformat(),
         "project_location": location_info,
         "search_listing_details": search_info,
         "project_overview_details": raw_data.get("project_overview_details", {}),
@@ -803,7 +802,25 @@ class PostgresStorage:
                 );
                 CREATE INDEX IF NOT EXISTS idx_rera_projects_name ON rera_projects (project_name);
                 CREATE INDEX IF NOT EXISTS idx_rera_projects_crawled_at ON rera_projects (crawled_at);
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_rera_ack_no_unique
+                    ON rera_projects (acknowledgement_no)
+                    WHERE acknowledgement_no IS NOT NULL;
+
+                -- GIN index: accelerates containment (@>, ?) and full-document JSONB searches
                 CREATE INDEX IF NOT EXISTS idx_rera_projects_jsonb ON rera_projects USING GIN (data);
+
+                -- Expression indexes: accelerate ->> text-equality filters used by vw_rera_projects_analytics
+                -- (GIN does NOT speed these up; only a dedicated B-tree expression index does)
+                CREATE INDEX IF NOT EXISTS idx_rera_status
+                    ON rera_projects ((COALESCE(data->>'status', data->'project_overview_details'->>'Project Status')));
+                CREATE INDEX IF NOT EXISTS idx_rera_district
+                    ON rera_projects ((data->'project_location'->>'district'));
+                CREATE INDEX IF NOT EXISTS idx_rera_taluk
+                    ON rera_projects ((data->'project_location'->>'taluk'));
+                CREATE INDEX IF NOT EXISTS idx_rera_project_sub_type
+                    ON rera_projects ((data->'project_overview_details'->>'Project Sub Type'));
+                CREATE INDEX IF NOT EXISTS idx_rera_approving_authority
+                    ON rera_projects ((data->'project_overview_details'->>'Approving Authority'));
 
                 -- Analytical View for BI Dashboards & Visualization Tools (Metabase, Grafana, Tableau)
                 CREATE OR REPLACE VIEW vw_rera_projects_analytics AS
@@ -818,8 +835,8 @@ class PostgresStorage:
                     data->'project_location'->>'taluk' AS taluk,
                     data->'project_location'->>'pin_code' AS pin_code,
                     data->'project_location'->>'address' AS address,
-                    (data->'project_location'->>'latitude')::numeric AS latitude,
-                    (data->'project_location'->>'longitude')::numeric AS longitude,
+                    NULLIF(data->'project_location'->>'latitude', '')::numeric AS latitude,
+                    NULLIF(data->'project_location'->>'longitude', '')::numeric AS longitude,
                     data->'project_location'->>'google_maps_url' AS google_maps_url,
                     data->'project_location'->'boundaries'->>'north_schedule' AS north_schedule,
                     data->'project_location'->'boundaries'->>'south_schedule' AS south_schedule,
@@ -828,32 +845,36 @@ class PostgresStorage:
                     data->'project_overview_details'->>'Approving Authority' AS approving_authority,
                     data->'project_overview_details'->>'Approved Plan Number' AS approved_plan_number,
                     data->'project_overview_details'->>'Plan Approval Date' AS plan_approval_date,
-                    (data->'project_overview_details'->>'Total Area Of Land (Sq Mtr) (A1+A2)')::numeric AS total_land_area_sq_mtr,
-                    (data->'project_overview_details'->>'Total Built-up Area of all the Floors (Sq Mtr)')::numeric AS total_builtup_area_sq_mtr,
-                    (data->'project_overview_details'->>'Total Carpet Area of all the Floors (Sq Mtr)')::numeric AS total_carpet_area_sq_mtr,
-                    (data->'project_overview_details'->>'Total Number of Inventories/Flats/Villas')::integer AS total_units,
-                    (data->'project_overview_details'->>'Total Project Cost (INR) (C1+C2)')::numeric AS total_project_cost_inr,
+                    NULLIF(data->'project_overview_details'->>'Total Area Of Land (Sq Mtr) (A1+A2)', '')::numeric AS total_land_area_sq_mtr,
+                    NULLIF(data->'project_overview_details'->>'Total Built-up Area of all the Floors (Sq Mtr)', '')::numeric AS total_builtup_area_sq_mtr,
+                    NULLIF(data->'project_overview_details'->>'Total Carpet Area of all the Floors (Sq Mtr)', '')::numeric AS total_carpet_area_sq_mtr,
+                    NULLIF(data->'project_overview_details'->>'Total Number of Inventories/Flats/Villas', '')::integer AS total_units,
+                    NULLIF(data->'project_overview_details'->>'Total Project Cost (INR) (C1+C2)', '')::numeric AS total_project_cost_inr,
                     data->>'approved_on' AS approved_on,
                     data->>'proposed_completion_date' AS proposed_completion_date,
-                    certificate_url,
+                    data->>'certificate_url' AS certificate_url,
                     crawled_at
                 FROM rera_projects;
 
-                -- Relational View for Extracted Documents & Download Links
-                CREATE OR REPLACE VIEW vw_rera_documents AS
+                -- Materialized views for LATERAL-unnest queries (vw_rera_documents, vw_rera_surveys)
+                -- Plain views re-execute the unnest on every query — expensive at scale.
+                -- These are refreshed once per crawl batch via refresh_materialized_views().
+                CREATE MATERIALIZED VIEW IF NOT EXISTS vw_rera_documents AS
                 SELECT 
                     p.registration_no,
                     p.project_name,
                     doc->>'document_type' AS document_type,
                     doc->>'financial_year' AS financial_year_or_context,
                     doc->>'file' AS file_name,
-                    doc->>'file_url' AS file_url
+                    file_url.value AS file_url
                 FROM rera_projects p,
-                LATERAL jsonb_array_elements(p.data->'uploaded_documents') doc
-                WHERE doc->>'file_url' IS NOT NULL;
+                LATERAL jsonb_array_elements(p.data->'uploaded_documents') doc,
+                LATERAL jsonb_array_elements_text(doc->'file_url') file_url(value)
+                WHERE doc->'file_url' IS NOT NULL
+                  AND jsonb_typeof(doc->'file_url') = 'array'
+                WITH NO DATA;
 
-                -- Relational View for Extracted Survey Numbers
-                CREATE OR REPLACE VIEW vw_rera_surveys AS
+                CREATE MATERIALIZED VIEW IF NOT EXISTS vw_rera_surveys AS
                 SELECT 
                     p.registration_no,
                     p.project_name,
@@ -861,7 +882,20 @@ class PostgresStorage:
                     p.data->'project_location'->>'taluk' AS taluk,
                     s.survey_no
                 FROM rera_projects p,
-                LATERAL jsonb_array_elements_text(p.data->'project_location'->'survey_numbers') s(survey_no);
+                LATERAL jsonb_array_elements_text(p.data->'project_location'->'survey_numbers') s(survey_no)
+                WITH NO DATA;
+
+                -- Unique indexes required for REFRESH MATERIALIZED VIEW CONCURRENTLY
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_vw_rera_documents_uniq
+                    ON vw_rera_documents (registration_no, document_type, financial_year_or_context, file_url);
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_vw_rera_surveys_uniq
+                    ON vw_rera_surveys (registration_no, survey_no);
+
+                -- Initial populate: plain REFRESH (not CONCURRENTLY) is required here because
+                -- CONCURRENTLY cannot run inside a multi-statement transaction block.
+                -- All subsequent refreshes via refresh_materialized_views() use CONCURRENTLY.
+                REFRESH MATERIALIZED VIEW vw_rera_documents;
+                REFRESH MATERIALIZED VIEW vw_rera_surveys;
             """)
 
     def upsert_record(self, record: dict):
@@ -885,6 +919,19 @@ class PostgresStorage:
                     crawled_at = EXCLUDED.crawled_at,
                     data = EXCLUDED.data;
             """, (reg_no, ack_no, project_name, firm_name, project_id, crawled_at, json.dumps(record, ensure_ascii=False)))
+
+    def refresh_materialized_views(self):
+        """Refresh LATERAL-unnest materialized views without blocking concurrent reads.
+
+        Uses CONCURRENTLY so BI dashboards (Metabase/Grafana) querying vw_rera_documents
+        or vw_rera_surveys are never blocked. Requires the unique indexes created in
+        _init_db() (idx_vw_rera_documents_uniq, idx_vw_rera_surveys_uniq).
+        """
+        with self.conn.cursor() as cur:
+            for view in ("vw_rera_documents", "vw_rera_surveys"):
+                print(f"[*] Refreshing materialized view concurrently: {view}...")
+                cur.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {view};")
+        print("[+] Materialized views refreshed.")
 
 
 class CrawlState:
@@ -974,8 +1021,10 @@ def continuous_crawl(args):
 
     # Handle Ctrl+C gracefully
     def _handle_sigint(signum, frame):
-        print("\n[!] Interrupted - rebuilding CSV from crawled data so far...")
+        print("\n[!] Interrupted - rebuilding CSV and refreshing views from crawled data so far...")
         rebuild_csv(state)
+        if pg_db:
+            pg_db.refresh_materialized_views()
         sys.exit(130)
     signal.signal(signal.SIGINT, _handle_sigint)
 
@@ -1046,6 +1095,8 @@ def continuous_crawl(args):
         time.sleep(args.delay)
 
     rebuild_csv(state)
+    if pg_db:
+        pg_db.refresh_materialized_views()
     print(f"\n[+] Crawl complete! {len(state.done_regnos)} properties saved to {state.output_dir.resolve()}")
 
     if args.auto_shutdown:
