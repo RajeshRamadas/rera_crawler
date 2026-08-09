@@ -1190,7 +1190,7 @@ def write_single_csv(row: dict, output_path: Path):
 
 class PostgresStorage:
     """Manages upserting scraped project records into a PostgreSQL database."""
-    def __init__(self, db_uri: str):
+    def __init__(self, db_uri: str, force_init: bool = False):
         try:
             import psycopg2
             import psycopg2.extras
@@ -1200,10 +1200,20 @@ class PostgresStorage:
         self.db_uri = db_uri
         self.conn = psycopg2.connect(db_uri)
         self.conn.autocommit = True
-        self._init_db()
+        self._init_db(force=force_init)
 
-    def _init_db(self):
+    def _init_db(self, force: bool = False):
         with self.conn.cursor() as cur:
+            if not force:
+                # Fast check: skip heavy DDL if schema already exists to prevent lock contention
+                cur.execute("""
+                    SELECT EXISTS (
+                        SELECT 1 FROM information_schema.tables 
+                        WHERE table_schema = 'public' AND table_name = 'rera_projects'
+                    );
+                """)
+                if cur.fetchone()[0]:
+                    return
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS rera_projects (
                     registration_no VARCHAR(255) PRIMARY KEY,
