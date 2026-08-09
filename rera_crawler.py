@@ -60,7 +60,9 @@ import os
 import re
 import signal
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from collections import defaultdict
 from pathlib import Path
@@ -153,6 +155,20 @@ def new_session() -> tuple[requests.Session, dict]:
     if hidden_fields:
         print(f"[*] Captured {len(hidden_fields)} hidden form field(s): {list(hidden_fields.keys())}")
     return s, hidden_fields
+
+
+# Each worker thread gets its OWN requests.Session + hidden-field set, created
+# lazily on first use. requests.Session is not guaranteed thread-safe, so
+# sharing one session object across concurrent workers risks cookie/connection
+# races; a session-per-thread avoids that while still reusing TCP connections
+# within a thread across all the projects it handles.
+_thread_local = threading.local()
+
+
+def get_thread_session() -> tuple[requests.Session, dict]:
+    if not hasattr(_thread_local, "session"):
+        _thread_local.session, _thread_local.hidden_fields = new_session()
+    return _thread_local.session, _thread_local.hidden_fields
 
 
 def extract_hidden_fields(html_text: str) -> dict:
@@ -623,7 +639,9 @@ TAB_IDS = {
 
 
 def _warn_missing(tab_key: str, tab_id: str):
-    print(f"[!] Warning: could not find <div id=\"{tab_id}\"> for '{tab_key}'", file=sys.stderr)
+    # Quiet optional section warnings during batch crawling
+    pass
+
 
 
 def header_field(header, label):
@@ -1357,6 +1375,7 @@ class PostgresStorage:
             raise CrawlerError("psycopg2-binary package is required for PostgreSQL support. Install with: pip install psycopg2-binary")
         
         self.db_uri = db_uri
+        self._db_lock = threading.Lock()
         self.conn = psycopg2.connect(db_uri)
         self.conn.autocommit = True
         self._init_db(force=force_init)
@@ -1492,18 +1511,19 @@ class PostgresStorage:
         crawled_at = record.get("crawled_at") or record.get("_crawled_at")
 
 
-        with self.conn.cursor() as cur:
-            cur.execute("""
-                INSERT INTO rera_projects (registration_no, acknowledgement_no, project_name, firm_name, project_id, crawled_at, data)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (registration_no) DO UPDATE SET
-                    acknowledgement_no = EXCLUDED.acknowledgement_no,
-                    project_name = EXCLUDED.project_name,
-                    firm_name = EXCLUDED.firm_name,
-                    project_id = EXCLUDED.project_id,
-                    crawled_at = EXCLUDED.crawled_at,
-                    data = EXCLUDED.data;
-            """, (reg_no, ack_no, project_name, firm_name, project_id, crawled_at, json.dumps(record, ensure_ascii=False)))
+        with self._db_lock:
+            with self.conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO rera_projects (registration_no, acknowledgement_no, project_name, firm_name, project_id, crawled_at, data)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (registration_no) DO UPDATE SET
+                        acknowledgement_no = EXCLUDED.acknowledgement_no,
+                        project_name = EXCLUDED.project_name,
+                        firm_name = EXCLUDED.firm_name,
+                        project_id = EXCLUDED.project_id,
+                        crawled_at = EXCLUDED.crawled_at,
+                        data = EXCLUDED.data;
+                """, (reg_no, ack_no, project_name, firm_name, project_id, crawled_at, json.dumps(record, ensure_ascii=False)))
 
     def refresh_materialized_views(self):
         """Refresh LATERAL-unnest materialized views without blocking concurrent reads.
@@ -1512,17 +1532,32 @@ class PostgresStorage:
         or vw_rera_surveys are never blocked. Requires the unique indexes created in
         _init_db() (idx_vw_rera_documents_uniq, idx_vw_rera_surveys_uniq).
         """
-        with self.conn.cursor() as cur:
-            for view in ("vw_rera_documents", "vw_rera_surveys"):
-                print(f"[*] Refreshing materialized view concurrently: {view}...")
-                cur.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {view};")
+        with self._db_lock:
+            with self.conn.cursor() as cur:
+                for view in ("vw_rera_documents", "vw_rera_surveys"):
+                    print(f"[*] Refreshing materialized view concurrently: {view}...")
+                    cur.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {view};")
         print("[+] Materialized views refreshed.")
 
 
 class CrawlState:
 
-    """Manages crash-safe JSONL storage, progress tracking, and state resumption."""
-    def __init__(self, output_dir: Path):
+    """Manages crash-safe JSONL storage, progress tracking, and state resumption.
+
+    Thread-safe: a single CrawlState instance is shared across worker threads
+    in continuous_crawl, so every mutation is guarded by self._lock.
+
+    done_regnos.json / failed_regnos.json are NOT rewritten on every single
+    project anymore (that was tens of thousands of full-file rewrites on a
+    large crawl). Instead they're flushed every `save_every` completions,
+    plus always on program exit / Ctrl+C via flush(). project_details.jsonl
+    remains the authoritative crash-safe record: it's appended immediately
+    and is never rewritten, so no progress is lost between flushes even if
+    the process is killed - at worst a few already-done reg_nos get re-tried
+    on the next --all run, which is cheap (they just fail the "already in
+    jsonl" dedupe... note: dedupe is by done_regnos, so keep save_every modest).
+    """
+    def __init__(self, output_dir: Path, save_every: int = 50):
         self.output_dir = output_dir
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.jsonl_path = output_dir / "project_details.jsonl"
@@ -1530,6 +1565,9 @@ class CrawlState:
         self.failed_path = output_dir / "failed_regnos.json"
         self.done_regnos = set()
         self.failed = {}
+        self.save_every = max(1, save_every)
+        self._dirty_count = 0
+        self._lock = threading.Lock()
 
     def load(self, resume: bool):
         if resume and self.done_path.exists():
@@ -1540,21 +1578,43 @@ class CrawlState:
             self.done_regnos = set()
 
     def mark_done(self, reg_no: str):
-        self.done_regnos.add(reg_no)
-        self.failed.pop(reg_no, None)
-        self._save()
+        with self._lock:
+            self.done_regnos.add(reg_no)
+            self.failed.pop(reg_no, None)
+            self._maybe_save()
 
     def mark_failed(self, reg_no: str, error: str):
-        self.failed[reg_no] = error
-        self._save()
+        with self._lock:
+            self.failed[reg_no] = error
+            self._maybe_save()
 
-    def _save(self):
+    def _maybe_save(self):
+        """Caller must hold self._lock. Writes done/failed to disk only every
+        `save_every` calls, to avoid rewriting the whole JSON file per project."""
+        self._dirty_count += 1
+        if self._dirty_count >= self.save_every:
+            self._save_locked()
+            self._dirty_count = 0
+
+    def _save_locked(self):
         self.done_path.write_text(json.dumps(sorted(self.done_regnos), indent=2), encoding="utf-8")
         self.failed_path.write_text(json.dumps(self.failed, indent=2), encoding="utf-8")
 
+    def flush(self):
+        """Force-write done/failed state regardless of the batch counter.
+        Call this at the end of a crawl and from the Ctrl+C handler so the
+        last partial batch is never silently lost."""
+        with self._lock:
+            self._save_locked()
+            self._dirty_count = 0
+
     def append_record(self, record: dict):
-        with self.jsonl_path.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        # JSONL append is the crash-safe source of truth, so it's still
+        # flushed to disk immediately for every record (this is a cheap
+        # append, unlike the done/failed full-file rewrites above).
+        with self._lock:
+            with self.jsonl_path.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
 def rebuild_csv(state: CrawlState, filename: str = "project_table.csv"):
@@ -1593,9 +1653,61 @@ def rebuild_csv(state: CrawlState, filename: str = "project_table.csv"):
 # Main Continuous Crawl Loop
 # --------------------------------------------------------------------------- #
 
+def _crawl_one_project(proj: dict, args, state: "CrawlState", pg_db) -> tuple[str, str, str | None]:
+    """Runs in a worker thread. Fetches, parses, and persists ONE project.
+    Returns (status, reg_no, error_message_or_None). Never raises."""
+    reg_no = proj["registration_no"]
+    name = proj["project_name"]
+    try:
+        s, hidden_fields = get_thread_session()  # one session per worker thread, reused across its projects
+
+        search_html = search_projects(s, hidden_fields, reg_no=reg_no)
+        project_id, candidates = resolve_project_id(search_html, reg_no=reg_no, project_name=name)
+        search_listing_details = parse_search_result_row(search_html, reg_no=reg_no, project_name=name)
+
+        if not project_id:
+            raise CrawlerError(f"Could not resolve project_id for reg_no={reg_no}")
+
+        html_text = fetch_project_detail_html(s, project_id)
+        raw_data = normalize_project_detail(html_text)
+
+        record = build_clean_structured_record(
+            raw_data=raw_data,
+            reg_no=reg_no,
+            project_name=name,
+            acknowledgement_no=proj["acknowledgement_no"],
+            promoter_name=proj["firm_name"],
+            project_id=project_id,
+            search_listing_details=search_listing_details
+        )
+
+        state.append_record(record)
+        if pg_db:
+            try:
+                pg_db.upsert_record(record)
+            except Exception as db_err:
+                state.mark_failed(reg_no, f"DB upsert error: {db_err}")
+                return ("db_error", reg_no, str(db_err))
+
+        state.mark_done(reg_no)
+        return ("done", reg_no, None)
+
+    except CrawlerError as exc:
+        state.mark_failed(reg_no, str(exc))
+        return ("crawler_error", reg_no, str(exc))
+    except Exception as exc:
+        state.mark_failed(reg_no, f"unexpected: {exc}")
+        return ("error", reg_no, str(exc))
+    finally:
+        # Per-worker pacing: with N workers each sleeping `delay` seconds,
+        # the *effective* site-wide request rate is ~N / delay req/sec -
+        # tune --workers and --delay together rather than relying on delay alone.
+        time.sleep(args.delay)
+
+
 def continuous_crawl(args):
     output_dir = Path(args.output_dir)
-    state = CrawlState(output_dir)
+    state = CrawlState(output_dir, save_every=args.state_save_every)
     state.load(resume=not args.no_resume)
 
     db_uri = args.db_uri or os.getenv("DATABASE_URL")
@@ -1604,16 +1716,20 @@ def continuous_crawl(args):
         print(f"[*] Initializing PostgreSQL connection...")
         pg_db = PostgresStorage(db_uri)
 
-    # Handle Ctrl+C gracefully
+    # Handle Ctrl+C gracefully. Note: this fires on the main thread; in-flight
+    # worker requests are not force-cancelled, they just won't be waited on.
     def _handle_sigint(signum, frame):
-        print("\n[!] Interrupted - rebuilding CSV and refreshing views from crawled data so far...")
+        print("\n[!] Interrupted - flushing state, rebuilding CSV, refreshing views...")
+        state.flush()
         rebuild_csv(state)
         if pg_db:
             pg_db.refresh_materialized_views()
-        sys.exit(130)
+        os._exit(130)  # hard exit: don't wait on the executor's worker threads
     signal.signal(signal.SIGINT, _handle_sigint)
 
-    s, hidden_fields = new_session()
+    # Discovery uses its own one-off session; workers each build their own
+    # session lazily via get_thread_session().
+    s, _hidden_fields = new_session()
 
     save_discovery_dir = Path(args.save_listing_pages) if args.save_listing_pages else None
     print("[*] Discovering top-level property records from /viewAllProjects...")
@@ -1629,61 +1745,37 @@ def continuous_crawl(args):
     if skipped:
         print(f"[*] Skipping {skipped} already-crawled project(s) (resuming).")
 
-    new_since_rebuild = 0
-    for i, proj in enumerate(todo, 1):
-        reg_no = proj["registration_no"]
-        name = proj["project_name"]
-        print(f"[*] ({i}/{len(todo)}) Crawling detailed info for: {name!r} ({reg_no})...")
+    total = len(todo)
+    completed = 0
+    print(f"[*] Crawling {total} project(s) with {args.workers} worker(s), "
+          f"{args.delay}s delay per worker...")
 
-        try:
-            search_html = search_projects(s, hidden_fields, reg_no=reg_no)
-            project_id, candidates = resolve_project_id(search_html, reg_no=reg_no, project_name=name)
-            search_listing_details = parse_search_result_row(search_html, reg_no=reg_no, project_name=name)
+    # NOTE on CSV: we deliberately do NOT rebuild project_table.csv during
+    # the loop anymore. JSONL (appended immediately, per record) and
+    # PostgreSQL (upserted immediately, per record) are the crash-safe
+    # primary stores during a bulk crawl. CSV is a derived view, rebuilt
+    # once at the end here, on Ctrl+C above, or on demand via
+    # `--rebuild-csv-only` - rebuilding it every 25-500 records was reading
+    # + rewriting the *entire* growing JSONL/CSV on every interval for no
+    # benefit during the crawl itself.
+    with ThreadPoolExecutor(max_workers=args.workers) as executor:
+        futures = {executor.submit(_crawl_one_project, proj, args, state, pg_db): proj for proj in todo}
+        for future in as_completed(futures):
+            proj = futures[future]
+            reg_no = proj["registration_no"]
+            name = proj["project_name"]
+            completed += 1
+            try:
+                status, _reg_no, err = future.result()
+            except Exception as exc:  # should not happen - _crawl_one_project never raises
+                status, err = "error", str(exc)
 
-            if not project_id:
-                raise CrawlerError(f"Could not resolve project_id for reg_no={reg_no}")
+            if status == "done":
+                print(f"[*] ({completed}/{total}) OK: {name!r} ({reg_no})")
+            else:
+                print(f"[!] ({completed}/{total}) {status} for {name!r} ({reg_no}): {err}", file=sys.stderr)
 
-            html_text = fetch_project_detail_html(s, project_id)
-            raw_data = normalize_project_detail(html_text)
-
-            record = build_clean_structured_record(
-                raw_data=raw_data,
-                reg_no=reg_no,
-                project_name=name,
-                acknowledgement_no=proj["acknowledgement_no"],
-                promoter_name=proj["firm_name"],
-                project_id=project_id,
-                search_listing_details=search_listing_details
-            )
-
-            state.append_record(record)
-            if pg_db:
-                try:
-                    pg_db.upsert_record(record)
-                except Exception as db_err:
-                    print(f"[!] DB upsert error for {reg_no}: {db_err}", file=sys.stderr)
-                    state.mark_failed(reg_no, f"DB upsert error: {db_err}")
-                    continue
-
-            state.mark_done(reg_no)
-
-
-        except CrawlerError as exc:
-            print(f"[!] {reg_no} crawler error: {exc}", file=sys.stderr)
-            state.mark_failed(reg_no, str(exc))
-        except Exception as exc:
-            print(f"[!] {reg_no} unexpected error: {exc}", file=sys.stderr)
-            state.mark_failed(reg_no, f"unexpected: {exc}")
-
-        new_since_rebuild += 1
-        total_done = len(state.done_regnos)
-        rebuild_interval = 25 if total_done < 500 else (100 if total_done < 5000 else 500)
-        if new_since_rebuild >= rebuild_interval:
-            rebuild_csv(state)
-            new_since_rebuild = 0
-
-        time.sleep(args.delay)
-
+    state.flush()  # make sure the last partial batch of done/failed reg_nos hits disk
     rebuild_csv(state)
     if pg_db:
         pg_db.refresh_materialized_views()
@@ -1705,7 +1797,16 @@ def main():
     # Continuous batch loop mode arguments
     parser.add_argument("--all", action="store_true", help="Run continuous loop over all discovered properties")
     parser.add_argument("--output-dir", default="rera_data", help="Output directory for jsonl/csv/state files (default: ./rera_data)")
-    parser.add_argument("--delay", type=float, default=2.0, help="Delay in seconds between requests (default: 2.0)")
+    parser.add_argument("--workers", type=int, default=3,
+                         help="Number of concurrent crawl workers (default: 3). Start at 3-5; "
+                              "this is a government site making 2 requests/project, so don't jump straight to 20-50.")
+    parser.add_argument("--delay", type=float, default=1.0,
+                         help="Delay in seconds each WORKER sleeps between its own requests (default: 1.0). "
+                              "This is per-worker, not global - effective rate scales with --workers too.")
+    parser.add_argument("--state-save-every", type=int, default=50,
+                         help="Rewrite done_regnos.json/failed_regnos.json every N completed projects "
+                              "instead of after every single one (default: 50). project_details.jsonl is "
+                              "still appended immediately regardless, so no crawl data is at risk.")
     parser.add_argument("--limit", type=int, default=None, help="Limit number of properties to crawl")
     parser.add_argument("--no-resume", action="store_true", help="Ignore done_regnos.json and re-crawl everything")
     parser.add_argument("--save-listing-pages", default=None, help="Directory to save raw discovery page HTML")
