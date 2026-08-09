@@ -639,7 +639,9 @@ TAB_IDS = {
 
 
 def _warn_missing(tab_key: str, tab_id: str):
-    print(f"[!] Warning: could not find <div id=\"{tab_id}\"> for '{tab_key}'", file=sys.stderr)
+    # Quiet optional section warnings during batch crawling
+    pass
+
 
 
 def header_field(header, label):
