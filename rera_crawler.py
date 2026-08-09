@@ -183,10 +183,38 @@ def discover_projects(s: requests.Session, save_discovery_page: Path | None = No
         save_discovery_page.mkdir(parents=True, exist_ok=True)
         (save_discovery_page / "discovery_page.html").write_text(html_text, encoding="utf-8")
 
+    # Strategy 1: Primary contiguous JS push regex match
     matches = _DISCOVERY_PATTERN.findall(html_text)
+
+    # Strategy 2: Relaxed independent JS array extraction (resilient to JS refactoring/intervening code)
+    if not matches:
+        a1 = re.findall(r"applicationNameList\s*\.push\('([^']*)'\)", html_text)
+        a2 = re.findall(r"applicationNameList2\s*\.push\('([^']*)'\)", html_text)
+        a3 = re.findall(r"applicationNameList3\s*\.push\('([^']*)'\)", html_text)
+        a4 = re.findall(r"applicationNameList4\s*\.push\('([^']*)'\)", html_text)
+        if a1 and len(a1) == len(a2) == len(a3) == len(a4):
+            matches = list(zip(a1, a2, a3, a4))
+
+    # Strategy 3: HTML DOM table parsing fallback (if page switches to HTML rendering)
+    if not matches:
+        soup = BeautifulSoup(html_text, "html.parser")
+        dom_matches = []
+        for tr in soup.find_all("tr"):
+            tds = [td.get_text(" ", strip=True) for td in tr.find_all("td")]
+            if len(tds) >= 4:
+                reg_candidate = None
+                for col in tds:
+                    if "PRM/KA/RERA" in col or "ACK/KA/RERA" in col or "RERA" in col:
+                        reg_candidate = col
+                        break
+                if reg_candidate:
+                    dom_matches.append((tds[0], tds[1] if len(tds)>1 else reg_candidate, tds[2] if len(tds)>2 else "", tds[3] if len(tds)>3 else ""))
+        if dom_matches:
+            matches = dom_matches
+
     if not matches:
         raise CrawlerError(
-            "Discovery found 0 projects in /viewAllProjects page. Markup pattern may have changed."
+            "Discovery found 0 projects in /viewAllProjects page across all 3 extraction strategies (JS push, independent arrays, DOM table)."
         )
 
     projects = []
