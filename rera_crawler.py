@@ -1491,6 +1491,9 @@ def continuous_crawl(args):
                     pg_db.upsert_record(record)
                 except Exception as db_err:
                     print(f"[!] DB upsert error for {reg_no}: {db_err}", file=sys.stderr)
+                    state.mark_failed(reg_no, f"DB upsert error: {db_err}")
+                    continue
+
             state.mark_done(reg_no)
 
 
