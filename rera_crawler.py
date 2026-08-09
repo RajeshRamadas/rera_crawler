@@ -796,34 +796,30 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
         m = _FLOAT_RE.search(str(raw_str))
         return float(m.group()) if m else None
 
-    # Ordered candidate lists: (key_in_overview, negate_value)
-    # South latitudes and West longitudes are negative by convention.
+    # Ordered candidate lists covering all word order variations in RERA forms
+    # Note: "South Latitude" / "West Longitude" in Indian real estate data refer to
+    # the Southern / Western boundary coordinates of the plot in Karnataka (all positive,
+    # ~12-18°N, ~74-78°E), NOT Southern/Western hemispheres. Sign is preserved as parsed.
     _LAT_KEYS = [
-        ("Latitude", False),
-        ("Latitude North", False),
-        ("Latitude(N)", False),
-        ("Latitude (N)", False),
-        ("Latitude South", True),
-        ("Latitude(S)", True),
-        ("Latitude (S)", True),
+        "Latitude",
+        "Latitude North", "North Latitude", "Latitude(N)", "Latitude (N)", "Lat North", "North Lat",
+        "Latitude South", "South Latitude", "Latitude(S)", "Latitude (S)", "Lat South", "South Lat",
     ]
     _LNG_KEYS = [
-        ("Longitude", False),
-        ("Longitude East", False),
-        ("Longitude(E)", False),
-        ("Longitude (E)", False),
-        ("Longitude West", True),
-        ("Longitude(W)", True),
-        ("Longitude (W)", True),
+        "Longitude",
+        "Longitude East", "East Longitude", "Longitude(E)", "Longitude (E)", "Long East", "East Long",
+        "East Latitude", "East Lat",
+        "Longitude West", "West Longitude", "Longitude(W)", "Longitude (W)", "Long West", "West Long",
+        "West Latitude", "West Lat",
     ]
 
     def _first_coord(candidates):
-        for key, negate in candidates:
+        for key in candidates:
             raw = overview.get(key)
             if raw is not None and str(raw).strip():
                 val = _parse_coord(raw)
                 if val is not None:
-                    return -abs(val) if negate else val
+                    return val
         return None
 
     lat = _first_coord(_LAT_KEYS)
@@ -1115,6 +1111,82 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
     }
 
 
+def validate_record(record: dict) -> dict:
+    """Assess data quality and completeness of a scraped RERA project record.
+
+    Checks spatial, identity, location, and geometry attributes.
+    Returns a structured data_quality dictionary.
+    """
+    loc = record.get("project_location", {})
+    lat = loc.get("latitude")
+    lng = loc.get("longitude")
+    
+    # Karnataka geographic coordinate bounds check
+    valid_coords = False
+    if lat is not None and lng is not None:
+        try:
+            f_lat, f_lng = float(lat), float(lng)
+            if 11.0 <= f_lat <= 19.0 and 74.0 <= f_lng <= 79.5:
+                valid_coords = True
+        except (ValueError, TypeError):
+            pass
+
+    survey_nos = loc.get("survey_numbers", [])
+    sros = loc.get("sub_registrar_offices", [])
+    address = loc.get("address") or record.get("district")
+    district = loc.get("district") or record.get("district")
+    
+    reg_no = record.get("registration_no")
+    proj_name = record.get("project_name")
+    firm_name = record.get("promoter_name")
+    
+    geom = loc.get("geometry", {})
+    has_center = bool(geom.get("center"))
+    has_bbox = bool(geom.get("bbox_polygon"))
+    
+    checks = {
+        "has_registration_no": bool(reg_no),
+        "has_project_name": bool(proj_name),
+        "has_promoter_name": bool(firm_name),
+        "has_coordinates": valid_coords,
+        "has_survey_numbers": bool(survey_nos),
+        "has_sub_registrar": bool(sros),
+        "has_address": bool(address or district),
+        "has_geometry_center": has_center,
+        "has_geometry_bbox": has_bbox,
+    }
+    
+    warnings = []
+    if not valid_coords:
+        warnings.append("Missing or out-of-bounds geographic coordinates")
+    if not survey_nos:
+        warnings.append("Missing land survey numbers")
+    if not sros:
+        warnings.append("Missing Sub-Registrar Office jurisdiction")
+    if not (address or district):
+        warnings.append("Missing property location address/district")
+    if not has_bbox:
+        warnings.append("Missing total land area for GeoJSON bounding-box construction")
+
+    passed_checks = sum(1 for v in checks.values() if v)
+    total_checks = len(checks)
+    quality_score = int(round((passed_checks / total_checks) * 100))
+    
+    is_complete = all([
+        checks["has_registration_no"],
+        checks["has_project_name"],
+        checks["has_coordinates"],
+        checks["has_survey_numbers"]
+    ])
+
+    return {
+        "is_complete": is_complete,
+        "quality_score": quality_score,
+        "checks": checks,
+        "warnings": warnings,
+    }
+
+
 def build_clean_structured_record(
     raw_data: dict,
     reg_no: str,
@@ -1161,6 +1233,7 @@ def build_clean_structured_record(
         }
     }
 
+    record["data_quality"] = validate_record(record)
     return clean_value(record)
 
 
@@ -1277,6 +1350,8 @@ class PostgresStorage:
                     data->>'approved_on' AS approved_on,
                     data->>'proposed_completion_date' AS proposed_completion_date,
                     data->>'certificate_url' AS certificate_url,
+                    (data->'data_quality'->>'quality_score')::integer AS data_quality_score,
+                    (data->'data_quality'->>'is_complete')::boolean AS is_complete,
                     crawled_at
                 FROM rera_projects;
 
