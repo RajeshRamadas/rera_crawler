@@ -632,50 +632,344 @@ def clean_value(val):
 
 
 def extract_location_details(raw_data: dict, search_info: dict) -> dict:
-    """Extract and consolidate geographic, survey, coordinates, boundaries, and address details."""
+    """Extract and consolidate geographic, survey, coordinates, boundaries, and address details.
+
+    Coordinate extraction handles all RERA Karnataka key variants:
+      Plain:          "Latitude", "Longitude"
+      Directional:    "Latitude North", "Latitude South", "Longitude East", "Longitude West"
+      Parenthesised:  "Latitude(N)", "Longitude(E)", etc.
+      Degree-symbol:  values may end in degree sign, "N", etc.
+    South/West values are automatically negated.
+    """
     district = search_info.get("district")
     taluk = search_info.get("taluk")
 
     promoter_section = raw_data.get("promoter_details", {}).get("Promoter Details", {})
+    if not isinstance(promoter_section, dict):
+        promoter_section = {}
     p_district = promoter_section.get("District")
     p_taluk = promoter_section.get("Taluk")
     pin_code = promoter_section.get("PIN Code")
     promoter_address = promoter_section.get("Promoter Address")
 
     overview = raw_data.get("project_overview_details", {})
+    if not isinstance(overview, dict):
+        overview = {}
     map_iframes = raw_data.get("map_iframes", [])
 
-    lat_val = overview.get("Latitude")
-    lng_val = overview.get("Longitude")
-    lat = float(lat_val) if lat_val and lat_val.replace(".", "", 1).isdigit() else lat_val
-    lng = float(lng_val) if lng_val and lng_val.replace(".", "", 1).isdigit() else lng_val
+    # ------------------------------------------------------------------
+    # Coordinate extraction helpers
+    # ------------------------------------------------------------------
+    # Anchored pattern that extracts the first well-formed float from a raw
+    # coordinate string, regardless of surrounding direction labels, degree
+    # symbols, or extra whitespace.
+    #
+    # Handles all observed RERA Karnataka formats and their failure modes:
+    #   "12.9716"          → 12.9716   (plain)
+    #   "-12.9716"         → -12.9716  (negative — isdigit() would fail)
+    #   "+12.9716"         → 12.9716   (explicit plus)
+    #   "12.9716°"         → 12.9716   (degree symbol)
+    #   "12.9716° N"       → 12.9716   (direction suffix)
+    #   "N 12.9716"        → 12.9716   (direction prefix)
+    #   "12.9716 N 77.59"  → 12.9716   (first float only — caller handles sign)
+    #   "N/A", ""          → None      (garbage → None)
+    _FLOAT_RE = re.compile(r"[+-]?\d+(?:\.\d+)?")
 
-    b_north = overview.get("North Schedule")
-    b_south = overview.get("South Schedule")
-    b_east = overview.get("East Schedule")
-    b_west = overview.get("West Schedule")
+    def _parse_coord(raw_str):
+        """Extract the first valid float from a raw coordinate string, or None."""
+        if raw_str is None:
+            return None
+        m = _FLOAT_RE.search(str(raw_str))
+        return float(m.group()) if m else None
+
+    # Ordered candidate lists: (key_in_overview, negate_value)
+    # South latitudes and West longitudes are negative by convention.
+    _LAT_KEYS = [
+        ("Latitude", False),
+        ("Latitude North", False),
+        ("Latitude(N)", False),
+        ("Latitude (N)", False),
+        ("Latitude South", True),
+        ("Latitude(S)", True),
+        ("Latitude (S)", True),
+    ]
+    _LNG_KEYS = [
+        ("Longitude", False),
+        ("Longitude East", False),
+        ("Longitude(E)", False),
+        ("Longitude (E)", False),
+        ("Longitude West", True),
+        ("Longitude(W)", True),
+        ("Longitude (W)", True),
+    ]
+
+    def _first_coord(candidates):
+        for key, negate in candidates:
+            raw = overview.get(key)
+            if raw is not None and str(raw).strip():
+                val = _parse_coord(raw)
+                if val is not None:
+                    return -abs(val) if negate else val
+        return None
+
+    lat = _first_coord(_LAT_KEYS)
+    lng = _first_coord(_LNG_KEYS)
+
+    # ------------------------------------------------------------------
+    # Iframe fallback: if the HTML fields gave us nothing, try parsing
+    # the Google Maps embed src (e.g. maps.google.com/maps?q=12.97,77.59)
+    # ------------------------------------------------------------------
+    def _coords_from_iframe(iframe_src: str):
+        """Return (lat, lng) floats parsed from a Google Maps embed URL, or (None, None)."""
+        if not iframe_src:
+            return None, None
+        # Patterns: ?q=LAT,LNG  or  &ll=LAT,LNG  or  @LAT,LNG,
+        for pat in (
+            r"[?&]q=([-\.\d]+),([-\.\d]+)",
+            r"[?&]ll=([-\.\d]+),([-\.\d]+)",
+            r"@([-\.\d]+),([-\.\d]+)",
+        ):
+            m = re.search(pat, iframe_src)
+            if m:
+                try:
+                    return float(m.group(1)), float(m.group(2))
+                except ValueError:
+                    continue
+        return None, None
+
+    if lat is None or lng is None:
+        for src in map_iframes:
+            fb_lat, fb_lng = _coords_from_iframe(src)
+            if fb_lat is not None and fb_lng is not None:
+                lat = lat if lat is not None else fb_lat
+                lng = lng if lng is not None else fb_lng
+                break
+
+    # ------------------------------------------------------------------
+    # GeoJSON geometry:
+    #
+    # RERA Karnataka does NOT publish polygon coordinates — only a center
+    # point and legal-schedule text for the four cardinal boundaries.
+    #
+    # We produce two levels of geometry:
+    #   1. "center"  — GeoJSON Point (authoritative, from HTML fields)
+    #   2. "bbox_polygon" — GeoJSON Polygon approximated from the total
+    #      land area (sq m) as a square centred on the Point.
+    #      This is clearly flagged as an approximation so downstream
+    #      consumers are not misled.
+    #
+    # Derivation of half-side from area:
+    #   side = sqrt(area_sq_m)  =>  half_side = side / 2
+    #   1 degree latitude  ~ 111,320 m  (near-constant)
+    #   1 degree longitude ~ 111,320 * cos(lat_rad) m  (varies with lat)
+    # ------------------------------------------------------------------
+    import math as _math
+
+    def _build_geometry(center_lat, center_lng, area_sq_m=None):
+        """
+        Return a dict with:
+          center       -- GeoJSON Point  {type, coordinates}
+          bbox_polygon -- GeoJSON Polygon (approximate square, or None)
+          area_source  -- label for how the bbox was derived
+        """
+        if center_lat is None or center_lng is None:
+            return {"center": None, "bbox_polygon": None, "area_source": None}
+
+        geojson_point = {
+            "type": "Point",
+            "coordinates": [round(center_lng, 7), round(center_lat, 7)],
+        }
+
+        bbox_poly = None
+        area_source = None
+        if area_sq_m and area_sq_m > 0:
+            half_side_m = _math.sqrt(area_sq_m) / 2.0
+            lat_deg = half_side_m / 111_320.0
+            lng_deg = half_side_m / (111_320.0 * _math.cos(_math.radians(center_lat)))
+            min_lat = round(center_lat - lat_deg, 7)
+            max_lat = round(center_lat + lat_deg, 7)
+            min_lng = round(center_lng - lng_deg, 7)
+            max_lng = round(center_lng + lng_deg, 7)
+            # GeoJSON Polygon: exterior ring, 5 points (closed)
+            bbox_poly = {
+                "type": "Polygon",
+                "coordinates": [[
+                    [min_lng, min_lat],
+                    [max_lng, min_lat],
+                    [max_lng, max_lat],
+                    [min_lng, max_lat],
+                    [min_lng, min_lat],
+                ]],
+            }
+            area_source = "total_land_area_sq_mtr"
+
+        return {
+            "center": geojson_point,
+            "bbox_polygon": bbox_poly,
+            "area_source": area_source,
+            "_note": (
+                "bbox_polygon is an equal-area square approximation centred on the "
+                "project point. RERA Karnataka does not publish polygon boundary "
+                "coordinates; use the legal schedule text in boundaries{} for the "
+                "authoritative description."
+            ) if bbox_poly else None,
+        }
+
+    # Try to get total land area from overview for bbox derivation
+    _area_raw = overview.get("Total Area Of Land (Sq Mtr) (A1+A2)") or overview.get("Total Area Of Land (Sq Mtr)")
+    _area_sq_m = None
+    if _area_raw:
+        try:
+            _area_sq_m = float(str(_area_raw).replace(",", "").strip())
+        except ValueError:
+            pass
+
+    geometry = _build_geometry(lat, lng, _area_sq_m)
+
+    # ------------------------------------------------------------------
+    # Boundary schedules -- accept both plain and prefixed key variants
+    # ------------------------------------------------------------------
+    def _first_str(*keys):
+        for k in keys:
+            v = overview.get(k)
+            if v and str(v).strip():
+                return str(v).strip()
+        return None
+
+    b_north = _first_str("North Schedule", "North_Schedule", "Boundary North", "North Boundary")
+    b_south = _first_str("South Schedule", "South_Schedule", "Boundary South", "South Boundary")
+    b_east  = _first_str("East Schedule",  "East_Schedule",  "Boundary East",  "East Boundary")
+    b_west  = _first_str("West Schedule",  "West_Schedule",  "Boundary West",  "West Boundary")
 
     survey_tables = raw_data.get("project_details", {}).get("survey_land_tables", [])
 
-    survey_nos = []
+    # ------------------------------------------------------------------
+    # Survey number and sub-registrar extraction — column-semantic, not
+    # pattern-reactive.
+    #
+    # parse_tables() produces two row shapes depending on whether the
+    # <table> had <th> headers that matched the column count:
+    #
+    #   Keyed row:      {"Survey No": "59/1", "Sub Registrar": "...", ...}
+    #   Headerless row: {"columns": ["59/1", "...", ...]}
+    #
+    # Strategy:
+    #   Phase 1 (keyed rows) — read well-known column names directly.
+    #     No pattern matching needed; the header IS the semantic label.
+    #   Phase 2 (headerless fallback) — apply the Karnataka Revenue Dept
+    #     survey-number grammar:  digits, optional suffix letter, optional
+    #     slash-sub-number repetition.  Examples: "59", "59/1", "59/1A",
+    #     "59/1A/2", "Sy.No.59/1".  A cell is accepted only if the regex
+    #     fills the entire token after stripping a "Sy" / "Sy.No." prefix.
+    #     Numeric-only values that look like areas, amounts, or IDs
+    #     (>= 6 digits, or contain a decimal point) are rejected outright.
+    # ------------------------------------------------------------------
+
+    # Karnataka Revenue Dept survey number grammar (anchored)
+    _SY_RE = re.compile(
+        r"^(?:Sy\.?\s*No\.?\s*)?(\d{1,5}[A-Za-z]?(?:/\d{1,5}[A-Za-z]?)*)$",
+        re.IGNORECASE,
+    )
+
+    # Known header variants across RERA Karnataka form versions
+    _SY_HEADERS  = {"Survey No", "Sy No", "Sy.No", "Sy.No.", "Survey Number",
+                    "SurveyNo", "Survey No.", "Sy No."}
+    _SUB_REG_HEADERS = {
+        # Exact column-header match; both plain and hyphenated forms appear
+        # across different RERA Karnataka form versions.
+        "Sub Registrar", "Sub-Registrar", "Sub Registrar Office",
+        "SubRegistrar", "Sub Registrar Name", "Sub Reg",
+        "Sub Registrar Of Assurances", "SRO",
+    }
+    _ADDR_HEADERS = {"Address", "Land Address", "Property Address",
+                     "Site Address", "Project Address"}
+
+    # ------------------------------------------------------------------
+    # SRO name normaliser: strip verbose boilerplate that RERA promoters
+    # often paste in full ("Sub Registrar Office, Basavanagudi, Bengaluru
+    # South, Karnataka - 560004").  We want just the meaningful name part.
+    # Examples:
+    #   "Sub Registrar Office, JP Nagar"  → "JP Nagar"
+    #   "JP Nagar Sub Registrar"          → "JP Nagar"
+    #   "Sub Registrar, Yelahanka"        → "Yelahanka"
+    #   "Yelahanka"                       → "Yelahanka"  (already clean)
+    # ------------------------------------------------------------------
+    _SRO_STRIP_RE = re.compile(
+        r"(?:Sub[\s\-]Registrar(?:\s+(?:Office|Of\s+Assurances))?[,\s]*"
+        r"|[,\s]*Sub[\s\-]Registrar(?:\s+(?:Office|Of\s+Assurances))?)",
+        re.IGNORECASE,
+    )
+
+    def _normalize_sro(raw: str) -> str:
+        """Return the meaningful part of an SRO name, stripping generic boilerplate."""
+        cleaned = _SRO_STRIP_RE.sub(" ", raw).strip(" ,;-")
+        # Also strip trailing district/state/pincode fragments that appear after
+        # a comma in verbose addresses (e.g., "JP Nagar, Bengaluru South, Karnataka")
+        # Keep only the first comma-separated token (the SRO location name itself).
+        first_token = cleaned.split(",")[0].strip()
+        return first_token if first_token else cleaned
+
+    survey_nos    = []
     sub_registrars = []
     land_addresses = []
 
     for row in survey_tables:
-        cols = row.get("columns", [])
-        if cols:
-            first = str(cols[0]).strip()
-            # Detect survey number column (e.g., '59/1', '59/2', 'Sy No 12')
-            if "/" in first or (first.isdigit() and len(first) > 1 and first not in ("100.0", "150200400200320378")):
-                if first not in survey_nos:
-                    survey_nos.append(first)
-            
+        # ---- Phase 1: keyed row (headers matched) ----
+        if isinstance(row, dict) and "columns" not in row:
+            for h, val in row.items():
+                if not val or h.endswith(" URL"):
+                    continue
+                val_str = str(val).strip()
+                h_norm  = h.strip()
+
+                if h_norm in _SY_HEADERS:
+                    # Value may be comma/semicolon separated multi-entry
+                    for token in re.split(r"[,;\s]+", val_str):
+                        token = token.strip()
+                        if token and token not in survey_nos:
+                            survey_nos.append(token)
+
+                elif h_norm in _SUB_REG_HEADERS:
+                    # Normalise: strip "Sub Registrar Office," boilerplate so the
+                    # stored value is the meaningful location name only.
+                    normed = _normalize_sro(val_str)
+                    if normed and normed not in sub_registrars:
+                        sub_registrars.append(normed)
+
+                elif h_norm in _ADDR_HEADERS:
+                    if val_str not in land_addresses:
+                        land_addresses.append(val_str)
+
+        # ---- Phase 2: headerless fallback ----
+        else:
+            cols = row.get("columns", [])
             for cell in cols:
                 cell_str = str(cell).strip()
-                if cell_str in ("Indiranagar", "Koramangala", "Jayanagar", "Yelahanka", "Rajajinagar") or "Sub Registrar" in cell_str:
-                    if cell_str not in sub_registrars:
-                        sub_registrars.append(cell_str)
-                if ("Karnataka" in cell_str or "Pin" in cell_str or "560" in cell_str) and len(cell_str) > 20:
+                if not cell_str:
+                    continue
+
+                # Survey number: must match grammar, must not look like a
+                # decimal area / large numeric ID
+                m = _SY_RE.match(cell_str)
+                if m:
+                    captured = m.group(1)
+                    # Reject bare integers >= 6 digits (IDs/amounts)
+                    # and anything containing a decimal point (areas)
+                    if "." not in captured and len(re.sub(r"\D", "", captured)) <= 5:
+                        if captured not in survey_nos:
+                            survey_nos.append(captured)
+
+                # Sub-registrar: the phrase "Sub Registrar" (or hyphenated) is a
+                # reliable linguistic anchor — every Karnataka SRO name contains it.
+                # We cannot do better in a headerless row without external SRO data.
+                # Normalise before storing so the value is the location name only.
+                if re.search(r"Sub[\s\-]Registrar", cell_str, re.IGNORECASE):
+                    normed = _normalize_sro(cell_str)
+                    if normed and normed not in sub_registrars:
+                        sub_registrars.append(normed)
+
+                # Address: contains a strong Karnataka locale signal
+                if re.search(r"Karnataka|Bengaluru|Bangalore", cell_str) and len(cell_str) > 20:
                     if cell_str not in land_addresses:
                         land_addresses.append(cell_str)
 
@@ -686,10 +980,11 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
         "taluk": taluk or overview.get("Taluk") or p_taluk,
         "pin_code": overview.get("Pin Code") or pin_code,
         "survey_numbers": survey_nos,
-        "sub_registrar_office": sub_registrars[0] if sub_registrars else None,
+        "sub_registrar_offices": sub_registrars,   # list; one per land parcel; normalised SRO name
         "address": full_address,
         "latitude": lat,
         "longitude": lng,
+        "geometry": geometry,
         "google_maps_url": map_iframes[0] if map_iframes else None,
         "boundaries": {
             "north_schedule": b_north,
@@ -698,7 +993,6 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
             "west_schedule": b_west,
         }
     }
-
 
 
 def build_clean_structured_record(
