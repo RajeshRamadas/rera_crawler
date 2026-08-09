@@ -414,30 +414,116 @@ def parse_label_value_sections(container) -> dict:
 
 
 def parse_tables(container) -> list[dict]:
-    """Parse html tables into rows of dicts, including column URLs."""
+    """Parse html tables into rows of dicts, expanding colspan/rowspan into a 2D grid
+    so column headers and values remain correctly aligned.
+    """
+    if not container:
+        return []
     all_tables = []
     for table in container.find_all("table"):
-        headers = [th.get_text(" ", strip=True) for th in table.find_all("th")]
+        trs = table.find_all("tr")
+        if not trs:
+            continue
+
+        # 1. Build a 2D grid to resolve rowspan and colspan spanning
+        grid = {}
+        max_col = 0
+
+        for r_idx, tr in enumerate(trs):
+            c_idx = 0
+            cells = tr.find_all(["th", "td"])
+            for cell in cells:
+                while (r_idx, c_idx) in grid:
+                    c_idx += 1
+
+                try:
+                    rowspan = max(1, int(cell.get("rowspan", 1)))
+                except (ValueError, TypeError):
+                    rowspan = 1
+                try:
+                    colspan = max(1, int(cell.get("colspan", 1)))
+                except (ValueError, TypeError):
+                    colspan = 1
+
+                text = cell.get_text(" ", strip=True)
+                links = extract_cell_links(cell)
+                is_header = (cell.name == "th")
+
+                cell_info = {"text": text, "links": links, "is_header": is_header}
+
+                for r_offset in range(rowspan):
+                    for c_offset in range(colspan):
+                        curr_r = r_idx + r_offset
+                        curr_c = c_idx + c_offset
+                        grid[(curr_r, curr_c)] = cell_info
+                        if curr_c > max_col:
+                            max_col = curr_c
+
+                c_idx += colspan
+
+        num_rows = len(trs)
+        num_cols = max_col + 1 if grid else 0
+        if num_cols == 0:
+            continue
+
+        # 2. Separate header rows from data rows
+        header_rows = []
+        data_row_indices = []
+
+        for r in range(num_rows):
+            row_cells = [grid.get((r, c)) for c in range(num_cols)]
+            has_headers = any(cell and cell["is_header"] for cell in row_cells)
+            all_headers = all(cell and cell["is_header"] for cell in row_cells if cell and cell["text"])
+
+            if has_headers and (r == 0 or all_headers):
+                header_rows.append(row_cells)
+            else:
+                if any(cell and cell["text"] for cell in row_cells):
+                    data_row_indices.append(r)
+
+        # 3. Construct headers list (combining multi-level header rows if present)
+        headers = []
+        if header_rows:
+            combined = []
+            for c in range(num_cols):
+                parts = []
+                for h_row in header_rows:
+                    cell = h_row[c]
+                    if cell and cell["text"] and cell["text"] not in parts:
+                        parts.append(cell["text"])
+                combined.append(" ".join(parts).strip())
+            headers = combined
+
+        # 4. Extract data rows mapped to header keys
         rows = []
-        for tr in table.find_all("tr"):
-            tds = tr.find_all("td")
-            if not tds:
-                continue
-            values = [td.get_text(" ", strip=True) for td in tds]
-            links = [extract_cell_links(td) for td in tds]
+        for r in data_row_indices:
+            row_cells = [grid.get((r, c)) for c in range(num_cols)]
+            values = [cell["text"] if cell else "" for cell in row_cells]
+            links = [cell["links"] if cell else [] for cell in row_cells]
 
             if headers and len(headers) == len(values):
-                row = dict(zip(headers, values))
-                for header, url_list in zip(headers, links):
+                row = {}
+                for header, val, url_list in zip(headers, values, links):
+                    if not header:
+                        header = "unnamed_column"
+                    key = header
+                    dup_cnt = 1
+                    while key in row:
+                        dup_cnt += 1
+                        key = f"{header}_{dup_cnt}"
+                    row[key] = val
                     if url_list:
-                        row[f"{header} URL"] = url_list
+                        row[f"{key} URL"] = url_list
+                if row:
+                    rows.append(row)
             else:
                 row = {"columns": values}
                 if any(links):
                     row["column_urls"] = links
+                rows.append(row)
 
-            rows.append(row)
         all_tables.append({"headers": headers, "rows": rows})
+
     return all_tables
 
 
@@ -922,21 +1008,27 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
                 val_str = str(val).strip()
                 h_norm  = h.strip()
 
-                if h_norm in _SY_HEADERS:
+                # Check exact header or suffix/substring match (supporting multi-level headers)
+                h_lower = h_norm.lower()
+                is_sy = h_norm in _SY_HEADERS or any(h_lower.endswith(" " + sy.lower()) for sy in _SY_HEADERS)
+                is_subreg = h_norm in _SUB_REG_HEADERS or any(sro.lower() in h_lower for sro in _SUB_REG_HEADERS)
+                is_addr = h_norm in _ADDR_HEADERS or any(addr.lower() in h_lower for addr in _ADDR_HEADERS)
+
+                if is_sy:
                     # Value may be comma/semicolon separated multi-entry
                     for token in re.split(r"[,;\s]+", val_str):
                         token = token.strip()
                         if token and token not in survey_nos:
                             survey_nos.append(token)
 
-                elif h_norm in _SUB_REG_HEADERS:
+                elif is_subreg:
                     # Normalise: strip "Sub Registrar Office," boilerplate so the
                     # stored value is the meaningful location name only.
                     normed = _normalize_sro(val_str)
                     if normed and normed not in sub_registrars:
                         sub_registrars.append(normed)
 
-                elif h_norm in _ADDR_HEADERS:
+                elif is_addr:
                     if val_str not in land_addresses:
                         land_addresses.append(val_str)
 
