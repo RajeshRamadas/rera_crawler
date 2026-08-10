@@ -150,12 +150,16 @@ The crawler generates the following output files in the specified `--output-dir`
 
 | Argument | Description |
 | --- | --- |
-| `--all` | Run continuous loop over all discovered properties |
+| `--all` | Run continuous loop over all discovered properties (automatically skips already crawled properties and fetches newly added ones) |
+| `--retry-failed` | Target and retry ONLY properties listed in `failed_regnos.json` |
 | `--output-dir` | Directory to store JSONL, CSV, and state files (default: `rera_data`) |
-| `--delay` | Delay in seconds between requests (default: `2.0`) |
+| `--workers` | Number of concurrent worker threads (default: `3`) |
+| `--delay` | Delay in seconds per worker between requests (default: `1.0`) |
 | `--limit` | Maximum number of properties to process |
 | `--no-resume` | Ignore state files and re-crawl everything from scratch |
 | `--rebuild-csv-only` | Rebuild CSV from existing JSONL without network requests |
+| `--db-uri` | PostgreSQL connection string (or set `DATABASE_URL` environment variable) |
+| `--auto-shutdown` | Trigger automatic cloud shutdown (`sudo shutdown -h now`) upon completion |
 | `--reg-no` | Single property search by Registration Number |
 | `--project-id` | Direct fetch by numeric internal `PROJECT_ID` |
 | `--from-html` | Parse a saved HTML file offline |
