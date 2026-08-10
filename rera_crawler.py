@@ -1740,10 +1740,14 @@ def continuous_crawl(args):
         projects = projects[: args.limit]
         print(f"[*] --limit set: processing first {len(projects)} projects.")
 
-    todo = [p for p in projects if p["registration_no"] not in state.done_regnos]
-    skipped = len(projects) - len(todo)
-    if skipped:
-        print(f"[*] Skipping {skipped} already-crawled project(s) (resuming).")
+    if args.retry_failed:
+        todo = [p for p in projects if p["registration_no"] in state.failed]
+        print(f"[*] --retry-failed set: targeting {len(todo)} previously failed project(s).")
+    else:
+        todo = [p for p in projects if p["registration_no"] not in state.done_regnos]
+        skipped = len(projects) - len(todo)
+        if skipped:
+            print(f"[*] Skipping {skipped} already-crawled project(s) (resuming).")
 
     total = len(todo)
     completed = 0
@@ -1809,6 +1813,7 @@ def main():
                               "still appended immediately regardless, so no crawl data is at risk.")
     parser.add_argument("--limit", type=int, default=None, help="Limit number of properties to crawl")
     parser.add_argument("--no-resume", action="store_true", help="Ignore done_regnos.json and re-crawl everything")
+    parser.add_argument("--retry-failed", action="store_true", help="Retry only the properties recorded in failed_regnos.json")
     parser.add_argument("--save-listing-pages", default=None, help="Directory to save raw discovery page HTML")
     parser.add_argument("--rebuild-csv-only", action="store_true", help="Rebuild CSV from existing project_details.jsonl without crawling")
     parser.add_argument("--db-uri", default=None, help="PostgreSQL connection string (or set DATABASE_URL env var)")

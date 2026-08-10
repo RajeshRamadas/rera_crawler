@@ -64,6 +64,11 @@ Run with limit (e.g. 10 properties test run):
 DATABASE_URL="postgresql://rera_user:rera_password@localhost:5432/rera_db" /home/ubuntu/rera_crawler/venv/bin/python3 rera_crawler.py --all --limit 10
 ```
 
+Retry ONLY previously failed properties (recorded in `failed_regnos.json`):
+```bash
+DATABASE_URL="postgresql://rera_user:rera_password@localhost:5432/rera_db" /home/ubuntu/rera_crawler/venv/bin/python3 rera_crawler.py --all --retry-failed
+```
+
 ### 3. Run Crawler in Background (`tmux` session)
 ```bash
 tmux new -s crawler
