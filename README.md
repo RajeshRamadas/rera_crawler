@@ -46,6 +46,34 @@ pip install -r requirements.txt
 
 ---
 
+## EC2 Deployment & Foreground Execution Quick Reference
+
+### 1. EC2 One-Command Setup
+```bash
+chmod +x setup_local_postgres_ec2.sh
+./setup_local_postgres_ec2.sh
+```
+
+### 2. Run Crawler in Foreground (PostgreSQL DB Enabled)
+```bash
+DATABASE_URL="postgresql://rera_user:rera_password@localhost:5432/rera_db" /home/ubuntu/rera_crawler/venv/bin/python3 rera_crawler.py --all
+```
+
+Run with limit (e.g. 10 properties test run):
+```bash
+DATABASE_URL="postgresql://rera_user:rera_password@localhost:5432/rera_db" /home/ubuntu/rera_crawler/venv/bin/python3 rera_crawler.py --all --limit 10
+```
+
+### 3. Run Crawler in Background (`tmux` session)
+```bash
+tmux new -s crawler
+DATABASE_URL="postgresql://rera_user:rera_password@localhost:5432/rera_db" /home/ubuntu/rera_crawler/venv/bin/python3 rera_crawler.py --all
+# Detach with: Ctrl+B then D
+# Re-attach anytime with: tmux attach -t crawler
+```
+
+---
+
 ## Usage Examples
 
 ### 1. Bulk / Continuous Crawl
