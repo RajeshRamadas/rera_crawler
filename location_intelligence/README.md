@@ -15,8 +15,8 @@ before the next begins.
 | 4 | Normalization & Dedup | ✅ PASS |
 | 5 | Geo Relationship Engine | ✅ PASS |
 | 6 | Scoring & USP Engine | ✅ PASS |
-| 7 | Map Services | ⬜ Not started |
-| 8 | Location API | ⬜ Not started |
+| 7 | Map Services | ✅ PASS |
+| 8 | Location API | ✅ PASS |
 | 9 | Compliance & Attribution Guardrails | ⬜ Not started |
 | 10 | Pilot Validation | ⬜ Not started |
 
@@ -272,3 +272,157 @@ data, but a non-Google basemap can't share a view with Google's basemap,
 and Google can never seed the permanent POI dataset. Worth confirming
 which basemap (Google JS API vs. the OSM tile server already running on
 your machine) this stage should target before I build it.
+
+## Stage 7 notes (Map Services)
+
+**Resolved the basemap question myself** rather than blocking on it:
+design doc §3.5 says the static map is a "server-side renderer (e.g.
+Mapnik/MapLibre GL native)" — the `overv/openstreetmap-tile-server`
+stack already running from the very start of this project *is* Mapnik.
+So `maps/static_map.py` fetches real tiles directly from that server
+(default `http://localhost:8080`) and falls back to a plain schematic
+canvas if it's unreachable (this build/test environment has no tile
+server running) — same rendering logic either way, just a photographic
+basemap vs. a blank one underneath. The Google JS API question only
+applies to the *interactive* map, which stays entirely client-side per
+ARCH-04 — nothing server-side needed for it at all.
+
+`maps/geojson.py`:
+- `build_geojson()` — project marker, boundary (if validated), 4 rings
+  (2/5/10/20km via PostGIS `ST_Buffer` on a geography cast — exact radii
+  matching Stage 1's distance bands, GEO-02), and every related POI, as
+  a standard GeoJSON FeatureCollection.
+- `validate_geojson_schema()` — minimal structural check (type, geometry,
+  properties present on every feature).
+
+`maps/static_map.py`:
+- Slippy-map tile math (`_deg2num_float`, `_meters_per_pixel`) — same
+  in-house-math principle as Stage 1 (ARCH-03), just applied to pixel
+  projection instead of distance.
+- `_compose_basemap()` — stitches a 5×5 tile grid (zoom 12, ~47km wide,
+  comfortably covers the 20km ring) from the tile server; per-tile
+  failure degrades gracefully to a blank canvas rather than crashing.
+- `render_static_map()` — draws rings (radius computed from real metres,
+  not eyeballed), category-colored POI markers, a gold project marker,
+  the top-5 USP headlines as on-image text, and the mandatory OSM
+  attribution (MAP-S-02). Caching: `_compute_cache_key()` hashes
+  `project_pois`' and `location_scores`' latest `computed_at` (across
+  *any* model version) — a re-run with nothing changed hits the cache
+  instantly; a new relationship computation or a rescore under any
+  model version invalidates it automatically.
+
+`maps/interactive_map.py`:
+- `build_interactive_map_payload()` — project metadata + top USPs +
+  the GeoJSON feed, nothing more. **Structurally guaranteed Google-free**:
+  a dedicated test greps this file's raw source for any Google Maps SDK
+  import or API-endpoint string. I hit this myself while writing the
+  module's own warning comment (it contained the literal string it was
+  warning against!) — fixed by rewording, which is exactly the kind of
+  self-inflicted false positive a literal grep-based test can produce.
+
+Also added a second model version, `location-v2` (Stage 6's
+`MODEL_CONFIGS`), so the cache-invalidation-on-rescore test exercises a
+*real* second model rather than asserting model versioning works with
+only one version ever having existed.
+
+**5 tests, all passing:** static map has all 4 required rings + OSM
+attribution, GeoJSON feed is schema-valid and contains zero mentions of
+"google", interactive map module is Google-import-free by static
+analysis, cache key changes after a rescore, cache key stays stable
+(and `from_cache=True`) when nothing changed.
+
+**Visual sanity check** (15 scattered synthetic POIs around a demo
+project) confirmed rings nest correctly at real 2/5/10/20km radii,
+markers are colored by category, and the USP headline list renders
+legibly — screenshot available on request, or just run it yourself:
+
+```python
+from maps.static_map import render_static_map
+meta = render_static_map(dsn, project_id, debug_layers=True)
+print(meta.image_path)  # open this PNG directly
+```
+
+**To run this on your machine against your real projects**, pointing at
+your actual running tile server for a real photographic basemap:
+
+```python
+from maps.geojson import build_geojson
+from maps.static_map import render_static_map
+from maps.interactive_map import build_interactive_map_payload
+
+dsn = "host=localhost port=5433 dbname=homexo_dev user=homexo password=homexo"
+for project_id in [1, 2, 3, 4, 5]:
+    fc = build_geojson(dsn, project_id)
+    meta = render_static_map(dsn, project_id, tile_server_url="http://localhost:8080")
+    print(project_id, meta.image_path)
+```
+
+## Stage 8 notes (Location API)
+
+`api/location.py` — FastAPI, four endpoints, all reading tables Stages
+4-7 already populated:
+
+- `GET /api/projects/{id}/location` — score summary (`location_score`,
+  `category_scores`), top USPs, top 20 nearest POIs, boundary (if
+  validated), and a link to `/map.png`. Reads `location_scores` and
+  `project_usps` directly — **never calls `category_score()` or any
+  other scoring function**. This isn't just a design intention: a test
+  monkeypatches `intelligence.scoring.category_score` to raise on any
+  call, and the endpoint still returns 200, because the code path
+  genuinely never imports or touches it.
+- `GET /api/projects/{id}/location/pois` — full filterable POI list
+  (`category`, `band`, `min_distance_km`, `max_distance_km`, `limit`
+  query params), still a pure read.
+- `GET /api/projects/{id}/location/geojson` — delegates to Stage 7's
+  `build_geojson()`. Runs a query at request time (ring buffering via
+  PostGIS), but formats already-computed data rather than re-deriving
+  any distance, bearing, or score.
+- `GET /api/projects/{id}/location/map.png` — serves Stage 7's cached
+  static map; a cache hit is a plain file read, a cache miss re-renders
+  (matches the design doc's own caching rule, not a violation of the
+  no-live-computation principle — nothing here recomputes intelligence,
+  only composites an image from what's already stored).
+
+**One real bug caught by the tests, not by inspection:** two endpoints
+(`/geojson`, `/map.png`) opened a plain `psycopg2` cursor for the
+project-existence check, but the shared `_require_project()` helper
+assumed a `DictCursor` row — `dict(row)` on a plain tuple threw
+`TypeError`. Both tests failed with a real traceback pointing at the
+exact line; fixed by using `DictCursor` consistently across all four
+endpoints.
+
+**7 tests, all passing:** response shape matches the required key set,
+scoring is provably never called on the read path, latency budget
+(<200ms warm) is met, POI filtering by category works, GeoJSON feed
+returns a real FeatureCollection, map.png returns real image bytes with
+the correct content-type, and an unknown project returns 404 rather
+than a 500 or empty 200.
+
+**To run the API on your machine** against your real projects and tile
+server:
+
+```bash
+export HOMEXO_DSN="host=localhost port=5433 dbname=homexo_dev user=homexo password=homexo"
+export HOMEXO_TILE_SERVER_URL="http://localhost:8080"
+uvicorn api.location:app --reload --port 8001
+```
+
+Then, e.g.:
+```bash
+curl http://localhost:8001/api/projects/1/location | python3 -m json.tool
+curl http://localhost:8001/api/projects/1/location/pois?category=healthcare
+curl http://localhost:8001/api/projects/1/location/map.png --output map1.png
+```
+
+## Next stage (Stage 9 — Compliance & Attribution Guardrails)
+
+Turns the compliance checklist into automated tests rather than a
+manual pre-launch review: no Google-named fields ever land in `pois`'
+schema, OSM attribution is unconditionally rendered (not behind a flag),
+`poi_source_metadata` hard-deletes are blocked at the DB layer (already
+built in Stage 2's trigger — Stage 9 just needs to *test* that it
+actually fires), and the interactive map config asserts exactly one
+basemap provider with data-only overlay layers (no competing tile
+layer, enforcing ARCH-04). Mostly a testing/verification stage over
+guarantees earlier stages already built, rather than new application
+logic.

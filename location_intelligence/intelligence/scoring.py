@@ -28,6 +28,16 @@ MODEL_CONFIGS = {
         "category_weight": 20.0,   # per-POI weight before proximity decay
         "diversity_weight": 0.15,  # SCORE-02: reward category spread over concentration
     },
+    # A second version, differing only in diversity_weight, exists so
+    # SCORE-03's "two model versions can run side by side" claim is
+    # actually exercised (see tests/test_map_services.py's cache
+    # invalidation test) rather than asserted with only one version ever
+    # having existed.
+    "location-v2": {
+        "radius_km": 20,
+        "category_weight": 20.0,
+        "diversity_weight": 0.25,
+    },
 }
 
 
