@@ -45,6 +45,8 @@ def sync_properties(src_dsn: str, dst_dsn: str):
     reg_col = "registration_no" if "registration_no" in cols else ("rera_id" if "rera_id" in cols else "id::text")
     name_col = "project_name" if "project_name" in cols else "name"
 
+    firm_col = "firm_name" if "firm_name" in cols else "NULL"
+
     if "data" in cols:
         query = f"""
             SELECT 
@@ -52,7 +54,9 @@ def sync_properties(src_dsn: str, dst_dsn: str):
                 COALESCE({name_col}, 'RERA Property') AS name,
                 (data->'project_location'->>'longitude')::float AS lon,
                 (data->'project_location'->>'latitude')::float AS lat,
-                data->'project_location'->>'district' AS city
+                data->'project_location'->>'district' AS city,
+                COALESCE({firm_col}, data->'promoter_details'->'Promoter Details'->>'Promoter Name', 'RERA Developer') AS developer,
+                data::text AS rera_data
             FROM rera_projects
             WHERE data->'project_location'->>'latitude' IS NOT NULL 
               AND data->'project_location'->>'latitude' != '';
@@ -64,27 +68,30 @@ def sync_properties(src_dsn: str, dst_dsn: str):
                 COALESCE({name_col}, 'RERA Property') AS name,
                 ST_X(geom) AS lon,
                 ST_Y(geom) AS lat,
-                city
+                city,
+                'RERA Developer' AS developer,
+                NULL AS rera_data
             FROM rera_projects
             WHERE geom IS NOT NULL;
         """
-
 
     cur_src.execute(query)
     rows = cur_src.fetchall()
     print(f"[*] Discovered {len(rows)} valid geocoded properties.")
 
     upsert_query = """
-        INSERT INTO rera_projects (rera_id, name, geom, status, city)
+        INSERT INTO rera_projects (rera_id, name, geom, status, city, developer, rera_data)
         VALUES %s
         ON CONFLICT (rera_id) DO UPDATE SET
             name = EXCLUDED.name,
             geom = EXCLUDED.geom,
             city = EXCLUDED.city,
+            developer = EXCLUDED.developer,
+            rera_data = EXCLUDED.rera_data,
             updated_at = now();
     """
 
-    template = "(%s, %s, ST_SetSRID(ST_MakePoint(%s, %s), 4326), 'active', %s)"
+    template = "(%s, %s, ST_SetSRID(ST_MakePoint(%s, %s), 4326), 'active', %s, %s, %s::jsonb)"
 
     if rows:
         execute_values(cur_dst, upsert_query, rows, template=template, page_size=1000)
@@ -93,6 +100,7 @@ def sync_properties(src_dsn: str, dst_dsn: str):
         synced_count = 0
 
     conn_dst.commit()
+
 
 
     # Get final total count in destination

@@ -148,6 +148,7 @@ class FullProjectDetailResponse(BaseModel):
     status: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    rera_details: Optional[Dict[str, Any]] = None
     location_score: Optional[float] = None
     category_scores: Dict[str, float]
     top_usps: List[USPItem]
@@ -168,18 +169,19 @@ def _require_project(cur, project_id: int) -> dict:
 def _get_project_by_identifier(cur, identifier: str) -> dict:
     if identifier.isdigit():
         cur.execute(
-            "SELECT id, rera_id, name, developer, status, city, ST_X(geom) AS lon, ST_Y(geom) AS lat FROM rera_projects WHERE id = %s;",
+            "SELECT id, rera_id, name, developer, status, city, ST_X(geom) AS lon, ST_Y(geom) AS lat, rera_data FROM rera_projects WHERE id = %s;",
             (int(identifier),),
         )
     else:
         cur.execute(
-            "SELECT id, rera_id, name, developer, status, city, ST_X(geom) AS lon, ST_Y(geom) AS lat FROM rera_projects WHERE rera_id = %s OR name ILIKE %s LIMIT 1;",
+            "SELECT id, rera_id, name, developer, status, city, ST_X(geom) AS lon, ST_Y(geom) AS lat, rera_data FROM rera_projects WHERE rera_id = %s OR name ILIKE %s LIMIT 1;",
             (identifier, f"%{identifier}%"),
         )
     row = cur.fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail=f"No project found matching '{identifier}'")
     return dict(row)
+
 
 
 # ── Developer Endpoints ─────────────────────────────────────────────────────────
@@ -316,6 +318,22 @@ def get_full_project_detail(identifier: str, model_version: str = settings.defau
     lat = float(project["lat"]) if project.get("lat") is not None else None
     lon = float(project["lon"]) if project.get("lon") is not None else None
 
+    rera_details = project.get("rera_data")
+    if rera_details is None and project.get("rera_id"):
+        try:
+            with psycopg2.connect(settings.rera_db_url) as src_conn:
+                with src_conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as src_cur:
+                    src_cur.execute(
+                        "SELECT data FROM rera_projects WHERE registration_no = %s LIMIT 1;",
+                        (project["rera_id"],),
+                    )
+                    src_row = src_cur.fetchone()
+                    if src_row and src_row["data"]:
+                        rera_details = src_row["data"] if isinstance(src_row["data"], dict) else json.loads(src_row["data"])
+        except Exception as exc:
+            pass
+
+
     return {
         "project_id": project["id"],
         "rera_id": project["rera_id"],
@@ -325,6 +343,7 @@ def get_full_project_detail(identifier: str, model_version: str = settings.defau
         "status": project.get("status"),
         "latitude": lat,
         "longitude": lon,
+        "rera_details": rera_details,
         "location_score": overall,
         "category_scores": category_scores,
         "top_usps": top_usps,
@@ -333,6 +352,7 @@ def get_full_project_detail(identifier: str, model_version: str = settings.defau
         "map": {"url": f"/api/projects/{project['id']}/location/map.png"},
         "model_version": model_version,
     }
+
 
 
 @app.get("/api/projects/{project_id}/location", response_model=LocationSummaryResponse)
