@@ -39,6 +39,8 @@ try:
 except ImportError:  # pragma: no cover
     requests = None
 
+from concurrent.futures import ThreadPoolExecutor
+
 OSM_ATTRIBUTION = "\u00a9 OpenStreetMap contributors"
 RING_RADII_KM = [2, 5, 10, 20]
 TILE_SIZE = 256
@@ -59,17 +61,24 @@ CATEGORY_ICONS = {
 }
 
 # ── Premium Typography ─────────────────────────────────────────────────────────
-_FONT_BASE = Path("/usr/share/fonts/truetype/noto")
+_BUNDLED_FONTS_DIR = Path(__file__).parent.parent / "assets" / "fonts"
+_SYSTEM_FONTS_DIR  = Path("/usr/share/fonts/truetype/noto")
 
 def _load_font(weight: str, size: int) -> ImageFont.FreeTypeFont:
-    """Load NotoSans with fallback to PIL default."""
-    path = _FONT_BASE / f"NotoSans-{weight}.ttf"
-    try:
-        return ImageFont.truetype(str(path), size)
-    except Exception:
-        return ImageFont.load_default()
-
-
+    """Load NotoSans with fallback to bundled fonts, system fonts, or PIL default."""
+    candidates = [
+        _BUNDLED_FONTS_DIR / f"NotoSans-{weight}.ttf",
+        _BUNDLED_FONTS_DIR / "NotoSans-Regular.ttf",
+        _SYSTEM_FONTS_DIR / f"NotoSans-{weight}.ttf",
+        _SYSTEM_FONTS_DIR / "NotoSans-Regular.ttf",
+    ]
+    for path in candidates:
+        if path.exists():
+            try:
+                return ImageFont.truetype(str(path), size)
+            except Exception:
+                pass
+    return ImageFont.load_default()
 
 
 @dataclass
@@ -106,8 +115,9 @@ def _fetch_tile(tile_server_url: str, z: int, x: int, y: int) -> Optional[Image.
 
 
 def _compose_basemap(center_lat: float, center_lon: float, zoom: int, tile_server_url: str) -> tuple[Image.Image, float, float]:
-    """Returns (canvas, top_left_tile_x, top_left_tile_y). Falls back to a
-    plain schematic canvas if any tile fetch fails.
+    """Returns (canvas, top_left_tile_x, top_left_tile_y). Fetches 81 tiles
+    concurrently via ThreadPoolExecutor. Falls back to a plain schematic canvas
+    for missing tiles.
     """
     grid_size = GRID_HALF * 2 + 1
     canvas_px = grid_size * TILE_SIZE
@@ -116,13 +126,21 @@ def _compose_basemap(center_lat: float, center_lon: float, zoom: int, tile_serve
     top_left_x, top_left_y = center_x_int - GRID_HALF, center_y_int - GRID_HALF
 
     canvas = Image.new("RGB", (canvas_px, canvas_px), (235, 235, 230))
-    all_tiles_ok = True
-    for dx in range(grid_size):
-        for dy in range(grid_size):
-            tile = _fetch_tile(tile_server_url, zoom, top_left_x + dx, top_left_y + dy)
-            if tile is None:
-                all_tiles_ok = False
-                continue
+    tile_coords = [
+        (dx, dy, top_left_x + dx, top_left_y + dy)
+        for dx in range(grid_size)
+        for dy in range(grid_size)
+    ]
+
+    def _fetch_one(item):
+        dx, dy, tx, ty = item
+        return dx, dy, _fetch_tile(tile_server_url, zoom, tx, ty)
+
+    with ThreadPoolExecutor(max_workers=16) as executor:
+        results = list(executor.map(_fetch_one, tile_coords))
+
+    for dx, dy, tile in results:
+        if tile is not None:
             canvas.paste(tile, (dx * TILE_SIZE, dy * TILE_SIZE))
 
     return canvas, top_left_x, top_left_y
@@ -133,24 +151,33 @@ def _latlon_to_px(lat, lon, zoom, top_left_x, top_left_y):
     return (x - top_left_x) * TILE_SIZE, (y - top_left_y) * TILE_SIZE
 
 
-def _compute_cache_key(dsn: str, project_id: int) -> str:
+def _compute_cache_key(dsn_or_conn, project_id: int) -> str:
     """Changes whenever relationships (Stage 5) or scores under ANY model
-    version (Stage 6) have been recomputed for this project — matches
-    the design doc's cache-invalidation rule without needing the caller
-    to pass a model_version through this function's signature.
+    version (Stage 6) have been recomputed for this project — computed via
+    a single query.
     """
-    conn = psycopg2.connect(dsn)
+    if isinstance(dsn_or_conn, str):
+        conn = psycopg2.connect(dsn_or_conn)
+        should_close = True
+    else:
+        conn = dsn_or_conn
+        should_close = False
+
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT max(computed_at) FROM project_pois WHERE project_id = %s;", (project_id,))
-            rel_ts = cur.fetchone()[0]
             cur.execute(
-                "SELECT max(computed_at), count(*) FROM location_scores WHERE project_id = %s;",
-                (project_id,),
+                """
+                SELECT 
+                    (SELECT max(computed_at) FROM project_pois WHERE project_id = %s) AS rel_ts,
+                    (SELECT max(computed_at) FROM location_scores WHERE project_id = %s) AS score_ts,
+                    (SELECT count(*) FROM location_scores WHERE project_id = %s) AS score_count;
+                """,
+                (project_id, project_id, project_id),
             )
-            score_ts, score_count = cur.fetchone()
+            rel_ts, score_ts, score_count = cur.fetchone()
     finally:
-        conn.close()
+        if should_close:
+            conn.close()
 
     raw = f"{project_id}:{rel_ts}:{score_ts}:{score_count}"
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
@@ -163,15 +190,15 @@ def render_static_map(
     zoom: int = DEFAULT_ZOOM,
     debug_layers: bool = False,
 ) -> StaticMapMeta:
-    cache_key = _compute_cache_key(dsn, project_id)
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    image_path = CACHE_DIR / f"{project_id}_{cache_key}.png"
-
-    if image_path.exists():
-        return StaticMapMeta(cache_key, str(image_path), RING_RADII_KM, True, from_cache=True)
-
     conn = psycopg2.connect(dsn)
     try:
+        cache_key = _compute_cache_key(conn, project_id)
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        image_path = CACHE_DIR / f"{project_id}_{cache_key}.png"
+
+        if image_path.exists():
+            return StaticMapMeta(cache_key, str(image_path), RING_RADII_KM, True, from_cache=True)
+
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
             cur.execute("SELECT name, ST_X(geom) AS lon, ST_Y(geom) AS lat FROM rera_projects WHERE id = %s;", (project_id,))
             project = cur.fetchone()
@@ -199,6 +226,7 @@ def render_static_map(
             top_usps = cur.fetchall()
     finally:
         conn.close()
+
 
     canvas, top_left_x, top_left_y = _compose_basemap(project["lat"], project["lon"], zoom, tile_server_url)
     mpp = _meters_per_pixel(project["lat"], zoom)
