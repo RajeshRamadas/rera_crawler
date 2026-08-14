@@ -17,12 +17,14 @@ data that Stages 5-6 already computed and stored. map.png additionally
 relies on Stage 7's own cache, so a warm cache hit there is also just a
 file read, not a render.
 """
+from contextlib import asynccontextmanager, contextmanager
 import json
 import os
 from typing import Optional
 
 import psycopg2
 import psycopg2.extras
+from psycopg2.pool import ThreadedConnectionPool
 from fastapi import FastAPI, HTTPException, Query, Response
 
 from maps.geojson import build_geojson
@@ -30,16 +32,41 @@ from maps.static_map import render_static_map
 
 DSN = os.environ.get(
     "HOMEXO_DSN",
-    "host=localhost dbname=homexo_dev user=homexo password=homexo",
+    os.environ.get("HOMEXO_TEST_DSN", "host=localhost dbname=homexo_dev user=homexo password=homexo")
 )
 DEFAULT_MODEL_VERSION = "location-v1"
 DEFAULT_TILE_SERVER_URL = os.environ.get("HOMEXO_TILE_SERVER_URL", "http://localhost:8080")
 
-app = FastAPI(title="HOMEXO Location Intelligence API")
+_db_pool: Optional[ThreadedConnectionPool] = None
 
 
-def _get_conn():
-    return psycopg2.connect(DSN)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    global _db_pool
+    if _db_pool is not None and not _db_pool.closed:
+        _db_pool.closeall()
+
+
+app = FastAPI(title="HOMEXO Location Intelligence API", lifespan=lifespan)
+
+
+def get_db_pool() -> ThreadedConnectionPool:
+    global _db_pool
+    if _db_pool is None or _db_pool.closed:
+        _db_pool = ThreadedConnectionPool(minconn=2, maxconn=20, dsn=DSN)
+    return _db_pool
+
+
+@contextmanager
+def get_db_conn():
+    pool = get_db_pool()
+    conn = pool.getconn()
+    try:
+        yield conn
+    finally:
+        pool.putconn(conn)
+
 
 
 def _require_project(cur, project_id: int) -> dict:
@@ -50,11 +77,11 @@ def _require_project(cur, project_id: int) -> dict:
     return dict(row)
 
 
+
 @app.get("/api/projects/{project_id}/location")
 def get_location(project_id: int, model_version: str = DEFAULT_MODEL_VERSION):
     """Score summary + top USPs + top POIs — a pure read, no scoring call."""
-    conn = _get_conn()
-    try:
+    with get_db_conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
             project = _require_project(cur, project_id)
 
@@ -109,8 +136,6 @@ def get_location(project_id: int, model_version: str = DEFAULT_MODEL_VERSION):
             boundary = None
             if boundary_row and boundary_row["geojson"]:
                 boundary = {"geometry": json.loads(boundary_row["geojson"]), "validated": boundary_row["validated"]}
-    finally:
-        conn.close()
 
     return {
         "project_id": project["id"],
@@ -134,8 +159,7 @@ def get_pois(
     limit: int = Query(default=200, le=1000),
 ):
     """Full filterable POI list — still a pure read, no scoring/geo call."""
-    conn = _get_conn()
-    try:
+    with get_db_conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
             _require_project(cur, project_id)
 
@@ -170,8 +194,6 @@ def get_pois(
                 d["bearing_deg"] = float(d["bearing_deg"])
                 d["confidence"] = float(d["confidence"])
                 rows.append(d)
-    finally:
-        conn.close()
 
     return {"project_id": project_id, "count": len(rows), "pois": rows}
 
@@ -182,12 +204,9 @@ def get_geojson(project_id: int):
     bearing, or score is re-derived here, only PostGIS ring buffering
     (deterministic geometry formatting) on the project's stored point.
     """
-    conn = _get_conn()
-    try:
+    with get_db_conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
             _require_project(cur, project_id)
-    finally:
-        conn.close()
 
     return build_geojson(DSN, project_id)
 
@@ -201,14 +220,12 @@ def get_map_png(project_id: int, tile_server_url: str = DEFAULT_TILE_SERVER_URL)
     recomputes a score or relationship, only composites an image from
     what's already stored).
     """
-    conn = _get_conn()
-    try:
+    with get_db_conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
             _require_project(cur, project_id)
-    finally:
-        conn.close()
 
     meta = render_static_map(DSN, project_id, tile_server_url=tile_server_url)
     with open(meta.image_path, "rb") as f:
         image_bytes = f.read()
     return Response(content=image_bytes, media_type="image/png")
+

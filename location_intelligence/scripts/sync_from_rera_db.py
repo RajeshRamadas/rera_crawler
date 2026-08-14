@@ -12,6 +12,7 @@ Usage:
 import os
 import sys
 import psycopg2
+from psycopg2.extras import execute_values
 
 SRC_DSN = os.getenv("RERA_DB_URL", "postgresql://rera_user:rera_password@localhost:5432/rera_db")
 DST_DSN = os.getenv("HOMEXO_DSN", os.getenv("HOMEXO_TEST_DSN", "postgresql://rera_user:rera_password@localhost:5432/homexo_location_test"))
@@ -36,26 +37,44 @@ def sync_properties(src_dsn: str, dst_dsn: str):
     cur_dst = conn_dst.cursor()
 
     print("[*] Fetching geocoded RERA properties from rera_db...")
-    query = """
-        SELECT 
-            registration_no,
-            COALESCE(project_name, 'RERA Property') AS name,
-            (data->'project_location'->>'longitude')::float AS lon,
-            (data->'project_location'->>'latitude')::float AS lat,
-            data->'project_location'->>'district' AS city
-        FROM rera_projects
-        WHERE data->'project_location'->>'latitude' IS NOT NULL 
-          AND data->'project_location'->>'latitude' != ''
-          AND (data->'project_location'->>'latitude')::float BETWEEN 11.0 AND 19.0
-          AND (data->'project_location'->>'longitude')::float BETWEEN 74.0 AND 79.5;
-    """
+    cur_src.execute("SELECT column_name FROM information_schema.columns WHERE table_name='rera_projects';")
+    cols = {r[0] for r in cur_src.fetchall()}
+
+    reg_col = "registration_no" if "registration_no" in cols else ("rera_id" if "rera_id" in cols else "id::text")
+    name_col = "project_name" if "project_name" in cols else "name"
+
+    if "data" in cols:
+        query = f"""
+            SELECT 
+                {reg_col},
+                COALESCE({name_col}, 'RERA Property') AS name,
+                (data->'project_location'->>'longitude')::float AS lon,
+                (data->'project_location'->>'latitude')::float AS lat,
+                data->'project_location'->>'district' AS city
+            FROM rera_projects
+            WHERE data->'project_location'->>'latitude' IS NOT NULL 
+              AND data->'project_location'->>'latitude' != '';
+        """
+    else:
+        query = f"""
+            SELECT 
+                {reg_col},
+                COALESCE({name_col}, 'RERA Property') AS name,
+                ST_X(geom) AS lon,
+                ST_Y(geom) AS lat,
+                city
+            FROM rera_projects
+            WHERE geom IS NOT NULL;
+        """
+
+
     cur_src.execute(query)
     rows = cur_src.fetchall()
     print(f"[*] Discovered {len(rows)} valid geocoded properties.")
 
     upsert_query = """
         INSERT INTO rera_projects (rera_id, name, geom, status, city)
-        VALUES (%s, %s, ST_SetSRID(ST_MakePoint(%s, %s), 4326), 'active', %s)
+        VALUES %s
         ON CONFLICT (rera_id) DO UPDATE SET
             name = EXCLUDED.name,
             geom = EXCLUDED.geom,
@@ -63,12 +82,16 @@ def sync_properties(src_dsn: str, dst_dsn: str):
             updated_at = now();
     """
 
-    synced_count = 0
-    for reg_no, name, lon, lat, city in rows:
-        cur_dst.execute(upsert_query, (reg_no, name, lon, lat, city))
-        synced_count += 1
+    template = "(%s, %s, ST_SetSRID(ST_MakePoint(%s, %s), 4326), 'active', %s)"
+
+    if rows:
+        execute_values(cur_dst, upsert_query, rows, template=template, page_size=1000)
+        synced_count = len(rows)
+    else:
+        synced_count = 0
 
     conn_dst.commit()
+
 
     # Get final total count in destination
     cur_dst.execute("SELECT COUNT(*) FROM rera_projects WHERE status = 'active';")
