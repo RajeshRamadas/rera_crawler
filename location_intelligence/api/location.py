@@ -112,12 +112,227 @@ class POIListResponse(BaseModel):
     pois: List[POIItem]
 
 
+class DeveloperProjectSummary(BaseModel):
+    project_id: int
+    rera_id: str
+    name: str
+    developer: Optional[str] = None
+    city: Optional[str] = None
+    status: Optional[str] = None
+    location_score: Optional[float] = None
+    map_url: str
+
+
+class DeveloperProjectsResponse(BaseModel):
+    developer: str
+    total_projects: int
+    projects: List[DeveloperProjectSummary]
+
+
+class DeveloperItem(BaseModel):
+    developer: str
+    project_count: int
+
+
+class DeveloperListResponse(BaseModel):
+    total_developers: int
+    developers: List[DeveloperItem]
+
+
+class FullProjectDetailResponse(BaseModel):
+    project_id: int
+    rera_id: str
+    name: str
+    developer: Optional[str] = None
+    city: Optional[str] = None
+    status: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    location_score: Optional[float] = None
+    category_scores: Dict[str, float]
+    top_usps: List[USPItem]
+    pois: List[POIItem]
+    boundary: Optional[BoundaryItem] = None
+    map: MapInfo
+    model_version: str
+
+
 def _require_project(cur, project_id: int) -> dict:
     cur.execute("SELECT id, name, status, city FROM rera_projects WHERE id = %s;", (project_id,))
     row = cur.fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail=f"No project with id={project_id}")
     return dict(row)
+
+
+def _get_project_by_identifier(cur, identifier: str) -> dict:
+    if identifier.isdigit():
+        cur.execute(
+            "SELECT id, rera_id, name, developer, status, city, ST_X(geom) AS lon, ST_Y(geom) AS lat FROM rera_projects WHERE id = %s;",
+            (int(identifier),),
+        )
+    else:
+        cur.execute(
+            "SELECT id, rera_id, name, developer, status, city, ST_X(geom) AS lon, ST_Y(geom) AS lat FROM rera_projects WHERE rera_id = %s OR name ILIKE %s LIMIT 1;",
+            (identifier, f"%{identifier}%"),
+        )
+    row = cur.fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail=f"No project found matching '{identifier}'")
+    return dict(row)
+
+
+# ── Developer Endpoints ─────────────────────────────────────────────────────────
+
+@app.get("/api/developers", response_model=DeveloperListResponse)
+def list_developers():
+    """Returns a list of all developers with their project counts."""
+    with get_db_conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+            cur.execute(
+                """
+                SELECT COALESCE(developer, 'Unknown Developer') AS developer, count(*) AS project_count
+                FROM rera_projects
+                GROUP BY COALESCE(developer, 'Unknown Developer')
+                ORDER BY project_count DESC, developer ASC;
+                """
+            )
+            rows = [dict(r) for r in cur.fetchall()]
+    return {"total_developers": len(rows), "developers": rows}
+
+
+@app.get("/api/developers/projects", response_model=DeveloperProjectsResponse)
+@app.get("/api/developers/{developer_name}/projects", response_model=DeveloperProjectsResponse)
+def get_developer_projects(developer: Optional[str] = None, developer_name: Optional[str] = None, model_version: str = settings.default_model_version):
+    """Given a developer name (query param or path param), returns all projects by that developer
+    along with location scores and map links.
+    """
+    target_developer = developer_name or developer
+    if not target_developer:
+        raise HTTPException(status_code=400, detail="Must provide 'developer' parameter or path variable.")
+
+    with get_db_conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+            cur.execute(
+                """
+                SELECT p.id, p.rera_id, p.name, p.developer, p.status, p.city,
+                       (SELECT score FROM location_scores WHERE project_id = p.id AND category = 'overall' AND model_version = %s LIMIT 1) AS location_score
+                FROM rera_projects p
+                WHERE p.developer ILIKE %s
+                ORDER BY p.name ASC;
+                """,
+                (model_version, f"%{target_developer}%"),
+            )
+            rows = cur.fetchall()
+
+            projects = []
+            for r in rows:
+                p_dict = dict(r)
+                loc_score = float(p_dict["location_score"]) if p_dict["location_score"] is not None else None
+                projects.append({
+                    "project_id": p_dict["id"],
+                    "rera_id": p_dict["rera_id"],
+                    "name": p_dict["name"],
+                    "developer": p_dict["developer"],
+                    "city": p_dict["city"],
+                    "status": p_dict["status"],
+                    "location_score": loc_score,
+                    "map_url": f"/api/projects/{p_dict['id']}/location/map.png",
+                })
+
+    matched_dev_name = projects[0]["developer"] if projects else target_developer
+    return {
+        "developer": matched_dev_name or target_developer,
+        "total_projects": len(projects),
+        "projects": projects,
+    }
+
+
+# ── Full Project Details Endpoint ──────────────────────────────────────────────
+
+@app.get("/api/projects/{identifier}/full", response_model=FullProjectDetailResponse)
+def get_full_project_detail(identifier: str, model_version: str = settings.default_model_version):
+    """Given a project ID or RERA Registration Number or Name, returns full project information
+    including developer, location lat/lon, overall & category scores, top location USPs, key POIs,
+    site boundary, and static map URL.
+    """
+    with get_db_conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+            project = _get_project_by_identifier(cur, identifier)
+            project_id = project["id"]
+
+            cur.execute(
+                "SELECT category, score FROM location_scores WHERE project_id = %s AND model_version = %s;",
+                (project_id, model_version),
+            )
+            score_rows = cur.fetchall()
+            category_scores = {r["category"]: float(r["score"]) for r in score_rows if r["category"] != "overall"}
+            overall = next((float(r["score"]) for r in score_rows if r["category"] == "overall"), None)
+
+            cur.execute(
+                """
+                SELECT pu.rank, pu.headline_text, p.id AS poi_id, p.name, p.category, pp.distance_km
+                FROM project_usps pu
+                JOIN pois p ON p.id = pu.poi_id
+                JOIN project_pois pp ON pp.project_id = pu.project_id AND pp.poi_id = pu.poi_id
+                WHERE pu.project_id = %s AND pu.model_version = %s
+                ORDER BY pu.rank ASC;
+                """,
+                (project_id, model_version),
+            )
+            top_usps = []
+            for r in cur.fetchall():
+                d = dict(r)
+                d["distance_km"] = float(d["distance_km"])
+                top_usps.append(d)
+
+            cur.execute(
+                """
+                SELECT p.id AS poi_id, p.name, p.category, p.subcategory,
+                       pp.distance_km, pp.direction, pp.band
+                FROM project_pois pp
+                JOIN pois p ON p.id = pp.poi_id
+                WHERE pp.project_id = %s
+                ORDER BY pp.distance_km ASC
+                LIMIT 20;
+                """,
+                (project_id,),
+            )
+            pois = []
+            for r in cur.fetchall():
+                d = dict(r)
+                d["distance_km"] = float(d["distance_km"])
+                pois.append(d)
+
+            cur.execute(
+                "SELECT ST_AsGeoJSON(geom) AS geojson, validated FROM project_boundaries WHERE project_id = %s;",
+                (project_id,),
+            )
+            boundary_row = cur.fetchone()
+            boundary = None
+            if boundary_row and boundary_row["geojson"]:
+                boundary = {"geometry": json.loads(boundary_row["geojson"]), "validated": boundary_row["validated"]}
+
+    lat = float(project["lat"]) if project.get("lat") is not None else None
+    lon = float(project["lon"]) if project.get("lon") is not None else None
+
+    return {
+        "project_id": project["id"],
+        "rera_id": project["rera_id"],
+        "name": project["name"],
+        "developer": project.get("developer"),
+        "city": project.get("city"),
+        "status": project.get("status"),
+        "latitude": lat,
+        "longitude": lon,
+        "location_score": overall,
+        "category_scores": category_scores,
+        "top_usps": top_usps,
+        "pois": pois,
+        "boundary": boundary,
+        "map": {"url": f"/api/projects/{project['id']}/location/map.png"},
+        "model_version": model_version,
+    }
 
 
 @app.get("/api/projects/{project_id}/location", response_model=LocationSummaryResponse)

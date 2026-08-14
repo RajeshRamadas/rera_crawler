@@ -127,3 +127,32 @@ def test_map_png_endpoint_returns_image(fully_seeded_project):
 def test_unknown_project_returns_404():
     resp = client.get("/api/projects/999999999/location")
     assert resp.status_code == 404
+
+
+def test_developer_projects_endpoint(fully_seeded_project):
+    project_id = fully_seeded_project
+    conn = psycopg2.connect(DSN)
+    with conn.cursor() as cur:
+        cur.execute("UPDATE rera_projects SET developer = 'Prestige Group' WHERE id = %s;", (project_id,))
+    conn.commit()
+    conn.close()
+
+    resp = client.get("/api/developers/Prestige Group/projects")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["developer"] == "Prestige Group"
+    assert body["total_projects"] >= 1
+    assert any(p["project_id"] == project_id for p in body["projects"])
+
+
+def test_full_project_detail_endpoint(fully_seeded_project):
+    project_id = fully_seeded_project
+    resp = client.get(f"/api/projects/{project_id}/full")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["project_id"] == project_id
+    assert "location_score" in body
+    assert "top_usps" in body
+    assert "pois" in body
+    assert body["map"]["url"] == f"/api/projects/{project_id}/location/map.png"
+
