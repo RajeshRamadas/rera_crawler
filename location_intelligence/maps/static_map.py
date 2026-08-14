@@ -40,13 +40,15 @@ except ImportError:  # pragma: no cover
     requests = None
 
 from concurrent.futures import ThreadPoolExecutor
+from config import settings
 
 OSM_ATTRIBUTION = "\u00a9 OpenStreetMap contributors"
 RING_RADII_KM = [2, 5, 10, 20]
 TILE_SIZE = 256
 DEFAULT_ZOOM = 14
 GRID_HALF = 4  # 9x9 tile grid at zoom 14 — ~18km wide, project pin centered with room for all rings
-CACHE_DIR = Path(os.environ.get("HOMEXO_MAP_CACHE_DIR", "/tmp/homexo_static_maps"))
+CACHE_DIR = settings.map_cache_dir
+
 
 CATEGORY_COLORS = {
     "transport": (0, 102, 204), "healthcare": (204, 0, 0), "education": (0, 153, 76),
@@ -186,7 +188,7 @@ def _compute_cache_key(dsn_or_conn, project_id: int) -> str:
 def render_static_map(
     dsn: str,
     project_id: int,
-    tile_server_url: str = "http://localhost:8080",
+    tile_server_url: str = settings.tile_server_url,
     zoom: int = DEFAULT_ZOOM,
     debug_layers: bool = False,
 ) -> StaticMapMeta:

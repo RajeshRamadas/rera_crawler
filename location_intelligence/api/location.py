@@ -20,22 +20,17 @@ file read, not a render.
 from contextlib import asynccontextmanager, contextmanager
 import json
 import os
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 import psycopg2
 import psycopg2.extras
 from psycopg2.pool import ThreadedConnectionPool
 from fastapi import FastAPI, HTTPException, Query, Response
+from pydantic import BaseModel, Field
 
+from config import settings
 from maps.geojson import build_geojson
 from maps.static_map import render_static_map
-
-DSN = os.environ.get(
-    "HOMEXO_DSN",
-    os.environ.get("HOMEXO_TEST_DSN", "host=localhost dbname=homexo_dev user=homexo password=homexo")
-)
-DEFAULT_MODEL_VERSION = "location-v1"
-DEFAULT_TILE_SERVER_URL = os.environ.get("HOMEXO_TILE_SERVER_URL", "http://localhost:8080")
 
 _db_pool: Optional[ThreadedConnectionPool] = None
 
@@ -54,7 +49,7 @@ app = FastAPI(title="HOMEXO Location Intelligence API", lifespan=lifespan)
 def get_db_pool() -> ThreadedConnectionPool:
     global _db_pool
     if _db_pool is None or _db_pool.closed:
-        _db_pool = ThreadedConnectionPool(minconn=2, maxconn=20, dsn=DSN)
+        _db_pool = ThreadedConnectionPool(minconn=2, maxconn=20, dsn=settings.dsn)
     return _db_pool
 
 
@@ -68,6 +63,54 @@ def get_db_conn():
         pool.putconn(conn)
 
 
+# ── Pydantic Response Schemas ──────────────────────────────────────────────────
+
+class USPItem(BaseModel):
+    rank: int
+    headline_text: str
+    poi_id: int
+    name: Optional[str] = None
+    category: str
+    distance_km: float
+
+
+class POIItem(BaseModel):
+    poi_id: int
+    name: Optional[str] = None
+    category: str
+    subcategory: Optional[str] = None
+    distance_km: float
+    direction: Optional[str] = None
+    band: Optional[str] = None
+    bearing_deg: Optional[float] = None
+    confidence: Optional[float] = None
+
+
+class BoundaryItem(BaseModel):
+    geometry: Dict[str, Any]
+    validated: Optional[bool] = True
+
+
+class MapInfo(BaseModel):
+    url: str
+
+
+class LocationSummaryResponse(BaseModel):
+    project_id: int
+    location_score: Optional[float] = None
+    category_scores: Dict[str, float]
+    top_usps: List[USPItem]
+    pois: List[POIItem]
+    boundary: Optional[BoundaryItem] = None
+    map: MapInfo
+    model_version: str
+
+
+class POIListResponse(BaseModel):
+    project_id: int
+    count: int
+    pois: List[POIItem]
+
 
 def _require_project(cur, project_id: int) -> dict:
     cur.execute("SELECT id, name, status, city FROM rera_projects WHERE id = %s;", (project_id,))
@@ -77,9 +120,9 @@ def _require_project(cur, project_id: int) -> dict:
     return dict(row)
 
 
+@app.get("/api/projects/{project_id}/location", response_model=LocationSummaryResponse)
+def get_location(project_id: int, model_version: str = settings.default_model_version):
 
-@app.get("/api/projects/{project_id}/location")
-def get_location(project_id: int, model_version: str = DEFAULT_MODEL_VERSION):
     """Score summary + top USPs + top POIs — a pure read, no scoring call."""
     with get_db_conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
@@ -149,7 +192,7 @@ def get_location(project_id: int, model_version: str = DEFAULT_MODEL_VERSION):
     }
 
 
-@app.get("/api/projects/{project_id}/location/pois")
+@app.get("/api/projects/{project_id}/location/pois", response_model=POIListResponse)
 def get_pois(
     project_id: int,
     category: Optional[str] = None,
@@ -208,11 +251,11 @@ def get_geojson(project_id: int):
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
             _require_project(cur, project_id)
 
-    return build_geojson(DSN, project_id)
+    return build_geojson(settings.dsn, project_id)
 
 
 @app.get("/api/projects/{project_id}/location/map.png")
-def get_map_png(project_id: int, tile_server_url: str = DEFAULT_TILE_SERVER_URL):
+def get_map_png(project_id: int, tile_server_url: str = settings.tile_server_url):
     """Serves the cached static map (Stage 7); a cache hit is a plain file
     read. A cache miss re-renders — matches design doc §3.5's own "cached;
     invalidated only when relationships/scores change" behavior, not a
@@ -224,8 +267,9 @@ def get_map_png(project_id: int, tile_server_url: str = DEFAULT_TILE_SERVER_URL)
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
             _require_project(cur, project_id)
 
-    meta = render_static_map(DSN, project_id, tile_server_url=tile_server_url)
+    meta = render_static_map(settings.dsn, project_id, tile_server_url=tile_server_url)
     with open(meta.image_path, "rb") as f:
         image_bytes = f.read()
     return Response(content=image_bytes, media_type="image/png")
+
 

@@ -13,9 +13,11 @@ import os
 import sys
 import psycopg2
 from psycopg2.extras import execute_values
+from config import settings
 
-SRC_DSN = os.getenv("RERA_DB_URL", "postgresql://rera_user:rera_password@localhost:5432/rera_db")
-DST_DSN = os.getenv("HOMEXO_DSN", os.getenv("HOMEXO_TEST_DSN", "postgresql://rera_user:rera_password@localhost:5432/homexo_location_test"))
+SRC_DSN = settings.rera_db_url
+DST_DSN = settings.dsn
+
 
 
 def sync_properties(src_dsn: str, dst_dsn: str):
