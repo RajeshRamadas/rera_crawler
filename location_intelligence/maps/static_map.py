@@ -32,7 +32,7 @@ from typing import Optional
 
 import psycopg2
 import psycopg2.extras
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 try:
     import requests
@@ -43,7 +43,7 @@ OSM_ATTRIBUTION = "\u00a9 OpenStreetMap contributors"
 RING_RADII_KM = [2, 5, 10, 20]
 TILE_SIZE = 256
 DEFAULT_ZOOM = 14
-GRID_HALF = 4  # 9×9 tile grid at zoom 14 — ~18km wide, project pin centered with room for all rings
+GRID_HALF = 4  # 9x9 tile grid at zoom 14 — ~18km wide, project pin centered with room for all rings
 CACHE_DIR = Path(os.environ.get("HOMEXO_MAP_CACHE_DIR", "/tmp/homexo_static_maps"))
 
 CATEGORY_COLORS = {
@@ -51,6 +51,25 @@ CATEGORY_COLORS = {
     "employment": (102, 0, 153), "shopping": (255, 140, 0), "lifestyle": (0, 153, 153),
     "civic": (90, 90, 90), "hospitality": (204, 0, 153), "future": (150, 150, 0),
 }
+
+CATEGORY_ICONS = {
+    "transport": "T", "healthcare": "H", "education": "E",
+    "employment": "W", "shopping": "S", "lifestyle": "L",
+    "civic": "G", "hospitality": "Ho", "future": "F",
+}
+
+# ── Premium Typography ─────────────────────────────────────────────────────────
+_FONT_BASE = Path("/usr/share/fonts/truetype/noto")
+
+def _load_font(weight: str, size: int) -> ImageFont.FreeTypeFont:
+    """Load NotoSans with fallback to PIL default."""
+    path = _FONT_BASE / f"NotoSans-{weight}.ttf"
+    try:
+        return ImageFont.truetype(str(path), size)
+    except Exception:
+        return ImageFont.load_default()
+
+
 
 
 @dataclass
@@ -185,11 +204,40 @@ def render_static_map(
     mpp = _meters_per_pixel(project["lat"], zoom)
     proj_px, proj_py = _latlon_to_px(project["lat"], project["lon"], zoom, top_left_x, top_left_y)
 
+    # ── Fonts ─────────────────────────────────────────────────────────────────
+    font_xs   = _load_font("Regular",  11)
+    font_sm   = _load_font("Regular",  13)
+    font_md   = _load_font("SemiBold", 14)
+    font_lg   = _load_font("Bold",     16)
+    font_icon = _load_font("Bold",     11)
+    font_usp_hdr = _load_font("Bold",  13)
+    font_usp_row = _load_font("Regular", 13)
+
+    # ── Collision registry (list of [x1,y1,x2,y2] placed boxes) ─────────────
+    placed_boxes: list[tuple[int,int,int,int]] = []
+
+    def _no_overlap(x1, y1, x2, y2, pad=4) -> bool:
+        for bx1,by1,bx2,by2 in placed_boxes:
+            if x1-pad < bx2 and x2+pad > bx1 and y1-pad < by2 and y2+pad > by1:
+                return False
+        return True
+
+    def _try_place(candidates):
+        """Return first (x,y) candidate whose bounding box doesn't overlap."""
+        for cx, cy, w, h in candidates:
+            if _no_overlap(cx, cy, cx+w, cy+h):
+                placed_boxes.append((cx, cy, cx+w, cy+h))
+                return cx, cy, w, h
+        # Force-place last candidate (fallback)
+        cx, cy, w, h = candidates[-1]
+        placed_boxes.append((cx, cy, cx+w, cy+h))
+        return cx, cy, w, h
+
     # ── Layer 1: Semi-transparent ring fills ─────────────────────────────────
     ring_overlay = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
     ring_draw = ImageDraw.Draw(ring_overlay)
-    ring_fills  = [(60, 100, 220, 18), (80, 120, 210, 12), (100, 140, 200, 8), (120, 160, 190, 5)]
-    ring_stroke = [(60, 100, 220, 200), (80, 120, 210, 180), (100, 140, 200, 160), (120, 160, 190, 140)]
+    ring_fills  = [(60, 100, 220, 15), (80, 120, 210, 10), (100, 140, 200, 6), (120, 160, 190, 4)]
+    ring_stroke = [(60, 100, 220, 200), (80, 120, 210, 170), (100, 140, 200, 140), (120, 160, 190, 120)]
     for i, radius_km in enumerate(reversed(RING_RADII_KM)):
         r_px = (radius_km * 1000) / mpp
         ring_draw.ellipse(
@@ -199,99 +247,152 @@ def render_static_map(
     canvas = Image.alpha_composite(canvas.convert("RGBA"), ring_overlay).convert("RGB")
     draw = ImageDraw.Draw(canvas)
 
-    # ── Layer 2: Ring distance labels ────────────────────────────────────────
+    # ── Layer 2: Ring distance labels (NotoSans Regular 11) ──────────────────
     for radius_km in RING_RADII_KM:
         r_px = (radius_km * 1000) / mpp
-        lx = proj_px + r_px * 0.68
-        ly = proj_py - r_px * 0.68
-        tb = draw.textbbox((lx, ly), f"{radius_km}km")
-        draw.rectangle([tb[0]-3, tb[1]-2, tb[2]+3, tb[3]+2], fill=(255, 255, 255), outline=(80, 80, 200))
-        draw.text((lx, ly), f"{radius_km}km", fill=(30, 30, 160))
+        lx = int(proj_px + r_px * 0.70)
+        ly = int(proj_py - r_px * 0.70)
+        label = f"{radius_km}km"
+        tb = draw.textbbox((lx, ly), label, font=font_xs)
+        # soft white pill
+        draw.rounded_rectangle([tb[0]-5, tb[1]-3, tb[2]+5, tb[3]+3], radius=4,
+                                fill=(255,255,255,230), outline=(100,120,210))
+        draw.text((lx, ly), label, font=font_xs, fill=(40, 40, 180))
 
-    # ── Layer 3: POI markers + leader-line label chips ────────────────────────
-    import math as _math
+    # ── Layer 3: POI markers + collision-aware label chips ───────────────────
     sorted_pois = sorted(pois, key=lambda x: x["distance_km"])
-    LEADER = 60
-    CATEGORY_ICONS = {
-        "transport": "T", "healthcare": "H", "education": "E",
-        "employment": "W", "shopping": "S", "lifestyle": "L",
-        "civic": "G", "hospitality": "Ho", "future": "F",
-    }
+    LEADER = 70       # leader line length in px
+    DOT_R  = 10       # dot radius
+
     for poi in sorted_pois:
         px, py = _latlon_to_px(poi["lat"], poi["lon"], zoom, top_left_x, top_left_y)
-        if not (0 <= px <= canvas.width and 0 <= py <= canvas.height):
+        if not (DOT_R < px < canvas.width - DOT_R and DOT_R < py < canvas.height - DOT_R):
             continue
         color = CATEGORY_COLORS.get(poi["category"], (100, 100, 100))
-        # Outer white halo + colored dot + icon letter
-        draw.ellipse([px-9, py-9, px+9, py+9], fill=(255, 255, 255))
-        draw.ellipse([px-7, py-7, px+7, py+7], fill=color)
-        icon = CATEGORY_ICONS.get(poi["category"], "?")
-        ib = draw.textbbox((0, 0), icon)
-        draw.text((px - (ib[2]-ib[0])//2, py - (ib[3]-ib[1])//2 - 1), icon, fill=(255, 255, 255))
-        # Leader line
-        dx = px - proj_px; dy = py - proj_py
-        angle = _math.atan2(dy, dx)
-        lx = int(px + _math.cos(angle) * LEADER)
-        ly = int(py + _math.sin(angle) * LEADER)
-        draw.line([(px, py), (lx, ly)], fill=color, width=2)
-        # Label chip: white bg + colored left accent bar + "Name  X.Xkm"
-        dist_f = float(poi["distance_km"])
-        label_text = f"{poi['name']}  {dist_f:.1f}km"
-        tb = draw.textbbox((0, 0), label_text)
-        lw, lh = tb[2]-tb[0], tb[3]-tb[1]
-        ax = (lx + 6) if _math.cos(angle) >= 0 else (lx - lw - 10)
-        ay = ly - lh // 2
-        ax = max(4, min(canvas.width - lw - 14, ax))
-        ay = max(4, min(canvas.height - lh - 8, ay))
-        draw.rectangle([ax-4, ay-3, ax+lw+6, ay+lh+3], fill=(255, 255, 255), outline=(200, 200, 200))
-        draw.rectangle([ax-4, ay-3, ax-1, ay+lh+3], fill=color)   # colored accent bar
-        draw.text((ax+2, ay), label_text, fill=(15, 15, 15))
 
-    # ── Layer 4: Dark USP card (top-left, drawn directly) ────────────────────
+        # Drop shadow
+        draw.ellipse([px-DOT_R, py-DOT_R+2, px+DOT_R, py+DOT_R+2], fill=(0,0,0,60))
+        # White halo
+        draw.ellipse([px-DOT_R, py-DOT_R, px+DOT_R, py+DOT_R], fill=(255,255,255))
+        # Colored circle
+        draw.ellipse([px-DOT_R+2, py-DOT_R+2, px+DOT_R-2, py+DOT_R-2], fill=color)
+        # Category icon letter (white, bold 11pt)
+        icon = CATEGORY_ICONS.get(poi["category"], "?")
+        ib = draw.textbbox((0,0), icon, font=font_icon)
+        iw, ih = ib[2]-ib[0], ib[3]-ib[1]
+        draw.text((px-iw//2, py-ih//2-1), icon, font=font_icon, fill=(255,255,255))
+
+        # Leader line pointing away from project center
+        dx = px - proj_px; dy = py - proj_py
+        angle = math.atan2(dy, dx)
+        lx = int(px + math.cos(angle) * LEADER)
+        ly = int(py + math.sin(angle) * LEADER)
+        draw.line([(px, py), (lx, ly)], fill=color, width=2)
+
+        # Label chip: "Name  1.4km" in NotoSans SemiBold 14pt
+        dist_f = float(poi["distance_km"])
+        name_part = poi["name"] or poi["category"].title()
+        dist_part = f"  {dist_f:.1f}km"
+        label_text = name_part + dist_part
+        tb = draw.textbbox((0, 0), label_text, font=font_md)
+        lw, lh = tb[2]-tb[0], tb[3]-tb[1]
+        PAD_X, PAD_Y = 8, 5
+
+        # Generate 8 candidate positions clockwise from leader tip
+        tip_right = lx + 6
+        tip_left  = lx - lw - PAD_X*2 - 4
+        tip_above = ly - lh - PAD_Y*2 - 4
+        tip_below = ly + 4
+        tip_vctr  = ly - (lh + PAD_Y*2)//2
+
+        candidates = [
+            (tip_right, tip_vctr,  lw + PAD_X*2, lh + PAD_Y*2),
+            (tip_left,  tip_vctr,  lw + PAD_X*2, lh + PAD_Y*2),
+            (lx - (lw+PAD_X*2)//2, tip_above, lw + PAD_X*2, lh + PAD_Y*2),
+            (lx - (lw+PAD_X*2)//2, tip_below, lw + PAD_X*2, lh + PAD_Y*2),
+            (tip_right, tip_above, lw + PAD_X*2, lh + PAD_Y*2),
+            (tip_right, tip_below, lw + PAD_X*2, lh + PAD_Y*2),
+            (tip_left,  tip_above, lw + PAD_X*2, lh + PAD_Y*2),
+            (tip_left,  tip_below, lw + PAD_X*2, lh + PAD_Y*2),
+        ]
+        # Clamp candidates to canvas
+        valid = []
+        for cx, cy, cw, ch in candidates:
+            cx = max(4, min(canvas.width  - cw - 4, cx))
+            cy = max(4, min(canvas.height - ch - 4, cy))
+            valid.append((cx, cy, cw, ch))
+
+        bx, by, bw, bh = _try_place(valid)
+
+        # Draw chip: white rounded rect + colored left bar
+        draw.rounded_rectangle([bx, by, bx+bw, by+bh], radius=5,
+                                fill=(255,255,255), outline=(210,210,215))
+        draw.rounded_rectangle([bx, by, bx+4, by+bh], radius=2, fill=color)
+        # Name in SemiBold, distance in Regular-light
+        nx, ny = bx + PAD_X + 2, by + PAD_Y
+        # Draw name part bold, dist part regular
+        nb = draw.textbbox((nx, ny), name_part, font=font_md)
+        draw.text((nx, ny), name_part, font=font_md, fill=(18,18,22))
+        draw.text((nx + (nb[2]-nb[0]), ny + 1), dist_part, font=font_sm, fill=(100,100,110))
+
+    # ── Layer 4: Dark USP card ────────────────────────────────────────────────
     if top_usps:
-        CARD_BG   = (22, 24, 34)
-        CARD_GOLD = (255, 200, 30)
-        card_w  = 490
-        card_h  = 30 + len(top_usps) * 22 + 10
+        CARD_BG   = (18, 20, 30)
+        CARD_GOLD = (255, 195, 25)
+        card_w  = 500
+        row_h   = 26
+        card_h  = 36 + len(top_usps) * row_h + 10
         cx1, cy1 = 14, 14
         cx2, cy2 = cx1 + card_w, cy1 + card_h
-        draw.rectangle([cx1, cy1, cx2, cy2], fill=CARD_BG)
-        draw.rectangle([cx1, cy1, cx2, cy1 + 4], fill=CARD_GOLD)   # gold top accent
-        draw.text((cx1 + 10, cy1 + 8), "TOP LOCATION HIGHLIGHTS", fill=CARD_GOLD)
+        # Card body
+        draw.rounded_rectangle([cx1, cy1, cx2, cy2], radius=8, fill=CARD_BG)
+        # Gold top accent stripe
+        draw.rounded_rectangle([cx1, cy1, cx2, cy1+4], radius=4, fill=CARD_GOLD)
+        # Header text
+        draw.text((cx1+12, cy1+9), "TOP LOCATION HIGHLIGHTS", font=font_usp_hdr, fill=CARD_GOLD)
+        # Rows
         for usp in top_usps:
-            row_y = cy1 + 32 + (usp["rank"] - 1) * 22
+            row_y = cy1 + 36 + (usp["rank"] - 1) * row_h
             cat = next((p["category"] for p in pois if p["name"] and p["name"] in usp["headline_text"]), None)
-            dot_color = CATEGORY_COLORS.get(cat, (180, 180, 180)) if cat else (180, 180, 180)
-            draw.ellipse([cx1+10, row_y+5, cx1+17, row_y+12], fill=dot_color)
+            dot_color = CATEGORY_COLORS.get(cat, (160, 160, 180)) if cat else (160, 160, 180)
+            # Category dot
+            draw.ellipse([cx1+12, row_y+6, cx1+20, row_y+14], fill=dot_color)
             display_text = usp["headline_text"].replace("\u2014", "-")
-            if len(display_text) > 64:
-                display_text = display_text[:61] + "..."
-            draw.text((cx1 + 23, row_y + 1), display_text, fill=(235, 235, 235))
+            if len(display_text) > 66:
+                display_text = display_text[:63] + "..."
+            draw.text((cx1 + 26, row_y+2), display_text, font=font_usp_row, fill=(230, 230, 238))
+        # Register card in collision list so POI labels avoid it
+        placed_boxes.append((cx1, cy1, cx2, cy2))
 
     # ── Layer 5: Central project pin ─────────────────────────────────────────
-    # Drop shadow
-    draw.ellipse([proj_px-11, proj_py-9, proj_px+11, proj_py+13], fill=(30, 30, 30))
+    PR = 13
+    # Soft shadow
+    draw.ellipse([proj_px-PR, proj_py-PR+3, proj_px+PR, proj_py+PR+3], fill=(0,0,0,50))
     # White outer ring
-    draw.ellipse([proj_px-11, proj_py-11, proj_px+11, proj_py+11], fill=(255, 255, 255))
+    draw.ellipse([proj_px-PR, proj_py-PR, proj_px+PR, proj_py+PR], fill=(255,255,255))
     # Gold fill
-    draw.ellipse([proj_px-9, proj_py-9, proj_px+9, proj_py+9], fill=(255, 210, 0), outline=(170, 120, 0), width=2)
-    # Dark inner center dot
-    draw.ellipse([proj_px-3, proj_py-3, proj_px+3, proj_py+3], fill=(120, 70, 0))
-    # Name badge above pin
+    draw.ellipse([proj_px-PR+2, proj_py-PR+2, proj_px+PR-2, proj_py+PR-2],
+                 fill=(255, 210, 0), outline=(170, 120, 0), width=2)
+    # Inner dark dot
+    draw.ellipse([proj_px-4, proj_py-4, proj_px+4, proj_py+4], fill=(110, 65, 0))
+
+    # Name badge above pin (NotoSans Bold 16pt)
     proj_name = project["name"]
-    nb = draw.textbbox((0, 0), proj_name)
-    nw, nh = nb[2]-nb[0], nb[3]-nb[1]
-    bx = max(6, min(canvas.width - nw - 18, proj_px - nw//2))
-    by = proj_py - nh - 26
-    draw.rectangle([bx-8, by-5, bx+nw+8, by+nh+5], fill=(255, 210, 0), outline=(150, 100, 0), width=2)
-    draw.text((bx, by), proj_name, fill=(25, 15, 0))
-    draw.line([(proj_px, by+nh+5), (proj_px, proj_py-11)], fill=(150, 100, 0), width=2)
+    nb_tb = draw.textbbox((0, 0), proj_name, font=font_lg)
+    nw, nh = nb_tb[2]-nb_tb[0], nb_tb[3]-nb_tb[1]
+    bx = max(8, min(canvas.width - nw - 28, proj_px - nw//2))
+    by = proj_py - nh - 30
+    draw.rounded_rectangle([bx-10, by-6, bx+nw+10, by+nh+6], radius=6,
+                            fill=(255, 210, 0), outline=(150, 100, 0), width=2)
+    draw.text((bx, by), proj_name, font=font_lg, fill=(25, 15, 0))
+    # Stem
+    draw.line([(proj_px, by+nh+6), (proj_px, proj_py-PR)], fill=(150, 100, 0), width=2)
 
     # ── Layer 6: OSM attribution ──────────────────────────────────────────────
-    attr_y = canvas.height - 18
-    attr_tb = draw.textbbox((6, attr_y), OSM_ATTRIBUTION)
-    draw.rectangle([0, attr_y-3, attr_tb[2]+10, canvas.height], fill=(255, 255, 255))
-    draw.text((6, attr_y), OSM_ATTRIBUTION, fill=(80, 80, 80))
+    attr_y = canvas.height - 20
+    attr_tb = draw.textbbox((6, attr_y), OSM_ATTRIBUTION, font=font_xs)
+    draw.rectangle([0, attr_y-4, attr_tb[2]+10, canvas.height], fill=(255,255,255))
+    draw.text((6, attr_y), OSM_ATTRIBUTION, font=font_xs, fill=(90, 90, 90))
 
     canvas.save(image_path)
     return StaticMapMeta(cache_key, str(image_path), RING_RADII_KM, True, from_cache=False)
