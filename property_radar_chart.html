@@ -615,129 +615,75 @@
     { key: 'transparency', name: 'Data Transparency', points: 'P-36 – P-37', weight: 0.8 }
   ];
 
-  // Real Scraped Properties Dataset (Scraped from Karnataka RERA DB)
-  const PROPERTIES = {
-    'elegant_tranquility': {
-      name: 'ELEGANT TRANQUILITY — Bengaluru Urban',
-      gateOK: true, // P-01 Pass
+  // ------------------------------------------------------------------ //
+  // Live API Cache — populated dynamically from /api/v1/projects/analyze
+  // ------------------------------------------------------------------ //
+  const PROPERTY_CACHE = {};   // { queryKey: analysisResult }
+  const PROPERTY_NAMES = [
+    { label: 'ELEGANT TRANQUILITY — Bengaluru Urban',   query: 'ELEGANT TRANQUILITY' },
+    { label: 'MAHINDRA BLOSSOM — Bengaluru Urban',      query: 'MAHINDRA BLOSSOM' },
+    { label: 'DIVINITY — Salarpuria Sattva',            query: 'DIVINITY' },
+    { label: 'Brigade Panorama — Bengaluru South',      query: 'Brigade Panorama' },
+    { label: 'Shankara Agraharam Sri Sharadamba',       query: 'Shankara Agraharam' },
+  ];
+
+  // Helper: convert analyze API response → dashboard shape
+  function apiResultToProperty(result) {
+    const r = result.radar_profile || {};
+    const scores = r.scores || {};
+    const reasons = r.reasons || {};
+    const ps = result.project_summary || {};
+    const oe = result.overall_evaluation || {};
+    return {
+      name: ps.project_name || 'Unknown',
+      developer: ps.developer_name || '',
+      status: ps.status || '',
+      gateOK: r.gateOK !== false,
+      healthScore: oe.health_score || 0,
+      riskLevel: oe.risk_level || '',
+      verdict: oe.verdict || '',
       scores: {
-        compliance: 95,
-        litigation: 100, // 0 complaints = 100
-        timeline: 90,
-        title: 95,
-        location: 88,
-        layout: 82,
-        promoter: 95,
-        transparency: 100
+        compliance:   scores.compliance   ?? 50,
+        litigation:   scores.litigation   ?? 50,
+        timeline:     scores.timeline     ?? 50,
+        title:        scores.title        ?? 50,
+        location:     scores.location     ?? 50,
+        layout:       scores.layout       ?? 50,
+        promoter:     scores.promoter     ?? 50,
+        transparency: scores.transparency ?? 50,
       },
       reasons: {
-        compliance: ["✓ Project actively registered under status 'APPROVED'."],
-        litigation: ["✓ 0 RERA complaints registered against project or promoter."],
-        timeline: ["✓ Project target completion date declared as 30/09/2029."],
-        title: ["✓ Survey numbers & SRO jurisdiction verified."],
-        location: ["✓ Geographic coordinates verified (12.918, 77.508)."],
-        layout: ["✓ 3,825 uploaded layout & site attachments."],
-        promoter: ["✓ Zero RERA complaints against promoter ELEGANT ALTIMA."],
-        transparency: ["✓ 100/100 Perfect Filing Transparency score."]
+        compliance:   reasons.compliance   || [],
+        litigation:   reasons.litigation   || [],
+        timeline:     reasons.timeline     || [],
+        title:        reasons.title        || [],
+        location:     reasons.location     || [],
+        layout:       reasons.layout       || [],
+        promoter:     reasons.promoter     || [],
+        transparency: reasons.transparency || [],
       }
-    },
-    'mahindra_blossom': {
-      name: 'MAHINDRA BLOSSOM — Bengaluru Urban',
-      gateOK: true, // P-01 Pass
-      scores: {
-        compliance: 88,
-        litigation: 75, // 5 complaints
-        timeline: 80,
-        title: 90,
-        location: 82,
-        layout: 78,
-        promoter: 85,
-        transparency: 92
-      },
-      reasons: {
-        compliance: ["✓ Project actively registered under status 'APPROVED'."],
-        litigation: ["❌ DEDUCTION -25 pts: 5 RERA complaints recorded on project."],
-        timeline: ["✓ Schedule declared with target completion date."],
-        title: ["✓ Survey numbers & title filings verified."],
-        location: ["✓ Geographic coordinates verified."],
-        layout: ["✓ Site plan and layout documents uploaded."],
-        promoter: ["⚠ 5 complaints recorded on builder Mahindra Lifespaces."],
-        transparency: ["✓ High Filing Quality score (92/100)."]
-      }
-    },
-    'divinity_sattva': {
-      name: 'DIVINITY — Salarpuria Sattva',
-      gateOK: true, // P-01 Pass
-      scores: {
-        compliance: 85,
-        litigation: 65, // 2 complaints
-        timeline: 70,
-        title: 75,
-        location: 80,
-        layout: 72,
-        promoter: 75,
-        transparency: 80
-      },
-      reasons: {
-        compliance: ["✓ Project actively registered under status 'APPROVED'."],
-        litigation: ["❌ DEDUCTION -35 pts: 2 RERA complaints recorded on project."],
-        timeline: ["⚠ Schedule under review."],
-        title: ["✓ Title documents uploaded."],
-        location: ["✓ District location declared."],
-        layout: ["✓ Layout plans filed."],
-        promoter: ["⚠ Promoter complaints recorded."],
-        transparency: ["✓ Filing quality score 80/100."]
-      }
-    },
-    'brigade_panorama': {
-      name: 'Brigade Panorama — Bengaluru South',
-      gateOK: true, // P-01 Pass
-      scores: {
-        compliance: 85,
-        litigation: 25, // 51 complaints (heavy litigation)
-        timeline: 35, // Target 2019 overdue
-        title: 60,
-        location: 50,
-        layout: 65,
-        promoter: 40,
-        transparency: 50
-      },
-      reasons: {
-        compliance: ["✓ Project status is 'APPROVED'."],
-        litigation: ["❌ DEDUCTION -75 pts: Recorded 51 total RERA complaints (8 on project, 43 on promoter).", "❌ DEDUCTION -15 pts: 4 active complaints under enquiry."],
-        timeline: ["❌ DEDUCTION -65 pts: Target date 30/04/2019 passed 6+ years ago without completion certificate."],
-        title: ["❌ DEDUCTION -40 pts: Unverified survey numbers & omitted SRO filing."],
-        location: ["❌ DEDUCTION -50 pts: Unverified spatial coordinates."],
-        layout: ["⚠ Limited layout plan & unit attachments uploaded."],
-        promoter: ["❌ DEDUCTION -60 pts: 43 complaints registered against promoter Brigade Enterprises."],
-        transparency: ["❌ DEDUCTION -50 pts: Filing Quality Score is low (50/100)."]
-      }
-    },
-    'shankara_agraharam': {
-      name: 'Shankara Agraharam Sri Sharadamba Enclave',
-      gateOK: true,
-      scores: {
-        compliance: 80,
-        litigation: 45, // 8 complaints
-        timeline: 30,
-        title: 40,
-        location: 45,
-        layout: 55,
-        promoter: 50,
-        transparency: 50
-      },
-      reasons: {
-        compliance: ["✓ Project status is 'APPROVED'."],
-        litigation: ["❌ DEDUCTION -55 pts: 8 complaints recorded (under enquiry)."],
-        timeline: ["❌ DEDUCTION -70 pts: Target completion date overdue."],
-        title: ["❌ DEDUCTION -60 pts: Missing SRO jurisdiction and survey numbers."],
-        location: ["❌ DEDUCTION -55 pts: Spatial coordinates unverified."],
-        layout: ["⚠ Missing unit layout attachments."],
-        promoter: ["❌ DEDUCTION -50 pts: Promoter litigation history."],
-        transparency: ["❌ DEDUCTION -50 pts: Filing quality score 50/100."]
-      }
+    };
+  }
+
+  async function fetchProperty(query) {
+    if (PROPERTY_CACHE[query]) return PROPERTY_CACHE[query];
+    try {
+      const res = await fetch(`/api/v1/projects/analyze?q=${encodeURIComponent(query)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      PROPERTY_CACHE[query] = apiResultToProperty(json);
+    } catch (e) {
+      console.warn(`[RERA] Could not load "${query}" from API:`, e.message);
+      // Fallback: empty shell so UI doesn't crash
+      PROPERTY_CACHE[query] = {
+        name: query, developer: '', status: 'UNKNOWN', gateOK: false,
+        healthScore: 0, riskLevel: 'UNKNOWN', verdict: 'Data unavailable — API error.',
+        scores: { compliance:50, litigation:50, timeline:50, title:50, location:50, layout:50, promoter:50, transparency:50 },
+        reasons: { compliance:[], litigation:[], timeline:[], title:[], location:[], layout:[], promoter:[], transparency:[] }
+      };
     }
-  };
+    return PROPERTY_CACHE[query];
+  }
 
   // Helper for Banding
   function getBand(score) {
@@ -746,25 +692,24 @@
     return { label: 'Flag', class: 'band-flag' };
   }
 
-  // Populate Dropdowns
+  // Populate Dropdowns from PROPERTY_NAMES list
   const selA = document.getElementById('selA');
   const selB = document.getElementById('selB');
 
-  Object.keys(PROPERTIES).forEach(id => {
+  PROPERTY_NAMES.forEach(p => {
     const optA = document.createElement('option');
-    optA.value = id;
-    optA.textContent = PROPERTIES[id].name;
+    optA.value = p.query;
+    optA.textContent = p.label;
     selA.appendChild(optA);
 
     const optB = document.createElement('option');
-    optB.value = id;
-    optB.textContent = PROPERTIES[id].name;
+    optB.value = p.query;
+    optB.textContent = p.label;
     selB.appendChild(optB);
   });
 
-  // Default Selection
-  selA.value = 'elegant_tranquility';
-  selB.value = 'brigade_panorama';
+  selA.value = PROPERTY_NAMES[0].query;
+  selB.value = PROPERTY_NAMES[3].query;
 
   // Custom Chart Plugin for Background Risk Rings (Red: 0-40, Amber: 40-70, Green: 70-100)
   const backgroundRingsPlugin = {
@@ -855,13 +800,17 @@
     }
   });
 
-  // Render function
-  function render() {
-    const keyA = selA.value;
-    const keyB = selB.value;
+  // Render function — async, loads live data from API
+  async function render() {
+    const queryA = selA.value;
+    const queryB = selB.value;
 
-    const propA = PROPERTIES[keyA];
-    const propB = PROPERTIES[keyB];
+    document.getElementById('breakdownTitle').textContent = 'Loading from RERA API…';
+
+    const [propA, propB] = await Promise.all([
+      fetchProperty(queryA),
+      fetchProperty(queryB),
+    ]);
 
     // 1. Render Gate Box
     const gateBox = document.getElementById('gateContent');
@@ -869,14 +818,14 @@
       <div class="gate-status ${propA.gateOK ? 'pass' : 'fail'}">
         <div>
           <strong>Property A: ${propA.name}</strong><br>
-          <span style="font-size: 0.8rem; opacity: 0.8;">P-01 Active Registration Status</span>
+          <span style="font-size: 0.8rem; opacity: 0.8;">P-01 Active Registration Status · Health: ${propA.healthScore}/100</span>
         </div>
         <span class="gate-badge">${propA.gateOK ? 'PASS (Clear)' : 'FAIL (Flagged)'}</span>
       </div>
       <div class="gate-status ${propB.gateOK ? 'pass' : 'fail'}">
         <div>
           <strong>Property B: ${propB.name}</strong><br>
-          <span style="font-size: 0.8rem; opacity: 0.8;">P-01 Active Registration Status</span>
+          <span style="font-size: 0.8rem; opacity: 0.8;">P-01 Active Registration Status · Health: ${propB.healthScore}/100</span>
         </div>
         <span class="gate-badge">${propB.gateOK ? 'PASS (Clear)' : 'FAIL (Flagged)'}</span>
       </div>
@@ -940,7 +889,7 @@
           ${reasonsHtml}
         </td>
         <td class="sources-list">
-          <span class="sources-badge" onclick="openPointsModal('${ax.key}', '${ax.name}', '${ax.points}')" title="Click to view underlying source points P-01..P-37">${ax.points} 🔍</span>
+          <span class="sources-badge" onclick="openPointsModal('${ax.key}', '${ax.name}', '${ax.points}', '${queryA}')" title="Click to view source points P-01..P-37">${ax.points} 🔍</span>
         </td>
         <td><span class="score-pill" style="background: rgba(255, 255, 255, 0.08);">${score}</span></td>
         <td><span class="band-tag ${band.class}">${band.label}</span></td>
@@ -993,17 +942,18 @@
     // 6. Set Comparison Summary & Footers
     document.getElementById('compareSummary').textContent = `Property A leads: ${aWins} · Property B leads: ${bWins} · Ties: ${ties}`;
 
-    const avgA = (dataA.reduce((sum, v) => sum + v, 0) / AXES.length).toFixed(1);
-    const avgB = (dataB.reduce((sum, v) => sum + v, 0) / AXES.length).toFixed(1);
-    const avgDelta = (avgA - avgB).toFixed(1);
+    const totalWeight = AXES.reduce((s, a) => s + a.weight, 0);
+    const wavgA = (AXES.reduce((s, a, i) => s + dataA[i] * a.weight, 0) / totalWeight).toFixed(1);
+    const wavgB = (AXES.reduce((s, a, i) => s + dataB[i] * a.weight, 0) / totalWeight).toFixed(1);
+    const avgDelta = (wavgA - wavgB).toFixed(1);
     const avgDeltaStr = avgDelta > 0 ? `+${avgDelta}` : `${avgDelta}`;
     const avgDeltaClass = avgDelta > 0 ? 'pos' : (avgDelta < 0 ? 'neg' : 'flat');
 
     document.getElementById('compareFoot').innerHTML = `
-      <div>Overall Composite Average Score:</div>
+      <div>Weighted Score (matches backend formula):</div>
       <div>
-        <span style="color: var(--accent-blue); margin-right: 1.5rem;">Prop A: ${avgA} / 100</span>
-        <span style="color: var(--accent-pink); margin-right: 1.5rem;">Prop B: ${avgB} / 100</span>
+        <span style="color: var(--accent-blue); margin-right: 1.5rem;">Prop A: ${wavgA} / 100</span>
+        <span style="color: var(--accent-pink); margin-right: 1.5rem;">Prop B: ${wavgB} / 100</span>
         <span class="delta ${avgDeltaClass}">Δ (A−B): ${avgDeltaStr}</span>
       </div>
     `;
@@ -1068,41 +1018,50 @@
     'P-37': { title: 'Omitted Attributes Count', desc: 'Count of missing optional fields or warnings.' }
   };
 
-  function openPointsModal(axisKey, axisName, pointsRange) {
+  // openPointsModal — now receives queryKey so it reads from live API cache
+  // and assigns per-P-point specific evaluation notes instead of a single axis note.
+  function openPointsModal(axisKey, axisName, pointsRange, queryKey) {
     const modal = document.getElementById('pointsModal');
     const modalTitle = document.getElementById('modalTitle');
     const modalBody = document.getElementById('modalBody');
 
-    const keyA = selA.value;
-    const propA = PROPERTIES[keyA];
+    // Read from live cache (populated by fetchProperty)
+    const propA = PROPERTY_CACHE[queryKey] || PROPERTY_CACHE[selA.value] || null;
 
-    modalTitle.textContent = `${axisName} Source Points (${pointsRange}) — Evaluation Breakdown`;
+    modalTitle.textContent = `${axisName} — Source Points (${pointsRange})`;
     modalBody.innerHTML = '';
 
     const pKeys = SOURCE_POINTS_MAP[axisKey] || [];
-    const score = propA.scores[axisKey];
-    const reasons = (propA.reasons && propA.reasons[axisKey]) ? propA.reasons[axisKey] : [];
-    
-    pKeys.forEach(p => {
+    const axisScore = propA ? (propA.scores[axisKey] ?? 50) : 50;
+    const axisReasons = propA ? (propA.reasons[axisKey] || []) : [];
+
+    // Separate negative vs positive reasons from the axis reasons list
+    const negReasons = axisReasons.filter(r => r.includes('❌'));
+    const warnReasons = axisReasons.filter(r => r.includes('⚠'));
+
+    pKeys.forEach((p, pIdx) => {
       const info = SOURCE_POINTS_DETAIL[p] || { title: `Source Point ${p}`, desc: 'RERA Karnataka evaluation criteria.' };
-      
-      // Determine positive vs negative evaluation
-      let statusTag = '<span class="band-tag band-clear">✓ POSITIVE</span>';
-      let evalNote = 'Evaluated compliant with zero penalty deductions.';
 
-      const isNegative = score < 70 || reasons.some(r => r.includes('❌'));
+      // Assign reasons round-robin across sub-points so each point gets its own specific note
+      const negNote = negReasons[pIdx] || null;
+      const warnNote = warnReasons[pIdx] || null;
 
-      if (isNegative) {
-        const match = reasons.find(r => r.includes('❌')) || 'Flagged penalty deduction applied under this category.';
+      let statusTag, evalNote, isNeg = false;
+
+      if (negNote) {
+        isNeg = true;
         statusTag = '<span class="band-tag band-flag">❌ NEGATIVE</span>';
-        const modalBlurId = `modal-blur-${p}`;
+        const modalBlurId = `modal-blur-${p}-${Date.now()}`;
         evalNote = `
-          <span id="${modalBlurId}" class="blur-target" title="Click to toggle blur" onclick="toggleBlurElement('${modalBlurId}')">${match}</span>
-          <button class="eye-toggle-btn" onclick="toggleBlurElement('${modalBlurId}', this)" title="Toggle reveal/blur finding">👁️ Reveal</button>
+          <span id="${modalBlurId}" class="blur-target" onclick="toggleBlurElement('${modalBlurId}')">${negNote}</span>
+          <button class="eye-toggle-btn" onclick="toggleBlurElement('${modalBlurId}', this)">👁️ Reveal</button>
         `;
-      } else if (score < 85) {
+      } else if (warnNote || axisScore < 85) {
         statusTag = '<span class="band-tag band-watch">⚠ WATCH</span>';
-        evalNote = 'Moderate rating; under monitoring.';
+        evalNote = warnNote || 'Moderate evaluation — review pending data points.';
+      } else {
+        statusTag = '<span class="band-tag band-clear">✓ POSITIVE</span>';
+        evalNote = 'Evaluated compliant with zero penalty deductions.';
       }
 
       const card = document.createElement('div');
@@ -1115,8 +1074,8 @@
             ${statusTag}
           </div>
           <p>${info.desc}</p>
-          <div style="margin-top: 0.4rem; font-size: 0.75rem; color: #cbd5e1; font-weight: 500; background: rgba(0,0,0,0.25); padding: 4px 8px; border-radius: 4px; border-left: 3px solid ${isNegative ? '#f87171' : '#34d399'}; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;">
-            <div><strong>Target Evaluation:</strong> ${evalNote}</div>
+          <div style="margin-top: 0.4rem; font-size: 0.75rem; color: #cbd5e1; background: rgba(0,0,0,0.25); padding: 4px 8px; border-radius: 4px; border-left: 3px solid ${isNeg ? '#f87171' : '#34d399'}; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <strong>Finding:</strong> ${evalNote}
           </div>
         </div>
       `;
@@ -1144,11 +1103,11 @@
     modal.classList.remove('active');
   }
 
-  // Event Listeners for Dropdowns
-  selA.addEventListener('change', render);
-  selB.addEventListener('change', render);
+  // Event Listeners — async render
+  selA.addEventListener('change', () => render());
+  selB.addEventListener('change', () => render());
 
-  // Initial Render
+  // Boot — load initial properties from API
   render();
 </script>
 

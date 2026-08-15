@@ -10,7 +10,7 @@ import sys
 import os
 import json
 import urllib.parse
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 import psycopg2
 import psycopg2.extras
@@ -228,7 +228,7 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
             else:
                 comp_dt = datetime.strptime(proposed_comp_date, "%Y-%m-%d")
             
-            now_dt = datetime.utcnow()
+            now_dt = datetime.now(tz=timezone.utc).replace(tzinfo=None)
             if comp_dt < now_dt and "COMPLETED" not in status:
                 negatives.append({
                     "category": "Timeline & Delay",
@@ -270,8 +270,10 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
 
     # --- 8 ROLLED-UP AXES (P-01 to P-37) WITH EXPLICIT SCORE JUSTIFICATIONS ---
     gate_ok = status in ["APPROVED", "COMPLETED"]
-    
+
     # 1. Regulatory Compliance (P-01 to P-04)
+    # Fix #8: If gateOK=False, force compliance_score = 0 so a suspended/expired
+    # project cannot contribute positive weight to the overall health score.
     compliance_reasons = []
     if status in ["APPROVED", "COMPLETED"]:
         compliance_score = 95
@@ -280,8 +282,8 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
         compliance_score = 80
         compliance_reasons.append("⚠ Project is in initial launch phase.")
     else:
-        compliance_score = 30
-        compliance_reasons.append(f"❌ DEDUCTION -65 pts: Project status '{status}' indicates regulatory risk or license lapse.")
+        compliance_score = 0  # Hard gate: suspended/expired/unknown cannot score on compliance
+        compliance_reasons.append(f"❌ HARD GATE FAIL: Project status '{status}' — registration is not active. Score forced to 0.")
 
     # 2. Litigation Risk (P-05 to P-11) — INVERTED (100 = safe, 0 = heavy litigation)
     litigation_reasons = []
@@ -302,10 +304,13 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
 
         litigation_score = max(0, 100 - base_lit_ded)
         litigation_reasons.append(f"❌ DEDUCTION -{base_lit_ded} pts: Recorded {tot_complaints} total RERA complaints ({tot_proj_complaints} on project, {tot_prom_complaints} on promoter).")
-        
+
         if len(under_enquiry_complaints) > 0:
-            litigation_score = max(0, litigation_score - 15)
+            litigation_score -= 15
             litigation_reasons.append(f"❌ DEDUCTION -15 pts: {len(under_enquiry_complaints)} complaint(s) actively under enquiry.")
+
+        # Fix #7: Single final clamp — safe against any future additional deductions
+        litigation_score = max(0, litigation_score)
 
     # 3. Timeline Adherence (P-12 to P-16)
     timeline_reasons = []
@@ -316,7 +321,7 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
         timeline_score = 90
         try:
             comp_dt = datetime.strptime(proposed_comp_date, "%d/%m/%Y" if "/" in proposed_comp_date else "%Y-%m-%d")
-            if comp_dt < datetime.utcnow() and "COMPLETED" not in status:
+            if comp_dt < datetime.now(tz=timezone.utc).replace(tzinfo=None) and "COMPLETED" not in status:
                 timeline_score = 35
                 timeline_reasons.append(f"❌ DEDUCTION -55 pts: Declared target date {proposed_comp_date} has expired without completion certificate.")
             else:
@@ -379,27 +384,53 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
         layout_reasons.append(f"✓ Project layout type: {project_type}.")
 
     # 7. Promoter Reputation (P-34 to P-35)
+    # Fix #5: Cap raised to 100 (was 60) so builders with 20+ complaints can reach score 0.
+    # Previously a builder with 100 complaints scored the same as one with 12.
     promoter_reasons = []
     promoter_score = 100
     if tot_prom_complaints > 0:
-        prom_ded = min(60, tot_prom_complaints * 5)
-        promoter_score -= prom_ded
+        prom_ded = min(100, tot_prom_complaints * 5)
+        promoter_score = max(0, 100 - prom_ded)
         promoter_reasons.append(f"❌ DEDUCTION -{prom_ded} pts: Recorded {tot_prom_complaints} complaint(s) on builder/promoter.")
     else:
         promoter_reasons.append(f"✓ Zero RERA complaints registered against promoter '{firm_name}'.")
 
     # 8. Data Transparency (P-36 to P-37)
+    # Fix #6: Only flag ❌ DEDUCTION if quality_score < 80.
+    # Scores in 80–99 range get a ⚠ note (minor gap, not a penalty).
     transparency_reasons = []
     transparency_score = quality_score
-    if quality_score < 100:
-        transparency_reasons.append(f"❌ DEDUCTION -{100 - quality_score} pts: Data filing quality score is {quality_score}/100.")
+    if quality_score >= 100:
+        transparency_reasons.append("✓ 100/100 Perfect Filing Transparency score.")
+    elif quality_score >= 80:
+        transparency_reasons.append(f"⚠ Filing quality is {quality_score}/100 — minor gaps detected but within acceptable range.")
         if dq_warnings:
             transparency_reasons.append(f"⚠ Filing warnings: {', '.join(dq_warnings[:2])}.")
     else:
-        transparency_reasons.append("✓ 100/100 Perfect Filing Transparency score.")
+        gap = 100 - quality_score
+        transparency_reasons.append(f"❌ DEDUCTION -{gap} pts: Data filing quality score is low ({quality_score}/100). Key disclosures missing.")
+        if dq_warnings:
+            transparency_reasons.append(f"⚠ Filing warnings: {', '.join(dq_warnings[:2])}.")
 
     # Risk Score & Verdict Calculation
-    overall_health_score = max(0, min(100, 100 - risk_score_deductions))
+    # Derived from weighted average of 8 axis scores (same weights as the radar chart)
+    # so overall_health_score and the radar axes are always consistent.
+    _axis_weights = {
+        'compliance': 1.0, 'litigation': 1.2, 'timeline': 1.1,
+        'title': 1.1, 'location': 0.9, 'layout': 0.7,
+        'promoter': 1.0, 'transparency': 0.8
+    }
+    _axis_scores = {
+        'compliance': compliance_score, 'litigation': litigation_score,
+        'timeline': timeline_score, 'title': title_score,
+        'location': location_score, 'layout': layout_score,
+        'promoter': promoter_score, 'transparency': transparency_score
+    }
+    _total_weight = sum(_axis_weights.values())
+    overall_health_score = round(
+        sum(_axis_scores[k] * _axis_weights[k] for k in _axis_weights) / _total_weight
+    )
+    overall_health_score = max(0, min(100, overall_health_score))
 
     if overall_health_score >= 80:
         risk_level = "LOW_RISK"
