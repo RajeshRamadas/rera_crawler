@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Property Compliance & Audit Report — RERA Intelligence</title>
+<title>Full Property Audit & Compliance Record — RERA Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -107,7 +107,7 @@
 
   /* Container & Grid */
   .container {
-    max-width: 1200px;
+    max-width: 1240px;
     margin: 2rem auto;
     padding: 0 1.5rem;
   }
@@ -157,13 +157,13 @@
   }
   .prop-title {
     font-family: 'IBM Plex Serif', serif;
-    font-size: 1.85rem;
+    font-size: 1.9rem;
     font-weight: 700;
     color: var(--ink);
     line-height: 1.2;
   }
   .prop-dev-name {
-    font-size: 0.95rem;
+    font-size: 0.98rem;
     color: var(--ink-soft);
     margin-top: 0.35rem;
   }
@@ -197,7 +197,7 @@
     border: 1px solid var(--hairline-strong);
     padding: 1rem 1.25rem;
     border-radius: 6px;
-    min-width: 170px;
+    min-width: 180px;
     text-align: right;
   }
   .hero-score-num {
@@ -306,6 +306,36 @@
     font-weight: bold;
   }
 
+  /* Tables */
+  .data-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 4px;
+    background: var(--paper-raised);
+  }
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    text-align: left;
+  }
+  .data-table th {
+    background: #EEECDF;
+    color: var(--ink);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.65rem 0.85rem;
+    border-bottom: 1px solid var(--hairline-strong);
+  }
+  .data-table td {
+    padding: 0.65rem 0.85rem;
+    border-bottom: 1px solid var(--hairline);
+    color: var(--ink);
+  }
+  .data-table tr:last-child td { border-bottom: none; }
+
   /* 5-Axis Compliance Breakdown */
   .axis-list {
     display: flex;
@@ -348,6 +378,30 @@
     border: 1px solid var(--hairline-strong);
   }
 
+  /* Document Links Grid */
+  .doc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 0.75rem;
+  }
+  .doc-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 0.85rem;
+    background: var(--paper-raised);
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    font-size: 0.8rem;
+    text-decoration: none;
+    color: var(--ink);
+    transition: all 0.15s ease;
+  }
+  .doc-item:hover {
+    border-color: var(--ink);
+    background: #F2EFE7;
+  }
+
   /* Print Styles */
   @media print {
     .navbar, .btn { display: none !important; }
@@ -376,7 +430,7 @@
   <div class="container">
     <!-- Loading State -->
     <div id="loadingState" class="card" style="text-align:center; padding:3rem 1rem;">
-      <h3 class="serif" style="font-size:1.2rem; color:var(--ink-soft);">Loading Property Audit Data...</h3>
+      <h3 class="serif" style="font-size:1.2rem; color:var(--ink-soft);">Loading Full Property Record...</h3>
     </div>
 
     <!-- Main Content Container -->
@@ -403,51 +457,46 @@
       </div>
 
       <div class="grid-2col">
-        <!-- Left Column: Key Audit Specifications & Positives/Negatives -->
+        <!-- Left Column: Detailed Specifications & Database Records -->
         <div>
-          <!-- Key Specification Table -->
+
+          <!-- 1. RERA Technical & Financial Overview -->
           <div class="card">
             <div class="card-head">
-              <span class="card-head-title">RERA Audit Specifications</span>
-              <span class="mono" style="font-size:0.7rem; color:var(--ink-soft);" id="crawledAt">Audit Verified</span>
+              <span class="card-head-title">RERA Project Overview & Financial Details</span>
+              <span class="mono" style="font-size:0.7rem; color:var(--ink-soft);" id="crawledAt">Database Verified</span>
             </div>
-            <div class="audit-grid">
-              <div class="audit-item">
-                <span class="audit-label">RERA Registration No</span>
-                <span class="audit-val mono" id="regNo">PRM/KA/RERA/...</span>
-              </div>
-              <div class="audit-item">
-                <span class="audit-label">Acknowledgement No</span>
-                <span class="audit-val mono" id="ackNo">ACK/KA/RERA/...</span>
-              </div>
-              <div class="audit-item">
-                <span class="audit-label">Project Start Date</span>
-                <span class="audit-val" id="startDate">DD MMM YYYY</span>
-              </div>
-              <div class="audit-item">
-                <span class="audit-label">Proposed Completion Date</span>
-                <span class="audit-val" id="completionDate">DD MMM YYYY</span>
-              </div>
-              <div class="audit-item">
-                <span class="audit-label">Property Type</span>
-                <span class="audit-val" id="specType">Residential</span>
-              </div>
-              <div class="audit-item">
-                <span class="audit-label">Completion Certificate Status</span>
-                <span class="audit-val" id="certStatus">Audit Pending</span>
-              </div>
-              <div class="audit-item">
-                <span class="audit-label">GIS Coordinate Audit</span>
-                <span class="audit-val" id="gpsStatus">Verified GPS</span>
-              </div>
-              <div class="audit-item">
-                <span class="audit-label">Estimated Pricing</span>
-                <span class="audit-val mono" id="priceVal">₹0.00 Cr</span>
-              </div>
+            <div class="audit-grid" id="overviewGrid">
+              <!-- Dynamically populated from raw_data.project_overview_details -->
             </div>
           </div>
 
-          <!-- Positives (+) vs Negatives (-) Risk Evaluation -->
+          <!-- 2. Land, Survey & Title Deed Details -->
+          <div class="card">
+            <div class="card-head">
+              <span class="card-head-title">Land, Survey & Khatha Records</span>
+              <span class="mono" style="font-size:0.7rem; color:var(--ink-soft);">Annexure & Title Data</span>
+            </div>
+            <div id="surveyDetailsWrap"></div>
+          </div>
+
+          <!-- 3. Directional Schedules & Boundaries -->
+          <div class="card">
+            <div class="card-head">
+              <span class="card-head-title">Property Boundaries & Schedules</span>
+            </div>
+            <div class="audit-grid" id="schedulesGrid"></div>
+          </div>
+
+          <!-- 4. Promoter & Partner Profile -->
+          <div class="card">
+            <div class="card-head">
+              <span class="card-head-title">Promoter & Developer Profile</span>
+            </div>
+            <div class="audit-grid" id="promoterGrid"></div>
+          </div>
+
+          <!-- 5. Positives (+) vs Negatives (-) Regulatory Evaluation -->
           <div class="card">
             <div class="card-head">
               <span class="card-head-title">Regulatory Risk Evaluation</span>
@@ -456,27 +505,41 @@
             <div class="eval-grid">
               <div class="eval-box positives">
                 <div class="eval-box-title">Compliance Positives (+)</div>
-                <ul class="eval-list" id="positivesList">
-                  <li>Valid RERA Registration and Active Approval status.</li>
-                  <li>Clear promoter filing record on state portal.</li>
-                </ul>
+                <ul class="eval-list" id="positivesList"></ul>
               </div>
               <div class="eval-box negatives">
                 <div class="eval-box-title">Risk Negatives (-)</div>
-                <ul class="eval-list" id="negativesList">
-                  <li>Completion certificate status requires verification.</li>
-                </ul>
+                <ul class="eval-list" id="negativesList"></ul>
               </div>
             </div>
           </div>
 
-          <!-- Regulatory Audit Summary Note -->
+          <!-- 6. Complaints & Dispute Audit -->
           <div class="card">
             <div class="card-head">
-              <span class="card-head-title">Regulatory Audit Statement</span>
+              <span class="card-head-title">RERA Complaints & Legal Dispute Audit</span>
+              <span class="mono" style="font-size:0.7rem; color:var(--ink-soft);" id="complaintCountText">0 Complaints</span>
             </div>
-            <p id="auditNote" style="font-size:0.9rem; line-height:1.6; color:var(--ink);"></p>
+            <div id="complaintsWrap"></div>
           </div>
+
+          <!-- 7. Quarterly Progress Update History -->
+          <div class="card">
+            <div class="card-head">
+              <span class="card-head-title">Quarterly Progress Filings History</span>
+            </div>
+            <div id="quarterlyWrap"></div>
+          </div>
+
+          <!-- 8. RERA Official Certificates & Documents Directory -->
+          <div class="card">
+            <div class="card-head">
+              <span class="card-head-title">RERA Official Certificates & Uploaded Document Vault</span>
+              <span class="mono" style="font-size:0.7rem; color:var(--ink-soft);" id="docCountText">0 Files</span>
+            </div>
+            <div class="doc-grid" id="docGrid"></div>
+          </div>
+
         </div>
 
         <!-- Right Column: 5-Axis Score Breakdown & Map -->
@@ -497,6 +560,7 @@
               <span class="mono" style="font-size:0.68rem; color:var(--ink-soft);" id="gpsCoordsText">Coordinates</span>
             </div>
             <div id="detailMap"></div>
+            <div id="gmapsLinkWrap" style="margin-top:0.75rem; text-align:center;"></div>
           </div>
 
           <!-- Actions & Radar Link -->
@@ -536,7 +600,7 @@
   }
 
   async function loadPropertyDetails() {
-    const query = getQueryParam('q') || 'Sowparnika Linea';
+    const query = getQueryParam('q') || 'BHAVANI PEARL STONE';
     
     try {
       const res = await fetch(`/api/v1/projects/analyze?q=${encodeURIComponent(query)}`);
@@ -544,19 +608,8 @@
       const data = await res.json();
       renderDetails(data);
     } catch (err) {
-      console.warn('API fetch failed, trying list fallback:', err);
-      try {
-        const listRes = await fetch(`/api/v1/projects?q=${encodeURIComponent(query)}&limit=1`);
-        const listData = await listRes.json();
-        if (listData.results && listData.results.length > 0) {
-          const p = listData.results[0];
-          renderFallback(p);
-        } else {
-          showError('No property record found matching query.');
-        }
-      } catch (fallbackErr) {
-        showError('Unable to connect to API server.');
-      }
+      console.warn('API fetch failed:', err);
+      showError('Unable to fetch detailed property record.');
     }
   }
 
@@ -564,17 +617,23 @@
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('auditContent').style.display = 'block';
 
-    const overview = data.overview || {};
-    const scores = data.scores || {};
-    const evalData = data.evaluation || {};
+    const overview = data.project_summary || {};
+    const scores = data.radar_profile ? data.radar_profile.scores : {};
+    const evalData = data.overall_evaluation || {};
+    const raw = data.raw_data || {};
+    const rawOverview = raw.project_overview_details || {};
+    const rawLoc = raw.project_location || {};
+    const rawProj = raw.project_details || {};
+    const rawProm = raw.promoter_details || {};
 
+    // Hero Top
     document.getElementById('propTitle').textContent = overview.project_name || 'Property Audit';
-    document.getElementById('propDev').textContent = `Developer: ${overview.promoter_name || 'N/A'}`;
+    document.getElementById('propDev').textContent = `Developer: ${overview.developer_name || 'N/A'}`;
     document.getElementById('propType').textContent = overview.project_type || 'Residential';
     document.getElementById('propStatus').textContent = overview.status || 'APPROVED';
     document.getElementById('propLocation').textContent = `${overview.district || 'Karnataka'} ${overview.taluk ? '· ' + overview.taluk : ''}`;
 
-    const score = overview.composite_score || 75;
+    const score = evalData.health_score || 75;
     const band = getBand(score);
     const scoreEl = document.getElementById('compositeScore');
     scoreEl.textContent = score;
@@ -585,76 +644,260 @@
     sealEl.textContent = isGateOK ? 'GATE CLEARED' : 'GATE FAILED';
     sealEl.className = `hero-seal ${isGateOK ? 'pass' : 'fail'}`;
 
-    document.getElementById('regNo').textContent = overview.registration_no || 'N/A';
-    document.getElementById('ackNo').textContent = overview.acknowledgement_no || 'N/A';
-    document.getElementById('startDate').textContent = fmtDate(overview.project_start_date);
-    document.getElementById('completionDate').textContent = fmtDate(overview.proposed_completion_date);
-    document.getElementById('specType').textContent = overview.project_type || 'Residential';
+    document.getElementById('crawledAt').textContent = `Crawled: ${fmtDate(raw.crawled_at)}`;
 
-    // Cert status
-    const certEl = document.getElementById('certStatus');
-    if (overview.completion_certificate_available) {
-      certEl.textContent = 'Verified & Available';
-      certEl.style.color = 'var(--clear)';
+    // 1. Overview Grid
+    const overviewGrid = document.getElementById('overviewGrid');
+    overviewGrid.innerHTML = `
+      <div class="audit-item"><span class="audit-label">RERA Reg No</span><span class="audit-val mono">${overview.registration_no || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Ack Number</span><span class="audit-val mono">${raw.acknowledgement_no || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Approved On</span><span class="audit-val">${fmtDate(raw.approved_on)}</span></div>
+      <div class="audit-item"><span class="audit-label">Project Start Date</span><span class="audit-val">${fmtDate(rawOverview['Project Start Date'] || overview.project_start_date)}</span></div>
+      <div class="audit-item"><span class="audit-label">Proposed Completion</span><span class="audit-val">${fmtDate(rawOverview['Proposed Completion Date'] || overview.proposed_completion_date)}</span></div>
+      <div class="audit-item"><span class="audit-label">Completion at Reg</span><span class="audit-val">${fmtDate(raw.proposed_completion_date_at_registration)}</span></div>
+      <div class="audit-item"><span class="audit-label">Project Sub-Type</span><span class="audit-val">${rawOverview['Project Sub Type'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Approved Plan No</span><span class="audit-val mono">${rawOverview['Approved Plan Number'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Plan Approval Date</span><span class="audit-val">${fmtDate(rawOverview['Plan Approval Date'])}</span></div>
+      <div class="audit-item"><span class="audit-label">Approving Authority</span><span class="audit-val">${rawOverview['Approving Authority'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Local Authority</span><span class="audit-val">${rawOverview['Local Authority'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Total Land Area</span><span class="audit-val mono">${rawOverview['Total Area Of Land (Sq Mtr) (A1+A2)'] || 'N/A'} SqM</span></div>
+      <div class="audit-item"><span class="audit-label">Total Plinth Area</span><span class="audit-val mono">${rawOverview['Total Plinth Area (Sq Mtr)'] || 'N/A'} SqM</span></div>
+      <div class="audit-item"><span class="audit-label">Total Carpet Area</span><span class="audit-val mono">${rawOverview['Total Carpet Area of all the Floors (Sq Mtr)'] || 'N/A'} SqM</span></div>
+      <div class="audit-item"><span class="audit-label">FAR Sanctioned</span><span class="audit-val mono">${rawOverview['FAR Sanctioned'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Total Project Cost</span><span class="audit-val mono">₹${rawOverview['Total Project Cost (INR) (C1+C2)'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Land Cost</span><span class="audit-val mono">₹${rawOverview['Cost of Land (INR) (C1) ( As Certified by CA in Form 1 )'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Development Cost</span><span class="audit-val mono">₹${rawOverview['Cost of Layout Development (INR) (C2) ( As Certified by CA in Form 1 )'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Total Inventories / Units</span><span class="audit-val mono">${rawOverview['Total Number of Inventories/Flats/Villas'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Number of Towers</span><span class="audit-val mono">${rawOverview['Number of Towers'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Covered Parking</span><span class="audit-val mono">${rawOverview['No. of Covered Parking'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Open Parking</span><span class="audit-val mono">${rawOverview['No. of Open Parking'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Source of Water</span><span class="audit-val">${rawOverview['Source of Water'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Full Project Address</span><span class="audit-val">${rawOverview['Project Address'] || rawLoc['address'] || 'N/A'}</span></div>
+    `;
+
+    // 2. Land Survey Details Table
+    const surveyWrap = document.getElementById('surveyDetailsWrap');
+    const surveyTables = rawProj.survey_land_tables || [];
+    if (surveyTables.length > 0) {
+      let rowsHtml = surveyTables.map(st => {
+        const keys = Object.keys(st);
+        let surNo = st[keys.find(k => k.includes('Survey Number')) || ''] || 'N/A';
+        let conv = st[keys.find(k => k.includes('Conversion')) || ''] || 'N/A';
+        let tenure = st[keys.find(k => k.includes('Tenure')) || ''] || 'N/A';
+        let extent = st[keys.find(k => k.includes('Extent')) || ''] || 'N/A';
+        let sro = st[keys.find(k => k.includes('Sub Registrar')) || ''] || 'N/A';
+        return `<tr><td class="mono">${surNo}</td><td>${conv}</td><td>${tenure}</td><td>${extent}</td><td>${sro}</td></tr>`;
+      }).join('');
+
+      surveyWrap.innerHTML = `
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr><th>Survey No</th><th>Conversion Status</th><th>Land Tenure</th><th>Extent of Land</th><th>Sub Registrar Office</th></tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </div>
+      `;
     } else {
-      const now = new Date();
-      const compDate = overview.proposed_completion_date ? new Date(overview.proposed_completion_date) : null;
-      if (compDate && compDate < now) {
-        certEl.textContent = 'Target Date Passed — Certificate Not Uploaded';
-        certEl.style.color = 'var(--flag)';
-      } else {
-        certEl.textContent = 'Pending (Under Construction)';
-        certEl.style.color = 'var(--watch)';
-      }
+      const surveyNos = rawLoc.survey_numbers || overview.survey_numbers || [];
+      const sros = rawLoc.sub_registrar_offices || overview.sub_registrar_offices || [];
+      surveyWrap.innerHTML = `
+        <div class="audit-grid">
+          <div class="audit-item"><span class="audit-label">Survey Numbers</span><span class="audit-val mono">${surveyNos.join(', ') || 'N/A'}</span></div>
+          <div class="audit-item"><span class="audit-label">Sub Registrar Office</span><span class="audit-val">${sros.join(', ') || 'N/A'}</span></div>
+        </div>
+      `;
     }
 
-    // GPS Status
-    const gpsEl = document.getElementById('gpsStatus');
-    const lat = parseFloat(overview.latitude);
-    const lng = parseFloat(overview.longitude);
-    const hasRealCoords = !isNaN(lat) && !isNaN(lng);
+    // 3. Schedules
+    const schedGrid = document.getElementById('schedulesGrid');
+    schedGrid.innerHTML = `
+      <div class="audit-item"><span class="audit-label">North Schedule</span><span class="audit-val">${rawOverview['North Schedule'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">South Schedule</span><span class="audit-val">${rawOverview['South Schedule'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">East Schedule</span><span class="audit-val">${rawOverview['East Schedule'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">West Schedule</span><span class="audit-val">${rawOverview['West Schedule'] || 'N/A'}</span></div>
+    `;
 
-    if (hasRealCoords) {
-      gpsEl.textContent = `Verified (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
-      gpsEl.style.color = 'var(--clear)';
-      document.getElementById('gpsCoordsText').textContent = `GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-    } else {
-      gpsEl.textContent = 'Not Available (District Centroid)';
-      gpsEl.style.color = 'var(--watch)';
-      document.getElementById('gpsCoordsText').textContent = 'District Centroid';
-    }
+    // 4. Promoter Details
+    const promoterGrid = document.getElementById('promoterGrid');
+    const pastProjs = rawProm['List of Projects Launched in Past 5 Years ( As per Promoter )'] || [];
+    promoterGrid.innerHTML = `
+      <div class="audit-item"><span class="audit-label">Promoter Name</span><span class="audit-val">${overview.developer_name || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Past 5 Years Projects</span><span class="audit-val mono">${pastProjs.length} Projects Launched</span></div>
+    `;
 
-    document.getElementById('priceVal').textContent = overview.price_estimate || '₹1.25 Cr';
-    document.getElementById('crawledAt').textContent = `Record Date: ${fmtDate(overview.crawled_at)}`;
-
-    // Positives & Negatives lists
+    // 5. Positives & Negatives lists
     const posList = document.getElementById('positivesList');
     posList.innerHTML = '';
-    (evalData.positives || ['Valid RERA Approval registration.', 'Complete promoter details submitted.']).forEach(p => {
+    (data.positives || []).forEach(p => {
       const li = document.createElement('li');
-      li.textContent = p;
+      li.textContent = typeof p === 'string' ? p : `${p.title}: ${p.description}`;
       posList.appendChild(li);
     });
 
     const negList = document.getElementById('negativesList');
     negList.innerHTML = '';
-    (evalData.negatives || ['Completion certificate status unconfirmed on portal.']).forEach(n => {
+    (data.negatives || []).forEach(n => {
       const li = document.createElement('li');
-      li.textContent = n;
+      li.textContent = typeof n === 'string' ? n : `${n.title}: ${n.description}`;
       negList.appendChild(li);
     });
 
-    document.getElementById('auditNote').textContent = data.audit_note || 'Project regulatory analysis verified against state RERA compliance portal.';
+    // 6. Complaints
+    const compWrap = document.getElementById('complaintsWrap');
+    const compSummary = data.complaints_summary || {};
+    document.getElementById('complaintCountText').textContent = `${compSummary.total_complaints || 0} Total Complaints`;
+    if (compSummary.total_complaints > 0) {
+      let compRows = (compSummary.recent_complaints || []).map(c => `
+        <tr>
+          <td class="mono">${c['COMPLAINT NO'] || c.complaint_no || 'N/A'}</td>
+          <td>${c['COMPLAINANT NAME'] || c.complainant || 'N/A'}</td>
+          <td class="mono" style="color:var(--flag);">${c['STATUS'] || c.status || 'UNDER ENQUIRY'}</td>
+        </tr>
+      `).join('');
 
-    // 5-Axis Score Breakdown
+      compWrap.innerHTML = `
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Complaint No</th><th>Complainant</th><th>Status</th></tr></thead>
+            <tbody>${compRows}</tbody>
+          </table>
+        </div>
+      `;
+    } else {
+      compWrap.innerHTML = `<p style="font-size:0.85rem; color:var(--clear); font-weight:600;">✓ Zero complaints recorded against this project or promoter on RERA portal.</p>`;
+    }
+
+    // 7. Quarterly Updates History
+    const qWrap = document.getElementById('quarterlyWrap');
+    const qUpdates = raw.quarterly_updates || [];
+    if (qUpdates.length > 0) {
+      let qRows = qUpdates.map(q => `
+        <tr>
+          <td class="mono">${q['Quarter'] || q.quarter || 'N/A'}</td>
+          <td>${q['Work Status'] || q.status || 'Submitted'}</td>
+          <td class="mono">${q['Completion %'] || q.completion || 'N/A'}</td>
+        </tr>
+      `).join('');
+      qWrap.innerHTML = `
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Quarter</th><th>Filing Status</th><th>Completion %</th></tr></thead>
+            <tbody>${qRows}</tbody>
+          </table>
+        </div>
+      `;
+    } else {
+      qWrap.innerHTML = `<p style="font-size:0.85rem; color:var(--ink-soft);">No quarterly updates history recorded.</p>`;
+    }
+
+    // 8. Documents Directory with Category Headings & PDF Links
+    const docGrid = document.getElementById('docGrid');
+    const uploadedDocs = raw.uploaded_documents || [];
+    const certUrls = Array.isArray(raw.certificate_url) ? raw.certificate_url : (raw.certificate_url ? [raw.certificate_url] : []);
+
+    const docCategories = {
+      'RERA Official Certificates': [],
+      'Statutory Annexures & CA / Engineer / Architect Forms': [],
+      'Legal Title & Sanctioned Plans': [],
+      'Other Uploaded Property Filings': []
+    };
+
+    // Add main RERA certificates
+    certUrls.forEach(url => {
+      docCategories['RERA Official Certificates'].push({
+        heading: 'RERA Registration Certificate',
+        url: url,
+        icon: '📜'
+      });
+    });
+    if (raw.renewed_certificate_url) {
+      docCategories['RERA Official Certificates'].push({
+        heading: 'Renewed RERA Registration Certificate',
+        url: raw.renewed_certificate_url,
+        icon: '📜'
+      });
+    }
+    if (raw.further_extension_order_url) {
+      docCategories['RERA Official Certificates'].push({
+        heading: 'RERA Further Extension Order',
+        url: raw.further_extension_order_url,
+        icon: '📜'
+      });
+    }
+
+    // Process uploaded_documents array
+    uploadedDocs.forEach((d, idx) => {
+      if (!d || typeof d !== 'object') return;
+      let rawUrl = d.file_url || d.url || d.download_url;
+      if (Array.isArray(rawUrl)) rawUrl = rawUrl[0];
+      if (!rawUrl || typeof rawUrl !== 'string' || !rawUrl.startsWith('http')) return;
+
+      const heading = d.financial_year || d.document_name || d.name || d.file || d.document_type || `Document Attachment #${idx + 1}`;
+      let cat = 'Other Uploaded Property Filings';
+      let icon = '📄';
+
+      const hLower = String(heading).toLowerCase();
+      if (hLower.includes('annexure') || hLower.includes('icai') || hLower.includes('licence') || hLower.includes('coa') || hLower.includes('form') || hLower.includes('certificate')) {
+        cat = 'Statutory Annexures & CA / Engineer / Architect Forms';
+        icon = '⚖️';
+      } else if (hLower.includes('title') || hLower.includes('deed') || hLower.includes('plan') || hLower.includes('conversion') || hLower.includes('khatha') || hLower.includes('survey')) {
+        cat = 'Legal Title & Sanctioned Plans';
+        icon = '📐';
+      }
+
+      docCategories[cat].push({
+        heading: heading,
+        url: rawUrl,
+        icon: icon
+      });
+    });
+
+    let totalDocsCount = 0;
+    let categoryHtml = '';
+
+    Object.keys(docCategories).forEach(catName => {
+      const items = docCategories[catName];
+      if (items.length === 0) return;
+      totalDocsCount += items.length;
+
+      categoryHtml += `
+        <div style="grid-column: 1 / -1; margin-top: 0.85rem; margin-bottom: 0.35rem;">
+          <h4 style="font-family:'IBM Plex Serif', serif; font-size:0.95rem; font-weight:600; color:var(--ink); border-bottom:1px solid var(--hairline-strong); padding-bottom:0.35rem; display:flex; align-items:center; justify-content:space-between;">
+            <span>${catName}</span>
+            <span class="mono" style="font-size:0.72rem; color:var(--ink-soft); font-weight:500;">${items.length} Document(s)</span>
+          </h4>
+        </div>
+      `;
+
+      items.forEach(item => {
+        categoryHtml += `
+          <a class="doc-item" href="${item.url}" target="_blank" title="View & Download ${item.heading}">
+            <span style="font-weight:500;">${item.icon} ${item.heading}</span>
+            <span class="mono" style="font-size:0.75rem; font-weight:600; color:var(--clear); flex-shrink:0; margin-left:0.5rem;">PDF ↗</span>
+          </a>
+        `;
+      });
+    });
+
+    document.getElementById('docCountText').textContent = `${totalDocsCount} Files Verified`;
+
+    if (totalDocsCount === 0) {
+      categoryHtml = `<p style="grid-column:1/-1; font-size:0.88rem; color:var(--ink-soft); padding:0.5rem 0;">No downloadable document attachments or public certificate URLs available for this record.</p>`;
+    }
+
+    docGrid.innerHTML = categoryHtml;
+
+    // 9. 5-Axis Score Breakdown
     const axisContainer = document.getElementById('axisContainer');
     axisContainer.innerHTML = '';
     const axes = [
-      { name: 'Financial Track Record', score: scores.financial || score },
-      { name: 'Regulatory Compliance', score: scores.regulatory || score },
-      { name: 'Developer Execution History', score: scores.developer || score },
-      { name: 'Legal & Title Audit', score: scores.litigation || score },
-      { name: 'GIS & Spatial Accuracy', score: scores.spatial || (hasRealCoords ? 90 : 45) }
+      { name: 'Regulatory Compliance', score: scores.compliance || score },
+      { name: 'Litigation & Complaints', score: scores.litigation || score },
+      { name: 'Timeline Adherence', score: scores.timeline || score },
+      { name: 'Land Title Clarity', score: scores.title || score },
+      { name: 'GIS & Spatial Accuracy', score: scores.location || score }
     ];
 
     axes.forEach(ax => {
@@ -677,6 +920,19 @@
     document.getElementById('radarBtn').href = `/radar-chart?a=${encodeURIComponent(overview.project_name || query)}`;
 
     // Init Leaflet Map
+    const lat = parseFloat(rawLoc.latitude || overview.coordinates?.latitude);
+    const lng = parseFloat(rawLoc.longitude || overview.coordinates?.longitude);
+    const hasRealCoords = !isNaN(lat) && !isNaN(lng);
+
+    if (hasRealCoords) {
+      document.getElementById('gpsCoordsText').textContent = `GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      if (rawLoc.google_maps_url) {
+        document.getElementById('gmapsLinkWrap').innerHTML = `<a class="btn ghost" href="${rawLoc.google_maps_url}" target="_blank" style="width:100%;">View on Google Maps ↗</a>`;
+      }
+    } else {
+      document.getElementById('gpsCoordsText').textContent = 'District Centroid';
+    }
+
     const mapLat = hasRealCoords ? lat : 12.9716;
     const mapLng = hasRealCoords ? lng : 77.5946;
 
@@ -694,39 +950,6 @@
         fillOpacity: 0.9
       }).addTo(detailMap).bindPopup(`<b>${overview.project_name || 'Property'}</b><br>${band.label} (${score}/100)`).openPopup();
     }
-  }
-
-  function renderFallback(p) {
-    renderDetails({
-      overview: {
-        project_name: p.project_name,
-        promoter_name: p.promoter_name,
-        project_type: p.project_type,
-        status: p.status,
-        district: p.district,
-        taluk: p.taluk,
-        registration_no: p.registration_no,
-        acknowledgement_no: p.acknowledgement_no,
-        project_start_date: p.project_start_date,
-        proposed_completion_date: p.proposed_completion_date,
-        completion_certificate_available: p.completion_certificate_available,
-        latitude: p.latitude,
-        longitude: p.longitude,
-        composite_score: p.quality_score || 72
-      },
-      scores: {
-        financial: p.quality_score || 70,
-        regulatory: 80,
-        developer: 75,
-        litigation: 85,
-        spatial: p.latitude ? 90 : 40
-      },
-      evaluation: {
-        positives: ['Active RERA registration number.', 'Promoter details verified.'],
-        negatives: p.completion_certificate_available ? [] : ['Completion certificate pending.']
-      },
-      audit_note: 'Standard compliance audit record generated from scraped RERA Karnataka portal filings.'
-    });
   }
 
   function showError(msg) {

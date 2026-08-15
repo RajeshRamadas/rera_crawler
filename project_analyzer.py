@@ -503,7 +503,8 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
             "score": quality_score,
             "is_complete": is_complete,
             "warnings": dq_warnings
-        }
+        },
+        "raw_data": raw_data
     }
 
 
