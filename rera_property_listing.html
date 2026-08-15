@@ -807,6 +807,7 @@ try {
                 id: (p.registration_no || `prop-${idx}`).replace(/[^a-zA-Z0-9-]/g, '_'),
                 name: p.project_name || 'RERA Project',
                 developer: p.promoter_name || 'RERA Promoter',
+                projectType: p.project_type || '',
                 area: `${p.taluk || ''}, ${p.district || 'Karnataka'}`.replace(/^[\s,]+/, ''),
                 gateOK: isApproved,
                 priceMin: 0.8 + (idx % 5) * 0.3,
