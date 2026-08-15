@@ -1,28 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Property Composite Risk Chart — RERA Intelligence</title>
-  <!-- Google Fonts: Inter -->
+  <title>Property Risk & Compliance Report — RERA Intelligence</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <!-- Chart.js CDN -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
-      --bg-dark: #0b0f19;
-      --panel-bg: rgba(23, 32, 54, 0.75);
-      --panel-border: rgba(255, 255, 255, 0.08);
-      --text-main: #f1f5f9;
-      --text-muted: #94a3b8;
-      --accent-blue: #38bdf8;
-      --accent-purple: #c084fc;
-      --accent-pink: #f43f5e;
-      --green-clear: #10b981;
-      --amber-watch: #f59e0b;
-      --red-flag: #ef4444;
+      --paper: #F6F5F1;
+      --paper-raised: #FCFBF8;
+      --ink: #1B1E24;
+      --ink-soft: #565B66;
+      --hairline: #DBD7CC;
+      --hairline-strong: #C7C2B3;
+      --a-color: #2C4A6E;
+      --a-tint: #2C4A6E14;
+      --b-color: #8C4130;
+      --b-tint: #8C413014;
+      --clear: #2F6E4F;
+      --clear-tint: #2F6E4F12;
+      --watch: #97701A;
+      --watch-tint: #97701A14;
+      --flag: #AC2C2C;
+      --flag-tint: #AC2C2C14;
     }
 
     * {
@@ -32,121 +38,151 @@
     }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background-color: var(--bg-dark);
-      background-image: 
-        radial-gradient(at 10% 10%, rgba(56, 189, 248, 0.05) 0px, transparent 50%),
-        radial-gradient(at 90% 90%, rgba(192, 132, 252, 0.05) 0px, transparent 50%);
-      color: var(--text-main);
+      font-family: 'IBM Plex Sans', sans-serif;
+      background: var(--paper);
+      color: var(--ink);
       min-height: 100vh;
-      padding: 2rem;
+      padding: 0 0 4rem;
       line-height: 1.5;
+      font-size: 15px;
+    }
+
+    .mono {
+      font-family: 'IBM Plex Mono', monospace;
     }
 
     .container {
-      max-width: 1280px;
+      max-width: 1180px;
       margin: 0 auto;
+      padding: 0 2rem;
     }
 
-    header {
-      margin-bottom: 1.5rem;
+    /* ---------- Masthead ---------- */
+    header.masthead {
+      border-bottom: 1px solid var(--hairline-strong);
+      padding: 2.25rem 0 1.5rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .eyebrow {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
       display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
       align-items: center;
-      gap: 1rem;
+      gap: 0.6rem;
+      margin-bottom: 0.6rem;
     }
 
-    .title-group h1 {
-      font-size: 1.75rem;
-      font-weight: 700;
-      letter-spacing: -0.025em;
-      background: linear-gradient(135deg, #38bdf8, #c084fc);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+    .eyebrow .dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--ink-soft);
     }
 
-    .title-group p {
-      font-size: 0.875rem;
-      color: var(--text-muted);
+    h1 {
+      font-family: 'IBM Plex Serif', serif;
+      font-weight: 600;
+      font-size: 2.1rem;
+      letter-spacing: -0.01em;
+      color: var(--ink);
     }
 
-    /* Controls Panel */
+    .masthead p.sub {
+      font-size: 0.9rem;
+      color: var(--ink-soft);
+      margin-top: 0.4rem;
+      max-width: 60ch;
+    }
+
+    /* ---------- Controls ---------- */
     .controls-panel {
       display: flex;
-      gap: 1rem;
+      gap: 0;
       flex-wrap: wrap;
-      background: var(--panel-bg);
-      border: 1px solid var(--panel-border);
-      border-radius: 12px;
-      padding: 1rem;
-      backdrop-filter: blur(12px);
-      margin-bottom: 1.5rem;
+      background: var(--paper-raised);
+      border: 1px solid var(--hairline);
+      margin-bottom: 1.75rem;
     }
 
     .select-group {
       flex: 1;
-      min-width: 250px;
+      min-width: 240px;
+      padding: 0.9rem 1.25rem;
+    }
+
+    .select-group+.select-group {
+      border-left: 1px solid var(--hairline);
     }
 
     .select-group label {
-      display: block;
-      font-size: 0.75rem;
-      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      font-weight: 500;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-      margin-bottom: 0.35rem;
+      letter-spacing: 0.08em;
+      color: var(--ink-soft);
+      margin-bottom: 0.5rem;
     }
 
-    .select-group label.prop-a { color: var(--accent-blue); }
-    .select-group label.prop-b { color: var(--accent-pink); }
+    .swatch {
+      width: 9px;
+      height: 9px;
+      display: inline-block;
+    }
+
+    .swatch.a {
+      background: var(--a-color);
+    }
+
+    .swatch.b {
+      background: var(--b-color);
+    }
 
     select {
       width: 100%;
-      background: #111827;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: var(--text-main);
-      padding: 0.65rem 0.85rem;
-      border-radius: 8px;
-      font-family: inherit;
-      font-size: 0.9rem;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--hairline-strong);
+      color: var(--ink);
+      padding: 0.35rem 0.1rem;
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 500;
       outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      border-radius: 0;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: linear-gradient(45deg, transparent 50%, var(--ink-soft) 50%), linear-gradient(135deg, var(--ink-soft) 50%, transparent 50%);
+      background-position: calc(100% - 8px) center, calc(100% - 3px) center;
+      background-size: 5px 5px, 5px 5px;
+      background-repeat: no-repeat;
+      transition: border-color 0.15s;
     }
 
     select:focus {
-      border-color: var(--accent-blue);
-      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+      border-bottom-color: var(--ink);
     }
 
-    /* Gate Box (P-01) */
+    /* ---------- Gate seal ---------- */
     .gate-box-wrapper {
-      background: var(--panel-bg);
-      border: 1px solid var(--panel-border);
-      border-radius: 12px;
-      padding: 1rem;
-      margin-bottom: 1.5rem;
-      backdrop-filter: blur(12px);
+      margin-bottom: 1.75rem;
     }
 
     .gate-box-title {
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-      margin-bottom: 0.75rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .gate-box-title span {
-      background: rgba(255, 255, 255, 0.1);
-      padding: 0.15rem 0.5rem;
-      border-radius: 4px;
+      font-family: 'IBM Plex Mono', monospace;
       font-size: 0.7rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--ink-soft);
+      margin-bottom: 0.6rem;
     }
 
     .gate-flex {
@@ -157,52 +193,62 @@
 
     .gate-status {
       flex: 1;
-      min-width: 250px;
-      padding: 0.85rem 1rem;
-      border-radius: 8px;
+      min-width: 260px;
+      background: var(--paper-raised);
+      border: 1px solid var(--hairline);
+      border-left-width: 3px;
+      padding: 0.9rem 1.1rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border: 1px solid transparent;
-      font-size: 0.9rem;
+      gap: 1rem;
     }
 
     .gate-status.pass {
-      background: rgba(16, 185, 129, 0.1);
-      border-color: rgba(16, 185, 129, 0.3);
-      color: #34d399;
+      border-left-color: var(--clear);
     }
 
     .gate-status.fail {
-      background: rgba(239, 68, 68, 0.1);
-      border-color: rgba(239, 68, 68, 0.3);
-      color: #f87171;
+      border-left-color: var(--flag);
     }
 
-    .gate-badge {
-      font-size: 0.75rem;
-      font-weight: 700;
-      padding: 0.2rem 0.6rem;
-      border-radius: 9999px;
+    .gate-status strong {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .gate-status .meta {
+      font-size: 0.78rem;
+      color: var(--ink-soft);
+      margin-top: 0.15rem;
+    }
+
+    .seal {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
+      padding: 0.3rem 0.6rem;
+      border: 1px solid currentColor;
+      white-space: nowrap;
     }
 
-    .gate-status.pass .gate-badge {
-      background: rgba(16, 185, 129, 0.2);
-      color: #34d399;
+    .gate-status.pass .seal {
+      color: var(--clear);
     }
 
-    .gate-status.fail .gate-badge {
-      background: rgba(239, 68, 68, 0.2);
-      color: #f87171;
+    .gate-status.fail .seal {
+      color: var(--flag);
     }
 
-    /* Grid Layout */
+    /* ---------- Grid / panels ---------- */
     .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 1.5rem;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.75rem;
+      align-items: start;
     }
 
     @media (max-width: 1024px) {
@@ -212,207 +258,272 @@
     }
 
     .panel {
-      background: var(--panel-bg);
-      border: 1px solid var(--panel-border);
-      border-radius: 12px;
-      padding: 1.25rem;
-      backdrop-filter: blur(12px);
+      background: var(--paper-raised);
+      border: 1px solid var(--hairline);
     }
 
     .panel-head {
+      font-family: 'IBM Plex Serif', serif;
       font-size: 1rem;
       font-weight: 600;
-      margin-bottom: 1rem;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--hairline);
       display: flex;
       align-items: center;
       justify-content: space-between;
+    }
+
+    .panel-head .scale-note {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 400;
+      color: var(--ink-soft);
     }
 
     .chart-container {
       position: relative;
       width: 100%;
       height: 380px;
+      padding: 1rem;
     }
 
-    /* Breakdown Table */
-    .breakdown-table {
+    /* ---------- Breakdown table ---------- */
+    table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.85rem;
+      font-size: 0.86rem;
     }
 
     .breakdown-table th,
-    .breakdown-table td {
-      padding: 0.65rem 0.75rem;
+    .breakdown-table td,
+    .compare-table th,
+    .compare-table td {
+      padding: 0.7rem 1.1rem;
       text-align: left;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid var(--hairline);
+      vertical-align: top;
     }
 
-    .breakdown-table th {
-      font-size: 0.75rem;
+    th {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.66rem;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
+      letter-spacing: 0.06em;
+      color: var(--ink-soft);
+      font-weight: 500;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .axis-name {
       font-weight: 600;
     }
 
-    .score-pill {
-      font-weight: 700;
-      padding: 0.15rem 0.5rem;
-      border-radius: 6px;
-      display: inline-block;
-      min-width: 36px;
-      text-align: center;
-    }
-
-    .band-tag {
-      font-size: 0.7rem;
-      font-weight: 700;
-      padding: 0.15rem 0.5rem;
-      border-radius: 4px;
-      text-transform: uppercase;
-    }
-
-    .band-clear { background: rgba(16, 185, 129, 0.15); color: var(--green-clear); }
-    .band-watch { background: rgba(245, 158, 11, 0.15); color: var(--amber-watch); }
-    .band-flag  { background: rgba(239, 68, 68, 0.15); color: var(--red-flag); }
-
-    /* Comparison Panel */
-    .compare-panel {
-      background: var(--panel-bg);
-      border: 1px solid var(--panel-border);
-      border-radius: 12px;
-      padding: 1.25rem;
-      backdrop-filter: blur(12px);
-      margin-bottom: 1.5rem;
-    }
-
-    .compare-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.875rem;
-      margin-top: 0.75rem;
-    }
-
-    .compare-table th,
-    .compare-table td {
-      padding: 0.75rem 1rem;
-      text-align: left;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
-    .compare-table th {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-    }
-
-    .delta {
-      font-weight: 700;
-    }
-
-    .delta.pos { color: var(--green-clear); }
-    .delta.neg { color: var(--red-flag); }
-    .delta.flat { color: var(--text-muted); }
-
-    .winner-dot {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      margin-left: 6px;
-    }
-
-    .winner-dot.a { background: var(--accent-blue); box-shadow: 0 0 6px var(--accent-blue); }
-    .winner-dot.b { background: var(--accent-pink); box-shadow: 0 0 6px var(--accent-pink); }
-
-    .compare-foot {
-      margin-top: 1rem;
-      padding-top: 0.85rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    .reason-line {
+      font-size: 0.78rem;
+      margin-top: 0.35rem;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      align-items: baseline;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+
+    .reason-tag {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.62rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 0.05rem 0.35rem;
+      flex-shrink: 0;
+    }
+
+    .reason-tag.neg {
+      color: var(--flag);
+      background: var(--flag-tint);
+    }
+
+    .reason-tag.warn {
+      color: var(--watch);
+      background: var(--watch-tint);
+    }
+
+    .reason-tag.pos {
+      color: var(--clear);
+      background: var(--clear-tint);
+    }
+
+    .reason-text {
+      color: var(--ink-soft);
+    }
+
+    .reason-text.blur-target {
+      filter: blur(4px);
+      cursor: pointer;
+      transition: filter 0.2s;
+      user-select: none;   /* prevent copying blurred text */
+    }
+
+    .reason-text.blur-target.revealed {
+      filter: blur(0);
+      cursor: text;
+      user-select: text;
+    }
+
+    .reveal-btn {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      background: none;
+      border: none;
+      border-bottom: 1px solid var(--ink-soft);
+      color: var(--ink-soft);
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .reveal-btn:hover {
+      color: var(--ink);
+      border-color: var(--ink);
+    }
+
+    .score-cell {
+      font-family: 'IBM Plex Mono', monospace;
       font-weight: 600;
       font-size: 0.95rem;
     }
 
-    .note {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      line-height: 1.4;
-      margin-top: 1rem;
-    }
-
-    .sources-list {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-    }
-
-    .sources-badge {
-      display: inline-block;
-      background: rgba(56, 189, 248, 0.12);
-      color: var(--accent-blue);
-      border: 1px solid rgba(56, 189, 248, 0.3);
-      padding: 0.2rem 0.5rem;
-      border-radius: 6px;
+    .band-tag {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.66rem;
       font-weight: 600;
-      font-size: 0.75rem;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .sources-badge:hover {
-      background: rgba(56, 189, 248, 0.25);
-      box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
-      transform: translateY(-1px);
-    }
-
-    /* Blur & Eye Toggle Button Styles */
-    .blur-target {
-      filter: blur(5px);
-      user-select: none;
-      transition: filter 0.3s ease, background 0.3s ease;
-      cursor: pointer;
-    }
-
-    .blur-target.revealed {
-      filter: blur(0);
-      user-select: text;
-    }
-
-    .eye-toggle-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.25rem;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: #cbd5e1;
-      font-size: 0.7rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
       padding: 0.15rem 0.45rem;
-      border-radius: 4px;
+      display: inline-block;
+    }
+
+    .band-clear {
+      background: var(--clear-tint);
+      color: var(--clear);
+    }
+
+    .band-watch {
+      background: var(--watch-tint);
+      color: var(--watch);
+    }
+
+    .band-flag {
+      background: var(--flag-tint);
+      color: var(--flag);
+    }
+
+    .sources-link {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--a-color);
       cursor: pointer;
-      margin-left: 0.4rem;
-      transition: all 0.2s ease;
-      user-select: none;
+      border-bottom: 1px solid transparent;
     }
 
-    .eye-toggle-btn:hover {
-      background: rgba(56, 189, 248, 0.2);
-      color: var(--accent-blue);
-      border-color: var(--accent-blue);
+    .sources-link:hover {
+      border-bottom-color: var(--a-color);
     }
 
-    /* Modal Overlay & Card */
+    /* ---------- Comparison panel ---------- */
+    .compare-panel {
+      background: var(--paper-raised);
+      border: 1px solid var(--hairline);
+      margin-bottom: 1.75rem;
+    }
+
+    #compareSummary {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--ink-soft);
+    }
+
+    .delta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 600;
+    }
+
+    .delta.pos {
+      color: var(--a-color);
+    }
+
+    .delta.neg {
+      color: var(--b-color);
+    }
+
+    .delta.flat {
+      color: var(--ink-soft);
+    }
+
+    .winner-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      margin-left: 6px;
+    }
+
+    .winner-dot.a {
+      background: var(--a-color);
+    }
+
+    .winner-dot.b {
+      background: var(--b-color);
+    }
+
+    .compare-foot {
+      padding: 1rem 1.25rem;
+      border-top: 1px solid var(--hairline);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .compare-foot>div:first-child {
+      font-family: 'IBM Plex Serif', serif;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .compare-foot .score-readout {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.85rem;
+    }
+
+    .compare-foot .score-readout span.a {
+      color: var(--a-color);
+      margin-right: 1.25rem;
+    }
+
+    .compare-foot .score-readout span.b {
+      color: var(--b-color);
+      margin-right: 1.25rem;
+    }
+
+    .note {
+      font-size: 0.78rem;
+      color: var(--ink-soft);
+      line-height: 1.5;
+      border-top: 1px solid var(--hairline);
+      padding-top: 1rem;
+      margin-top: 0.5rem;
+    }
+
+    /* ---------- Modal ---------- */
     .modal-overlay {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(11, 15, 25, 0.85);
-      backdrop-filter: blur(8px);
+      inset: 0;
+      background: rgba(27, 30, 36, 0.55);
       z-index: 9999;
       display: none;
       align-items: center;
@@ -425,702 +536,598 @@
     }
 
     .modal-card {
-      background: #1e293b;
-      border: 1px solid var(--panel-border);
-      border-radius: 16px;
-      max-width: 680px;
+      background: var(--paper-raised);
+      border: 1px solid var(--hairline-strong);
+      max-width: 640px;
       width: 100%;
       max-height: 85vh;
       display: flex;
       flex-direction: column;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-      overflow: hidden;
+      box-shadow: 0 12px 32px rgba(27, 30, 36, 0.18);
+      overflow: hidden;    /* keeps modal-body scroll contained */
     }
 
     .modal-head {
-      padding: 1.25rem 1.5rem;
-      background: rgba(255, 255, 255, 0.03);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 1.1rem 1.4rem;
+      border-bottom: 1px solid var(--hairline);
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
 
     .modal-head h3 {
-      font-size: 1.1rem;
-      font-weight: 700;
-      color: var(--text-main);
+      font-family: 'IBM Plex Serif', serif;
+      font-size: 1.05rem;
+      font-weight: 600;
     }
 
     .modal-close {
-      background: rgba(255, 255, 255, 0.1);
-      border: none;
-      color: var(--text-muted);
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      font-size: 1.2rem;
+      background: none;
+      border: 1px solid var(--hairline-strong);
+      color: var(--ink-soft);
+      width: 28px;
+      height: 28px;
+      font-size: 1.1rem;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.2s;
     }
 
     .modal-close:hover {
-      background: rgba(255, 255, 255, 0.2);
-      color: #fff;
+      border-color: var(--ink);
+      color: var(--ink);
     }
 
     .modal-body {
-      padding: 1.5rem;
+      padding: 1.25rem 1.4rem;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
+      gap: 0.6rem;
     }
 
     .point-card {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 8px;
+      border: 1px solid var(--hairline);
       padding: 0.85rem 1rem;
       display: flex;
       align-items: flex-start;
-      gap: 0.85rem;
+      gap: 0.9rem;
     }
 
     .point-tag {
-      font-weight: 800;
-      font-size: 0.75rem;
-      background: rgba(192, 132, 252, 0.2);
-      color: var(--accent-purple);
-      padding: 0.25rem 0.5rem;
-      border-radius: 4px;
-      border: 1px solid rgba(192, 132, 252, 0.3);
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 600;
+      font-size: 0.72rem;
+      color: var(--ink-soft);
+      border: 1px solid var(--hairline-strong);
+      padding: 0.15rem 0.4rem;
       white-space: nowrap;
     }
 
     .point-info h4 {
-      font-size: 0.875rem;
+      font-size: 0.88rem;
       font-weight: 600;
-      color: #f1f5f9;
       margin-bottom: 0.2rem;
     }
 
     .point-info p {
       font-size: 0.8rem;
-      color: var(--text-muted);
-      line-height: 1.35;
+      color: var(--ink-soft);
+      line-height: 1.4;
+    }
+
+    .finding {
+      margin-top: 0.5rem;
+      font-size: 0.78rem;
+      padding: 0.4rem 0.6rem;
+      border-left: 2px solid var(--hairline-strong);
+      background: var(--paper);
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      flex-wrap: wrap;
     }
   </style>
 </head>
+
 <body>
 
-<div class="container">
-  <header>
-    <div class="title-group">
-      <h1>Property Composite Risk Chart</h1>
-      <p>Multi-Property RERA Risk & Quality Radar Evaluation (P-01 – P-37)</p>
-    </div>
-  </header>
+  <div class="container">
+    <header class="masthead">
+      <div class="eyebrow"><span class="dot"></span> RERA Karnataka Intelligence · Internal Use</div>
+      <h1>Property Risk & Compliance Report</h1>
+      <p class="sub">Composite scoring across 37 verification points (P&#8209;01–P&#8209;37), rolled up into eight risk
+        and quality axes for side-by-side evaluation.</p>
+    </header>
 
-  <!-- Dropdown Property Selectors -->
-  <div class="controls-panel">
-    <div class="select-group">
-      <label class="prop-a" for="selA">Property A (Primary Target)</label>
-      <select id="selA"></select>
+    <div class="controls-panel">
+      <div class="select-group">
+        <label for="selA"><span class="swatch a"></span>Property A — Primary target</label>
+        <select id="selA"></select>
+      </div>
+      <div class="select-group">
+        <label for="selB"><span class="swatch b"></span>Property B — Benchmark</label>
+        <select id="selB"></select>
+      </div>
     </div>
-    <div class="select-group">
-      <label class="prop-b" for="selB">Property B (Benchmark Comparison)</label>
-      <select id="selB"></select>
-    </div>
-  </div>
 
-  <!-- Hard Gate Status Box (P-01 Active RERA Registration) -->
-  <div class="gate-box-wrapper" id="gateBox">
-    <div class="gate-box-title">
-      HARD GATE CHECK <span>P-01 ACTIVE RERA REGISTRATION</span>
+    <div class="gate-box-wrapper" id="gateBox">
+      <div class="gate-box-title">Hard gate — P&#8209;01 active RERA registration</div>
+      <div class="gate-flex" id="gateContent"></div>
     </div>
-    <div class="gate-flex" id="gateContent"></div>
-  </div>
 
-  <!-- Main Grid: Radar Chart + Breakdown Table -->
-  <div class="grid">
-    <!-- Left: Radar Chart Panel -->
-    <div class="panel">
+    <div class="grid">
+      <div class="panel">
+        <div class="panel-head">
+          <span>Risk & Quality Profile</span>
+          <span class="scale-note">0–100 · higher is better</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="radarChart"></canvas>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span id="breakdownTitle">Property A — Score Breakdown</span>
+        </div>
+        <table class="breakdown-table">
+          <thead>
+            <tr>
+              <th>Axis</th>
+              <th>Source</th>
+              <th>Score</th>
+              <th>Band</th>
+            </tr>
+          </thead>
+          <tbody id="breakdownBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="compare-panel">
       <div class="panel-head">
-        <span>Risk & Quality Radar Profile</span>
-        <span style="font-size: 0.75rem; color: var(--text-muted);">Scale: 0 (Worst) – 100 (Best)</span>
+        <span>Side-by-Side Comparison</span>
+        <span id="compareSummary"></span>
       </div>
-      <div class="chart-container">
-        <canvas id="radarChart"></canvas>
-      </div>
-    </div>
-
-    <!-- Right: Breakdown Table for Property A -->
-    <div class="panel">
-      <div class="panel-head">
-        <span id="breakdownTitle">Property A Score Breakdown</span>
-      </div>
-      <table class="breakdown-table">
+      <table class="compare-table">
         <thead>
           <tr>
             <th>Axis</th>
-            <th>Source Points</th>
-            <th>Score</th>
-            <th>Band</th>
+            <th id="thA">Property A</th>
+            <th id="thB">Property B</th>
+            <th>&#916; (A&#8722;B)</th>
           </tr>
         </thead>
-        <tbody id="breakdownBody"></tbody>
+        <tbody id="compareBody"></tbody>
       </table>
+      <div class="compare-foot" id="compareFoot"></div>
+    </div>
+
+    <div class="note">
+      Litigation Risk is inverted so a higher score always represents fewer, or fully resolved, buyer complaints.
+      P&#8209;01 (Active RERA Registration) is an absolute pass/fail gate, kept separate from the eight weighted scores
+      above.
     </div>
   </div>
 
-  <!-- Side-by-Side Comparison Panel -->
-  <div class="compare-panel">
-    <div class="panel-head">
-      <span>Side-by-Side Property Comparison</span>
-      <span id="compareSummary" style="font-size: 0.85rem; font-weight: 500; color: var(--accent-blue);"></span>
-    </div>
-    <table class="compare-table">
-      <thead>
-        <tr>
-          <th>Axis</th>
-          <th id="thA">Property A</th>
-          <th id="thB">Property B</th>
-          <th>Δ (A − B)</th>
-        </tr>
-      </thead>
-      <tbody id="compareBody"></tbody>
-    </table>
-    <div class="compare-foot" id="compareFoot"></div>
-  </div>
+  <script>
+    const AXES = [
+      { key: 'compliance', name: 'Regulatory Compliance', points: 'P-02 – P-04', weight: 1.0 },
+      { key: 'litigation', name: 'Litigation Risk', points: 'P-05 – P-11', weight: 1.2 },
+      { key: 'timeline', name: 'Timeline Adherence', points: 'P-12 – P-16', weight: 1.1 },
+      { key: 'title', name: 'Land & Title Clarity', points: 'P-17 – P-21', weight: 1.1 },
+      { key: 'location', name: 'Location & Connectivity', points: 'P-22 – P-29', weight: 0.9 },
+      { key: 'layout', name: 'Layout & Amenities', points: 'P-30 – P-33', weight: 0.7 },
+      { key: 'promoter', name: 'Promoter Reputation', points: 'P-34 – P-35', weight: 1.0 },
+      { key: 'transparency', name: 'Data Transparency', points: 'P-36 – P-37', weight: 0.8 }
+    ];
 
-  <div class="note">
-    * Note: <strong>Litigation Risk</strong> is inverted so that a higher score consistently represents a safer property with fewer/resolved complaints. <strong>P-01 (Active RERA Registration)</strong> acts as an absolute pass/fail hard gate and is kept separate from the 8 calculated scores.
-  </div>
-</div>
+    const PROPERTY_CACHE = {};
+    const PROPERTY_NAMES = [
+      { label: 'Elegant Tranquility — Bengaluru Urban', query: 'ELEGANT TRANQUILITY' },
+      { label: 'Mahindra Blossom — Bengaluru Urban', query: 'MAHINDRA BLOSSOM' },
+      { label: 'Divinity — Salarpuria Sattva', query: 'DIVINITY' },
+      { label: 'Brigade Panorama — Bengaluru South', query: 'Brigade Panorama' },
+      { label: 'Shankara Agraharam Sri Sharadamba', query: 'Shankara Agraharam' },
+    ];
 
-<script>
-  // Definition of the 8 Rolled-up Axes and their P-01..P-37 mappings
-  const AXES = [
-    { key: 'compliance', name: 'Regulatory Compliance', points: 'P-02 – P-04', weight: 1.0 },
-    { key: 'litigation', name: 'Litigation Risk', points: 'P-05 – P-11', weight: 1.2 },
-    { key: 'timeline', name: 'Timeline Adherence', points: 'P-12 – P-16', weight: 1.1 },
-    { key: 'title', name: 'Land & Title Clarity', points: 'P-17 – P-21', weight: 1.1 },
-    { key: 'location', name: 'Location & Connectivity', points: 'P-22 – P-29', weight: 0.9 },
-    { key: 'layout', name: 'Layout & Amenities', points: 'P-30 – P-33', weight: 0.7 },
-    { key: 'promoter', name: 'Promoter Reputation', points: 'P-34 – P-35', weight: 1.0 },
-    { key: 'transparency', name: 'Data Transparency', points: 'P-36 – P-37', weight: 0.8 }
-  ];
-
-  // ------------------------------------------------------------------ //
-  // Live API Cache — populated dynamically from /api/v1/projects/analyze
-  // ------------------------------------------------------------------ //
-  const PROPERTY_CACHE = {};   // { queryKey: analysisResult }
-  const PROPERTY_NAMES = [
-    { label: 'ELEGANT TRANQUILITY — Bengaluru Urban',   query: 'ELEGANT TRANQUILITY' },
-    { label: 'MAHINDRA BLOSSOM — Bengaluru Urban',      query: 'MAHINDRA BLOSSOM' },
-    { label: 'DIVINITY — Salarpuria Sattva',            query: 'DIVINITY' },
-    { label: 'Brigade Panorama — Bengaluru South',      query: 'Brigade Panorama' },
-    { label: 'Shankara Agraharam Sri Sharadamba',       query: 'Shankara Agraharam' },
-  ];
-
-  // Helper: convert analyze API response → dashboard shape
-  function apiResultToProperty(result) {
-    const r = result.radar_profile || {};
-    const scores = r.scores || {};
-    const reasons = r.reasons || {};
-    const ps = result.project_summary || {};
-    const oe = result.overall_evaluation || {};
-    return {
-      name: ps.project_name || 'Unknown',
-      developer: ps.developer_name || '',
-      status: ps.status || '',
-      gateOK: r.gateOK !== false,
-      healthScore: oe.health_score || 0,
-      riskLevel: oe.risk_level || '',
-      verdict: oe.verdict || '',
-      scores: {
-        compliance:   scores.compliance   ?? 50,
-        litigation:   scores.litigation   ?? 50,
-        timeline:     scores.timeline     ?? 50,
-        title:        scores.title        ?? 50,
-        location:     scores.location     ?? 50,
-        layout:       scores.layout       ?? 50,
-        promoter:     scores.promoter     ?? 50,
-        transparency: scores.transparency ?? 50,
-      },
-      reasons: {
-        compliance:   reasons.compliance   || [],
-        litigation:   reasons.litigation   || [],
-        timeline:     reasons.timeline     || [],
-        title:        reasons.title        || [],
-        location:     reasons.location     || [],
-        layout:       reasons.layout       || [],
-        promoter:     reasons.promoter     || [],
-        transparency: reasons.transparency || [],
-      }
-    };
-  }
-
-  async function fetchProperty(query) {
-    if (PROPERTY_CACHE[query]) return PROPERTY_CACHE[query];
-    try {
-      const res = await fetch(`/api/v1/projects/analyze?q=${encodeURIComponent(query)}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      PROPERTY_CACHE[query] = apiResultToProperty(json);
-    } catch (e) {
-      console.warn(`[RERA] Could not load "${query}" from API:`, e.message);
-      // Fallback: empty shell so UI doesn't crash
-      PROPERTY_CACHE[query] = {
-        name: query, developer: '', status: 'UNKNOWN', gateOK: false,
-        healthScore: 0, riskLevel: 'UNKNOWN', verdict: 'Data unavailable — API error.',
-        scores: { compliance:50, litigation:50, timeline:50, title:50, location:50, layout:50, promoter:50, transparency:50 },
-        reasons: { compliance:[], litigation:[], timeline:[], title:[], location:[], layout:[], promoter:[], transparency:[] }
+    function apiResultToProperty(result) {
+      const r = result.radar_profile || {};
+      const scores = r.scores || {};
+      const reasons = r.reasons || {};
+      const ps = result.project_summary || {};
+      const oe = result.overall_evaluation || {};
+      return {
+        name: ps.project_name || 'Unknown',
+        developer: ps.developer_name || '',
+        status: ps.status || '',
+        gateOK: r.gateOK !== false,
+        healthScore: oe.health_score || 0,
+        riskLevel: oe.risk_level || '',
+        verdict: oe.verdict || '',
+        scores: {
+          compliance: scores.compliance ?? 50,
+          litigation: scores.litigation ?? 50,
+          timeline: scores.timeline ?? 50,
+          title: scores.title ?? 50,
+          location: scores.location ?? 50,
+          layout: scores.layout ?? 50,
+          promoter: scores.promoter ?? 50,
+          transparency: scores.transparency ?? 50,
+        },
+        reasons: {
+          compliance: reasons.compliance || [],
+          litigation: reasons.litigation || [],
+          timeline: reasons.timeline || [],
+          title: reasons.title || [],
+          location: reasons.location || [],
+          layout: reasons.layout || [],
+          promoter: reasons.promoter || [],
+          transparency: reasons.transparency || [],
+        }
       };
     }
-    return PROPERTY_CACHE[query];
-  }
 
-  // Helper for Banding
-  function getBand(score) {
-    if (score >= 70) return { label: 'Clear', class: 'band-clear' };
-    if (score >= 40) return { label: 'Watch', class: 'band-watch' };
-    return { label: 'Flag', class: 'band-flag' };
-  }
-
-  // Populate Dropdowns from PROPERTY_NAMES list
-  const selA = document.getElementById('selA');
-  const selB = document.getElementById('selB');
-
-  PROPERTY_NAMES.forEach(p => {
-    const optA = document.createElement('option');
-    optA.value = p.query;
-    optA.textContent = p.label;
-    selA.appendChild(optA);
-
-    const optB = document.createElement('option');
-    optB.value = p.query;
-    optB.textContent = p.label;
-    selB.appendChild(optB);
-  });
-
-  selA.value = PROPERTY_NAMES[0].query;
-  selB.value = PROPERTY_NAMES[3].query;
-
-  // Custom Chart Plugin for Background Risk Rings (Red: 0-40, Amber: 40-70, Green: 70-100)
-  const backgroundRingsPlugin = {
-    id: 'backgroundRings',
-    beforeDraw(chart) {
-      const { ctx, scale } = chart;
-      if (!scale) return;
-
-      const r0 = scale.getDistanceForValue(0);
-      const r40 = scale.getDistanceForValue(40);
-      const r70 = scale.getDistanceForValue(70);
-      const r100 = scale.getDistanceForValue(100);
-      const center = scale.xCenter;
-      const centerY = scale.yCenter;
-
-      ctx.save();
-      
-      // Green Zone (70-100)
-      ctx.beginPath();
-      ctx.arc(center, centerY, r100, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(16, 185, 129, 0.05)';
-      ctx.fill();
-
-      // Amber Zone (40-70)
-      ctx.beginPath();
-      ctx.arc(center, centerY, r70, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(245, 158, 11, 0.07)';
-      ctx.fill();
-
-      // Red Zone (0-40)
-      ctx.beginPath();
-      ctx.arc(center, centerY, r40, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(239, 68, 68, 0.1)';
-      ctx.fill();
-
-      ctx.restore();
+    async function fetchProperty(query) {
+      if (PROPERTY_CACHE[query]) return PROPERTY_CACHE[query];
+      try {
+        const res = await fetch(`/api/v1/projects/analyze?q=${encodeURIComponent(query)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        PROPERTY_CACHE[query] = apiResultToProperty(json);
+      } catch (e) {
+        console.warn(`[RERA] Could not load "${query}" from API:`, e.message);
+        PROPERTY_CACHE[query] = {
+          name: query, developer: '', status: 'UNKNOWN', gateOK: false,
+          healthScore: 0, riskLevel: 'UNKNOWN', verdict: 'Data unavailable — API error.',
+          scores: { compliance: 50, litigation: 50, timeline: 50, title: 50, location: 50, layout: 50, promoter: 50, transparency: 50 },
+          reasons: { compliance: [], litigation: [], timeline: [], title: [], location: [], layout: [], promoter: [], transparency: [] }
+        };
+      }
+      return PROPERTY_CACHE[query];
     }
-  };
 
-  Chart.register(backgroundRingsPlugin);
+    function getBand(score) {
+      if (score >= 70) return { label: 'Clear', class: 'band-clear' };
+      if (score >= 40) return { label: 'Watch', class: 'band-watch' };
+      return { label: 'Flag', class: 'band-flag' };
+    }
 
-  // Initialize Radar Chart
-  const ctx = document.getElementById('radarChart').getContext('2d');
-  let radarChart = new Chart(ctx, {
-    type: 'radar',
-    data: {
-      labels: AXES.map(a => a.name),
-      datasets: []
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        r: {
-          min: 0,
-          max: 100,
-          ticks: {
-            stepSize: 20,
-            backdropColor: 'transparent',
-            color: '#64748b',
-            font: { size: 10 }
-          },
-          grid: {
-            color: 'rgba(255, 255, 255, 0.1)'
-          },
-          angleLines: {
-            color: 'rgba(255, 255, 255, 0.15)'
-          },
-          pointLabels: {
-            color: '#cbd5e1',
-            font: { size: 11, weight: '600', family: 'Inter' }
+    // Interpret a reason string's leading marker (❌ / ⚠ / other) and strip it for clean display.
+    function classifyReason(raw) {
+      let type = 'pos', tag = 'Clear';
+      if (raw.indexOf('\u274C') !== -1) { type = 'neg'; tag = 'Flag'; }
+      else if (raw.indexOf('\u26A0') !== -1) { type = 'warn'; tag = 'Caution'; }
+      const text = raw.replace(/[\u274C\u26A0\uFE0F\u2705]/g, '').replace(/^[\s:—-]+/, '').trim();
+      return { type, tag, text };
+    }
+
+    const selA = document.getElementById('selA');
+    const selB = document.getElementById('selB');
+
+    PROPERTY_NAMES.forEach(p => {
+      const optA = document.createElement('option');
+      optA.value = p.query; optA.textContent = p.label;
+      selA.appendChild(optA);
+      const optB = document.createElement('option');
+      optB.value = p.query; optB.textContent = p.label;
+      selB.appendChild(optB);
+    });
+    selA.value = PROPERTY_NAMES[0].query;
+    selB.value = PROPERTY_NAMES[3].query;
+
+    // Subtle risk-zone shading behind the radar grid, kept quiet rather than glowing.
+    const backgroundRingsPlugin = {
+      id: 'backgroundRings',
+      beforeDraw(chart) {
+        const { ctx, scale } = chart;
+        if (!scale) return;
+        const r40 = scale.getDistanceForValue(40);
+        const r70 = scale.getDistanceForValue(70);
+        const r100 = scale.getDistanceForValue(100);
+        const cx = scale.xCenter, cy = scale.yCenter;
+        ctx.save();
+        ctx.beginPath(); ctx.arc(cx, cy, r100, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(47, 110, 79, 0.04)'; ctx.fill();
+        ctx.beginPath(); ctx.arc(cx, cy, r70, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(151, 112, 26, 0.05)'; ctx.fill();
+        ctx.beginPath(); ctx.arc(cx, cy, r40, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(172, 44, 44, 0.06)'; ctx.fill();
+        ctx.restore();
+      }
+    };
+    Chart.register(backgroundRingsPlugin);
+
+    const ctx = document.getElementById('radarChart').getContext('2d');
+    let radarChart = new Chart(ctx, {
+      type: 'radar',
+      data: { labels: AXES.map(a => a.name), datasets: [] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          r: {
+            min: 0, max: 100,
+            ticks: { stepSize: 20, backdropColor: 'transparent', color: '#8B8E96', font: { size: 10, family: 'IBM Plex Mono' } },
+            grid: { color: 'rgba(27,30,36,0.08)' },
+            angleLines: { color: 'rgba(27,30,36,0.1)' },
+            pointLabels: { color: '#3A3E46', font: { size: 11, weight: '600', family: 'IBM Plex Sans' } }
+          }
+        },
+        plugins: {
+          legend: { position: 'top', labels: { color: '#1B1E24', font: { family: 'IBM Plex Sans', size: 12 }, usePointStyle: true, pointStyle: 'rect' } },
+          tooltip: {
+            backgroundColor: '#1B1E24', titleColor: '#F6F5F1', bodyColor: '#DBD7CC',
+            borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+            titleFont: { family: 'IBM Plex Sans' }, bodyFont: { family: 'IBM Plex Mono' }
           }
         }
-      },
-      plugins: {
-        legend: {
-          position: 'top',
-          labels: { color: '#f1f5f9', font: { family: 'Inter', size: 12 } }
-        },
-        tooltip: {
-          backgroundColor: '#1e293b',
-          titleColor: '#f8fafc',
-          bodyColor: '#cbd5e1',
-          borderColor: 'rgba(255, 255, 255, 0.1)',
-          borderWidth: 1
-        }
       }
-    }
-  });
+    });
 
-  // Render function — async, loads live data from API
-  async function render() {
-    const queryA = selA.value;
-    const queryB = selB.value;
+    async function render() {
+      const queryA = selA.value;
+      const queryB = selB.value;
 
-    document.getElementById('breakdownTitle').textContent = 'Loading from RERA API…';
+      document.getElementById('breakdownTitle').textContent = 'Loading from RERA API…';
 
-    const [propA, propB] = await Promise.all([
-      fetchProperty(queryA),
-      fetchProperty(queryB),
-    ]);
+      const [propA, propB] = await Promise.all([fetchProperty(queryA), fetchProperty(queryB)]);
 
-    // 1. Render Gate Box
-    const gateBox = document.getElementById('gateContent');
-    gateBox.innerHTML = `
+      const gateBox = document.getElementById('gateContent');
+      gateBox.innerHTML = `
       <div class="gate-status ${propA.gateOK ? 'pass' : 'fail'}">
         <div>
-          <strong>Property A: ${propA.name}</strong><br>
-          <span style="font-size: 0.8rem; opacity: 0.8;">P-01 Active Registration Status · Health: ${propA.healthScore}/100</span>
+          <strong>Property A — ${propA.name}</strong>
+          <div class="meta">P&#8209;01 registration status · Health score ${propA.healthScore}/100</div>
         </div>
-        <span class="gate-badge">${propA.gateOK ? 'PASS (Clear)' : 'FAIL (Flagged)'}</span>
+        <span class="seal">${propA.gateOK ? 'Cleared' : 'Flagged'}</span>
       </div>
       <div class="gate-status ${propB.gateOK ? 'pass' : 'fail'}">
         <div>
-          <strong>Property B: ${propB.name}</strong><br>
-          <span style="font-size: 0.8rem; opacity: 0.8;">P-01 Active Registration Status · Health: ${propB.healthScore}/100</span>
+          <strong>Property B — ${propB.name}</strong>
+          <div class="meta">P&#8209;01 registration status · Health score ${propB.healthScore}/100</div>
         </div>
-        <span class="gate-badge">${propB.gateOK ? 'PASS (Clear)' : 'FAIL (Flagged)'}</span>
+        <span class="seal">${propB.gateOK ? 'Cleared' : 'Flagged'}</span>
       </div>
     `;
 
-    // 2. Extract Axis Scores
-    const dataA = AXES.map(ax => propA.scores[ax.key]);
-    const dataB = AXES.map(ax => propB.scores[ax.key]);
+      const dataA = AXES.map(ax => propA.scores[ax.key]);
+      const dataB = AXES.map(ax => propB.scores[ax.key]);
 
-    // 3. Update Chart Datasets
-    radarChart.data.datasets = [
-      {
-        label: propA.name,
-        data: dataA,
-        backgroundColor: 'rgba(56, 189, 248, 0.25)',
-        borderColor: '#38bdf8',
-        borderWidth: 2,
-        pointBackgroundColor: '#38bdf8',
-        pointRadius: 4
-      },
-      {
-        label: propB.name,
-        data: dataB,
-        backgroundColor: 'rgba(244, 63, 94, 0.25)',
-        borderColor: '#f43f5e',
-        borderWidth: 2,
-        pointBackgroundColor: '#f43f5e',
-        pointRadius: 4
-      }
-    ];
-    radarChart.update();
-
-    // 4. Populate Breakdown Table for Property A with Transparent Reasons & Blur Toggle
-    document.getElementById('breakdownTitle').textContent = `${propA.name} — Axis Breakdown & Score Deductions`;
-    const breakdownBody = document.getElementById('breakdownBody');
-    breakdownBody.innerHTML = '';
-
-    AXES.forEach((ax, idx) => {
-      const score = dataA[idx];
-      const band = getBand(score);
-      const reasonsList = (propA.reasons && propA.reasons[ax.key]) ? propA.reasons[ax.key] : ["✓ Standard score assigned."];
-
-      const tr = document.createElement('tr');
-      const reasonsHtml = reasonsList.map((r, rIdx) => {
-        const isNeg = r.includes('❌');
-        const color = isNeg ? '#f87171' : (r.includes('⚠') ? '#fbbf24' : '#34d399');
-        if (isNeg) {
-          const blurId = `blur-table-${idx}-${rIdx}`;
-          return `
-            <div style="font-size: 0.75rem; color: ${color}; margin-top: 3px; display: flex; align-items: center; flex-wrap: wrap;">
-              <span id="${blurId}" class="blur-target" title="Click to toggle blur" onclick="toggleBlurElement('${blurId}')">${r}</span>
-              <button class="eye-toggle-btn" onclick="toggleBlurElement('${blurId}', this)" title="Click eye to reveal or blur negative point deduction">👁️ Reveal</button>
-            </div>`;
+      radarChart.data.datasets = [
+        {
+          label: propA.name, data: dataA,
+          backgroundColor: 'rgba(44, 74, 110, 0.14)', borderColor: '#2C4A6E', borderWidth: 2,
+          pointBackgroundColor: '#2C4A6E', pointRadius: 3
+        },
+        {
+          label: propB.name, data: dataB,
+          backgroundColor: 'rgba(140, 65, 48, 0.12)', borderColor: '#8C4130', borderWidth: 2,
+          pointBackgroundColor: '#8C4130', pointRadius: 3
         }
-        return `<div style="font-size: 0.75rem; color: ${color}; margin-top: 2px;">${r}</div>`;
-      }).join('');
+      ];
+      radarChart.update();
 
-      tr.innerHTML = `
+      document.getElementById('breakdownTitle').textContent = `${propA.name} — Axis Breakdown`;
+      const breakdownBody = document.getElementById('breakdownBody');
+      breakdownBody.innerHTML = '';
+
+      AXES.forEach((ax, idx) => {
+        const score = dataA[idx];
+        const band = getBand(score);
+        const reasonsList = (propA.reasons && propA.reasons[ax.key] && propA.reasons[ax.key].length)
+          ? propA.reasons[ax.key] : ['Standard score assigned.'];
+
+        const tr = document.createElement('tr');
+        const reasonsHtml = reasonsList.map((raw, rIdx) => {
+          const { type, tag, text } = classifyReason(raw);
+          if (type === 'neg') {
+            const blurId = `blur-table-${idx}-${rIdx}`;
+            return `
+            <div class="reason-line">
+              <span class="reason-tag neg">${tag}</span>
+              <span id="${blurId}" class="reason-text blur-target" onclick="toggleBlurElement('${blurId}')">${text}</span>
+              <button class="reveal-btn" onclick="toggleBlurElement('${blurId}', this)">Reveal</button>
+            </div>`;
+          }
+          return `<div class="reason-line"><span class="reason-tag ${type}">${tag}</span><span class="reason-text">${text}</span></div>`;
+        }).join('');
+
+        tr.innerHTML = `
         <td>
-          <strong>${ax.name}</strong>
+          <div class="axis-name">${ax.name}</div>
           ${reasonsHtml}
         </td>
-        <td class="sources-list">
-          <span class="sources-badge" onclick="openPointsModal('${ax.key}', '${ax.name}', '${ax.points}', '${queryA}')" title="Click to view source points P-01..P-37">${ax.points} 🔍</span>
-        </td>
-        <td><span class="score-pill" style="background: rgba(255, 255, 255, 0.08);">${score}</span></td>
+        <td><span class="sources-link" onclick="openPointsModal('${ax.key}', '${ax.name}', '${ax.points}', '${queryA}')">${ax.points}</span></td>
+        <td><span class="score-cell">${score}</span></td>
         <td><span class="band-tag ${band.class}">${band.label}</span></td>
       `;
-      breakdownBody.appendChild(tr);
-    });
+        breakdownBody.appendChild(tr);
+      });
 
-    // 5. Populate Comparison Table (A vs B)
-    document.getElementById('thA').textContent = propA.name;
-    document.getElementById('thB').textContent = propB.name;
+      document.getElementById('thA').textContent = propA.name;
+      document.getElementById('thB').textContent = propB.name;
 
-    const compareBody = document.getElementById('compareBody');
-    compareBody.innerHTML = '';
+      const compareBody = document.getElementById('compareBody');
+      compareBody.innerHTML = '';
+      let aWins = 0, bWins = 0, ties = 0;
 
-    let aWins = 0, bWins = 0, ties = 0;
+      AXES.forEach((ax, idx) => {
+        const va = dataA[idx], vb = dataB[idx];
+        const delta = va - vb;
+        let deltaClass = 'flat', deltaStr = '0', dotA = '', dotB = '';
 
-    AXES.forEach((ax, idx) => {
-      const va = dataA[idx];
-      const vb = dataB[idx];
-      const delta = va - vb;
+        if (delta > 0) { deltaClass = 'pos'; deltaStr = `+${delta}`; aWins++; dotA = '<span class="winner-dot a"></span>'; }
+        else if (delta < 0) { deltaClass = 'neg'; deltaStr = `${delta}`; bWins++; dotB = '<span class="winner-dot b"></span>'; }
+        else { ties++; }
 
-      let deltaClass = 'flat';
-      let deltaStr = '0';
-      let dotA = '', dotB = '';
-
-      if (delta > 0) {
-        deltaClass = 'pos';
-        deltaStr = `+${delta}`;
-        aWins++;
-        dotA = '<span class="winner-dot a" title="Property A leads"></span>';
-      } else if (delta < 0) {
-        deltaClass = 'neg';
-        deltaStr = `${delta}`;
-        bWins++;
-        dotB = '<span class="winner-dot b" title="Property B leads"></span>';
-      } else {
-        ties++;
-      }
-
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><strong>${ax.name}</strong></td>
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+        <td class="axis-name">${ax.name}</td>
         <td>${va}${dotA}</td>
         <td>${vb}${dotB}</td>
         <td><span class="delta ${deltaClass}">${deltaStr}</span></td>
       `;
-      compareBody.appendChild(tr);
-    });
+        compareBody.appendChild(tr);
+      });
 
-    // 6. Set Comparison Summary & Footers
-    document.getElementById('compareSummary').textContent = `Property A leads: ${aWins} · Property B leads: ${bWins} · Ties: ${ties}`;
+      document.getElementById('compareSummary').textContent = `A leads ${aWins} · B leads ${bWins} · ${ties} tied`;
 
-    const totalWeight = AXES.reduce((s, a) => s + a.weight, 0);
-    const wavgA = (AXES.reduce((s, a, i) => s + dataA[i] * a.weight, 0) / totalWeight).toFixed(1);
-    const wavgB = (AXES.reduce((s, a, i) => s + dataB[i] * a.weight, 0) / totalWeight).toFixed(1);
-    const avgDelta = (wavgA - wavgB).toFixed(1);
-    const avgDeltaStr = avgDelta > 0 ? `+${avgDelta}` : `${avgDelta}`;
-    const avgDeltaClass = avgDelta > 0 ? 'pos' : (avgDelta < 0 ? 'neg' : 'flat');
+      const totalWeight = AXES.reduce((s, a) => s + a.weight, 0);
+      const wavgA = (AXES.reduce((s, a, i) => s + dataA[i] * a.weight, 0) / totalWeight).toFixed(1);
+      const wavgB = (AXES.reduce((s, a, i) => s + dataB[i] * a.weight, 0) / totalWeight).toFixed(1);
+      const avgDelta = (wavgA - wavgB).toFixed(1);
+      const avgDeltaStr = avgDelta > 0 ? `+${avgDelta}` : `${avgDelta}`;
+      const avgDeltaClass = avgDelta > 0 ? 'pos' : (avgDelta < 0 ? 'neg' : 'flat');
 
-    document.getElementById('compareFoot').innerHTML = `
-      <div>Weighted Score (matches backend formula):</div>
-      <div>
-        <span style="color: var(--accent-blue); margin-right: 1.5rem;">Prop A: ${wavgA} / 100</span>
-        <span style="color: var(--accent-pink); margin-right: 1.5rem;">Prop B: ${wavgB} / 100</span>
-        <span class="delta ${avgDeltaClass}">Δ (A−B): ${avgDeltaStr}</span>
+      document.getElementById('compareFoot').innerHTML = `
+      <div>Weighted composite score</div>
+      <div class="score-readout">
+        <span class="a">A ${wavgA} / 100</span>
+        <span class="b">B ${wavgB} / 100</span>
+        <span class="delta ${avgDeltaClass}">&#916; ${avgDeltaStr}</span>
       </div>
     `;
-  }
+    }
 
-  // Master Source Points Definitions (P-01 to P-37)
-  const SOURCE_POINTS_MAP = {
-    'compliance': ['P-02', 'P-03', 'P-04'],
-    'litigation': ['P-05', 'P-06', 'P-07', 'P-08', 'P-09', 'P-10', 'P-11'],
-    'timeline': ['P-12', 'P-13', 'P-14', 'P-15', 'P-16'],
-    'title': ['P-17', 'P-18', 'P-19', 'P-20', 'P-21'],
-    'location': ['P-22', 'P-23', 'P-24', 'P-25', 'P-26', 'P-27', 'P-28', 'P-29'],
-    'layout': ['P-30', 'P-31', 'P-32', 'P-33'],
-    'promoter': ['P-34', 'P-35'],
-    'transparency': ['P-36', 'P-37']
-  };
+    const SOURCE_POINTS_MAP = {
+      compliance: ['P-02', 'P-03', 'P-04'],
+      litigation: ['P-05', 'P-06', 'P-07', 'P-08', 'P-09', 'P-10', 'P-11'],
+      timeline: ['P-12', 'P-13', 'P-14', 'P-15', 'P-16'],
+      title: ['P-17', 'P-18', 'P-19', 'P-20', 'P-21'],
+      location: ['P-22', 'P-23', 'P-24', 'P-25', 'P-26', 'P-27', 'P-28', 'P-29'],
+      layout: ['P-30', 'P-31', 'P-32', 'P-33'],
+      promoter: ['P-34', 'P-35'],
+      transparency: ['P-36', 'P-37']
+    };
 
-  const SOURCE_POINTS_DETAIL = {
-    'P-01': { title: 'Active RERA Registration Status', desc: 'Verifies if project has active RERA approval (not expired, revoked, or suspended).' },
-    'P-02': { title: 'Registration Validity Period', desc: 'Checks declared registration approval start date & current expiry date.' },
-    'P-03': { title: 'Extension & Renewal Status', desc: 'Audits multi-year extension filings or active renewal orders.' },
-    'P-04': { title: 'Project Type Classification', desc: 'Validates residential, commercial, group housing, or plotted layout declaration.' },
-    
-    'P-05': { title: 'Total RERA Complaint Count', desc: 'Total buyer/investor complaints filed on Karnataka RERA portal.' },
-    'P-06': { title: 'Active Under Enquiry Complaints', desc: 'Unresolved pending legal disputes actively under investigation.' },
-    'P-07': { title: 'Project-Specific Complaints', desc: 'Complaints registered directly against this project.' },
-    'P-08': { title: 'Promoter-Wide Complaints', desc: 'Litigation track record across all projects by the builder.' },
-    'P-09': { title: 'Possession Delay Disputes', desc: 'Complaints citing delayed possession under Sec 18.' },
-    'P-10': { title: 'Refund & Cancellation Disputes', desc: 'Disputes regarding non-refund of booking amounts.' },
-    'P-11': { title: 'Structural & Quality Disputes', desc: 'Complaints citing construction defect or layout plan deviation.' },
-    
-    'P-12': { title: 'Declared Target Completion Date', desc: 'Target handover date submitted at registration.' },
-    'P-13': { title: 'Overdue Completion Schedule Alert', desc: 'Flagged if target date passed without completion certificate.' },
-    'P-14': { title: 'Schedule Delay Magnitude', desc: 'Number of months/years delayed beyond target date.' },
-    'P-15': { title: 'Quarterly Update Recency', desc: 'Audits if promoter submits mandatory quarterly filings.' },
-    'P-16': { title: 'Construction Progress Percentage', desc: 'Declared physical construction completion rate.' },
-    
-    'P-17': { title: 'Encumbrance Certificate (EC)', desc: 'Proof of zero bank mortgage or legal charge.' },
-    'P-18': { title: 'Title Deed & Land Ownership', desc: 'Clear land ownership deed or JDA agreement.' },
-    'P-19': { title: 'Land Conversion Order (DC Conversion)', desc: 'Official agricultural to non-agricultural conversion order.' },
-    'P-20': { title: 'Approved Sanction Plan', desc: 'Building & layout sanction from BBMP/BDA/Local Authority.' },
-    'P-21': { title: 'Environmental & Utility NOCs', desc: 'Clearances from Fire Dept, KSPCB, Airport Authority, and Water Board.' },
-    
-    'P-22': { title: 'PostGIS Verified Coordinates', desc: 'Validated latitude & longitude map position.' },
-    'P-23': { title: 'Land Survey Numbers Verification', desc: 'Survey/Katha numbers matched with land revenue records.' },
-    'P-24': { title: 'Sub-Registrar Office (SRO)', desc: 'Identified registration office jurisdiction.' },
-    'P-25': { title: 'Metro Station Proximity', desc: 'Distance to nearest Namma Metro or train station.' },
-    'P-26': { title: 'Major Arterial Road Access', desc: 'Distance to main highways or Outer Ring Road.' },
-    'P-27': { title: 'Healthcare Access', desc: 'Distance to nearest hospital.' },
-    'P-28': { title: 'Educational Access', desc: 'Distance to schools & colleges.' },
-    'P-29': { title: 'Employment Hub Access', desc: 'Distance to major tech parks & business centers.' },
-    
-    'P-30': { title: 'Open Space Percentage', desc: 'Ratio of green/open land area vs total footprint.' },
-    'P-31': { title: 'Unit Density Ratio', desc: 'Total housing units per acre.' },
-    'P-32': { title: 'Car Parking Ratio', desc: 'Parking spaces provisioned per unit.' },
-    'P-33': { title: 'Amenities Provisioning', desc: 'Clubhouse, sports, and community facilities.' },
-    
-    'P-34': { title: 'Promoter Past Portfolio Count', desc: 'Number of completed real estate projects in Karnataka.' },
-    'P-35': { title: 'On-Time Delivery Track Record', desc: 'Historical on-time completion ratio of promoter.' },
-    
-    'P-36': { title: 'RERA Submission Quality Score', desc: 'Structural completeness of portal disclosures (0-100).' },
-    'P-37': { title: 'Omitted Attributes Count', desc: 'Count of missing optional fields or warnings.' }
-  };
+    const SOURCE_POINTS_DETAIL = {
+      'P-01': { title: 'Active RERA Registration Status', desc: 'Verifies if project has active RERA approval (not expired, revoked, or suspended).' },
+      'P-02': { title: 'Registration Validity Period', desc: 'Checks declared registration approval start date & current expiry date.' },
+      'P-03': { title: 'Extension & Renewal Status', desc: 'Audits multi-year extension filings or active renewal orders.' },
+      'P-04': { title: 'Project Type Classification', desc: 'Validates residential, commercial, group housing, or plotted layout declaration.' },
+      'P-05': { title: 'Total RERA Complaint Count', desc: 'Total buyer/investor complaints filed on Karnataka RERA portal.' },
+      'P-06': { title: 'Active Under Enquiry Complaints', desc: 'Unresolved pending legal disputes actively under investigation.' },
+      'P-07': { title: 'Project-Specific Complaints', desc: 'Complaints registered directly against this project.' },
+      'P-08': { title: 'Promoter-Wide Complaints', desc: 'Litigation track record across all projects by the builder.' },
+      'P-09': { title: 'Possession Delay Disputes', desc: 'Complaints citing delayed possession under Sec 18.' },
+      'P-10': { title: 'Refund & Cancellation Disputes', desc: 'Disputes regarding non-refund of booking amounts.' },
+      'P-11': { title: 'Structural & Quality Disputes', desc: 'Complaints citing construction defect or layout plan deviation.' },
+      'P-12': { title: 'Declared Target Completion Date', desc: 'Target handover date submitted at registration.' },
+      'P-13': { title: 'Overdue Completion Schedule Alert', desc: 'Flagged if target date passed without completion certificate.' },
+      'P-14': { title: 'Schedule Delay Magnitude', desc: 'Number of months/years delayed beyond target date.' },
+      'P-15': { title: 'Quarterly Update Recency', desc: 'Audits if promoter submits mandatory quarterly filings.' },
+      'P-16': { title: 'Construction Progress Percentage', desc: 'Declared physical construction completion rate.' },
+      'P-17': { title: 'Encumbrance Certificate (EC)', desc: 'Proof of zero bank mortgage or legal charge.' },
+      'P-18': { title: 'Title Deed & Land Ownership', desc: 'Clear land ownership deed or JDA agreement.' },
+      'P-19': { title: 'Land Conversion Order (DC Conversion)', desc: 'Official agricultural to non-agricultural conversion order.' },
+      'P-20': { title: 'Approved Sanction Plan', desc: 'Building & layout sanction from BBMP/BDA/Local Authority.' },
+      'P-21': { title: 'Environmental & Utility NOCs', desc: 'Clearances from Fire Dept, KSPCB, Airport Authority, and Water Board.' },
+      'P-22': { title: 'PostGIS Verified Coordinates', desc: 'Validated latitude & longitude map position.' },
+      'P-23': { title: 'Land Survey Numbers Verification', desc: 'Survey/Katha numbers matched with land revenue records.' },
+      'P-24': { title: 'Sub-Registrar Office (SRO)', desc: 'Identified registration office jurisdiction.' },
+      'P-25': { title: 'Metro Station Proximity', desc: 'Distance to nearest Namma Metro or train station.' },
+      'P-26': { title: 'Major Arterial Road Access', desc: 'Distance to main highways or Outer Ring Road.' },
+      'P-27': { title: 'Healthcare Access', desc: 'Distance to nearest hospital.' },
+      'P-28': { title: 'Educational Access', desc: 'Distance to schools & colleges.' },
+      'P-29': { title: 'Employment Hub Access', desc: 'Distance to major tech parks & business centers.' },
+      'P-30': { title: 'Open Space Percentage', desc: 'Ratio of green/open land area vs total footprint.' },
+      'P-31': { title: 'Unit Density Ratio', desc: 'Total housing units per acre.' },
+      'P-32': { title: 'Car Parking Ratio', desc: 'Parking spaces provisioned per unit.' },
+      'P-33': { title: 'Amenities Provisioning', desc: 'Clubhouse, sports, and community facilities.' },
+      'P-34': { title: 'Promoter Past Portfolio Count', desc: 'Number of completed real estate projects in Karnataka.' },
+      'P-35': { title: 'On-Time Delivery Track Record', desc: 'Historical on-time completion ratio of promoter.' },
+      'P-36': { title: 'RERA Submission Quality Score', desc: 'Structural completeness of portal disclosures (0-100).' },
+      'P-37': { title: 'Omitted Attributes Count', desc: 'Count of missing optional fields or warnings.' }
+    };
 
-  // openPointsModal — now receives queryKey so it reads from live API cache
-  // and assigns per-P-point specific evaluation notes instead of a single axis note.
-  function openPointsModal(axisKey, axisName, pointsRange, queryKey) {
-    const modal = document.getElementById('pointsModal');
-    const modalTitle = document.getElementById('modalTitle');
-    const modalBody = document.getElementById('modalBody');
+    function openPointsModal(axisKey, axisName, pointsRange, queryKey) {
+      const modal = document.getElementById('pointsModal');
+      const modalTitle = document.getElementById('modalTitle');
+      const modalBody = document.getElementById('modalBody');
 
-    // Read from live cache (populated by fetchProperty)
-    const propA = PROPERTY_CACHE[queryKey] || PROPERTY_CACHE[selA.value] || null;
+      const propA = PROPERTY_CACHE[queryKey] || PROPERTY_CACHE[selA.value] || null;
+      modalTitle.textContent = `${axisName} — Source points (${pointsRange})`;
+      modalBody.innerHTML = '';
 
-    modalTitle.textContent = `${axisName} — Source Points (${pointsRange})`;
-    modalBody.innerHTML = '';
+      const pKeys = SOURCE_POINTS_MAP[axisKey] || [];
+      const axisScore = propA ? (propA.scores[axisKey] ?? 50) : 50;
+      const axisReasons = (propA ? propA.reasons[axisKey] : []) || [];
+      const classified = axisReasons.map(classifyReason);
+      const negReasons = classified.filter(r => r.type === 'neg');
+      const warnReasons = classified.filter(r => r.type === 'warn');
 
-    const pKeys = SOURCE_POINTS_MAP[axisKey] || [];
-    const axisScore = propA ? (propA.scores[axisKey] ?? 50) : 50;
-    const axisReasons = propA ? (propA.reasons[axisKey] || []) : [];
+      pKeys.forEach((p, pIdx) => {
+        const info = SOURCE_POINTS_DETAIL[p] || { title: `Source Point ${p}`, desc: 'RERA Karnataka evaluation criteria.' };
+        const negNote = negReasons[pIdx] || null;
+        const warnNote = warnReasons[pIdx] || null;
+        let statusTag, findingHtml, isNeg = false;
 
-    // Separate negative vs positive reasons from the axis reasons list
-    const negReasons = axisReasons.filter(r => r.includes('❌'));
-    const warnReasons = axisReasons.filter(r => r.includes('⚠'));
+        if (negNote) {
+          isNeg = true;
+          statusTag = '<span class="band-tag band-flag">Flag</span>';
+          const modalBlurId = `modal-blur-${p}-${Date.now()}-${pIdx}`;
+          findingHtml = `
+          <strong>Finding:</strong>
+          <span id="${modalBlurId}" class="reason-text blur-target" onclick="toggleBlurElement('${modalBlurId}')">${negNote.text}</span>
+          <button class="reveal-btn" onclick="toggleBlurElement('${modalBlurId}', this)">Reveal</button>`;
+        } else if (warnNote || axisScore < 85) {
+          statusTag = '<span class="band-tag band-watch">Caution</span>';
+          findingHtml = `<strong>Finding:</strong> ${warnNote ? warnNote.text : 'Moderate evaluation — review pending data points.'}`;
+        } else {
+          statusTag = '<span class="band-tag band-clear">Clear</span>';
+          findingHtml = `<strong>Finding:</strong> Evaluated compliant with zero penalty deductions.`;
+        }
 
-    pKeys.forEach((p, pIdx) => {
-      const info = SOURCE_POINTS_DETAIL[p] || { title: `Source Point ${p}`, desc: 'RERA Karnataka evaluation criteria.' };
-
-      // Assign reasons round-robin across sub-points so each point gets its own specific note
-      const negNote = negReasons[pIdx] || null;
-      const warnNote = warnReasons[pIdx] || null;
-
-      let statusTag, evalNote, isNeg = false;
-
-      if (negNote) {
-        isNeg = true;
-        statusTag = '<span class="band-tag band-flag">❌ NEGATIVE</span>';
-        const modalBlurId = `modal-blur-${p}-${Date.now()}`;
-        evalNote = `
-          <span id="${modalBlurId}" class="blur-target" onclick="toggleBlurElement('${modalBlurId}')">${negNote}</span>
-          <button class="eye-toggle-btn" onclick="toggleBlurElement('${modalBlurId}', this)">👁️ Reveal</button>
-        `;
-      } else if (warnNote || axisScore < 85) {
-        statusTag = '<span class="band-tag band-watch">⚠ WATCH</span>';
-        evalNote = warnNote || 'Moderate evaluation — review pending data points.';
-      } else {
-        statusTag = '<span class="band-tag band-clear">✓ POSITIVE</span>';
-        evalNote = 'Evaluated compliant with zero penalty deductions.';
-      }
-
-      const card = document.createElement('div');
-      card.className = 'point-card';
-      card.innerHTML = `
+        const card = document.createElement('div');
+        card.className = 'point-card';
+        card.innerHTML = `
         <span class="point-tag">${p}</span>
         <div class="point-info" style="flex: 1;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
             <h4>${info.title}</h4>
             ${statusTag}
           </div>
           <p>${info.desc}</p>
-          <div style="margin-top: 0.4rem; font-size: 0.75rem; color: #cbd5e1; background: rgba(0,0,0,0.25); padding: 4px 8px; border-radius: 4px; border-left: 3px solid ${isNeg ? '#f87171' : '#34d399'}; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-            <strong>Finding:</strong> ${evalNote}
-          </div>
+          <div class="finding" style="border-left-color: ${isNeg ? '#AC2C2C' : '#2F6E4F'};">${findingHtml}</div>
         </div>
       `;
-      modalBody.appendChild(card);
-    });
+        modalBody.appendChild(card);
+      });
 
-    modal.classList.add('active');
-  }
-
-  function toggleBlurElement(elementId, btn) {
-    const el = document.getElementById(elementId);
-    if (!el) return;
-    const isRevealed = el.classList.contains('revealed');
-    if (isRevealed) {
-      el.classList.remove('revealed');
-      if (btn) btn.innerHTML = '👁️ Reveal';
-    } else {
-      el.classList.add('revealed');
-      if (btn) btn.innerHTML = '🙈 Hide';
+      modal.classList.add('active');
     }
-  }
 
-  function closePointsModal(e) {
-    const modal = document.getElementById('pointsModal');
-    modal.classList.remove('active');
-  }
+    function toggleBlurElement(elementId, btn) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      const isRevealed = el.classList.contains('revealed');
+      if (isRevealed) { el.classList.remove('revealed'); if (btn) btn.textContent = 'Reveal'; }
+      else { el.classList.add('revealed'); if (btn) btn.textContent = 'Hide'; }
+    }
 
-  // Event Listeners — async render
-  selA.addEventListener('change', () => render());
-  selB.addEventListener('change', () => render());
+    function closePointsModal(e) {
+      document.getElementById('pointsModal').classList.remove('active');
+    }
 
-  // Boot — load initial properties from API
-  render();
-</script>
+    selA.addEventListener('change', () => render());
+    selB.addEventListener('change', () => render());
 
-<!-- Source Points Breakdown Overlay Modal -->
-<div id="pointsModal" class="modal-overlay" onclick="closePointsModal(event)">
-  <div class="modal-card" onclick="event.stopPropagation()">
-    <div class="modal-head">
-      <h3 id="modalTitle">Source Points Breakdown</h3>
-      <button class="modal-close" onclick="closePointsModal()">&times;</button>
+    render();
+  </script>
+
+  <div id="pointsModal" class="modal-overlay" onclick="closePointsModal(event)">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-head">
+        <h3 id="modalTitle">Source Points Breakdown</h3>
+        <button class="modal-close" onclick="closePointsModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
     </div>
-    <div class="modal-body" id="modalBody"></div>
   </div>
-</div>
 
 </body>
+
 </html>
