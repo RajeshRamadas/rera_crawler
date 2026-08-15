@@ -175,7 +175,14 @@ def list_projects(
                     COALESCE(data->>'status', 'APPROVED') as status,
                     COALESCE(data->>'project_type', 'Residential/Group Housing') as project_type,
                     data->>'approved_on' as approved_on,
-                    COALESCE(data->>'proposed_completion_date', data->>'proposed_completion_date_at_registration') as proposed_completion_date,
+                    COALESCE(data->'project_overview_details'->>'Project Start Date', data->>'project_start_date', data->>'start_date', data->>'commencement_date') as project_start_date,
+                    COALESCE(data->>'proposed_completion_date', data->>'proposed_completion_date_at_registration', data->'project_overview_details'->>'Proposed Completion Date') as proposed_completion_date,
+                    COALESCE(
+                        (data->'completion_details' IS NOT NULL AND data->'completion_details' != '{{}}'::jsonb),
+                        (data->>'completion_certificate_url' IS NOT NULL),
+                        (data->>'renewed_certificate_url' IS NOT NULL),
+                        false
+                    ) as completion_certificate_available,
                     COALESCE(data->'project_location'->>'district', data->>'district', 'Karnataka') as district,
                     COALESCE(data->'project_location'->>'taluk', data->>'taluk', '') as taluk,
                     data->'project_location'->>'latitude' as latitude,

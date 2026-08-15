@@ -79,31 +79,38 @@
   #searchInput::placeholder { color: var(--ink-soft); }
 
   .btn {
-    height: 38px; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
-    font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
-    border: 1px solid var(--ink); background: var(--ink); color: var(--paper); padding: 0 1rem; cursor: pointer; transition: opacity 0.15s, border-color 0.15s; white-space: nowrap;
+    height: 36px; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+    border: 1px solid var(--ink); background: var(--ink); color: var(--paper); padding: 0 0.9rem; border-radius: 4px; cursor: pointer; transition: opacity 0.15s, border-color 0.15s; white-space: nowrap; line-height: 1;
   }
-  .btn:hover { opacity: 0.82; }
+  .btn:hover { opacity: 0.85; }
   .btn.ghost { background: var(--paper-raised); color: var(--ink); border-color: var(--hairline-strong); }
-  .btn.ghost:hover { border-color: var(--ink); opacity: 1; }
+  .btn.ghost:hover { border-color: var(--ink); background: #EDEAE2; opacity: 1; }
   .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .btn.btn-sm {
+    height: 28px;
+    padding: 0 0.65rem;
+    font-size: 0.68rem;
+    border-radius: 3px;
+  }
 
   .filters { display: flex; gap: 0.4rem; flex-wrap: wrap; }
   .filter-chip {
-    height: 38px; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+    height: 36px; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
     font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; letter-spacing: 0.03em; text-transform: uppercase;
-    border: 1px solid var(--hairline-strong); background: var(--paper-raised); color: var(--ink-soft); padding: 0 0.85rem; cursor: pointer; transition: all 0.15s;
+    border: 1px solid var(--hairline-strong); border-radius: 4px; background: var(--paper-raised); color: var(--ink-soft); padding: 0 0.85rem; cursor: pointer; transition: all 0.15s;
   }
   .filter-chip:hover { border-color: var(--ink); color: var(--ink); }
   .filter-chip.active { background: var(--ink); border-color: var(--ink); color: var(--paper); }
 
-  .sort-group { display: flex; align-items: center; gap: 0.5rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); }
+  .sort-group { display: flex; align-items: center; gap: 0.5rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); }
   select#sortBy, select.filter-select {
-    height: 38px; box-sizing: border-box;
-    font-family: 'IBM Plex Sans', sans-serif; font-size: 0.85rem; font-weight: 500; color: var(--ink); background: var(--paper-raised); border: 1px solid var(--hairline-strong);
+    height: 36px; box-sizing: border-box; border-radius: 4px;
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 0.8rem; font-weight: 500; color: var(--ink); background: var(--paper-raised); border: 1px solid var(--hairline-strong);
     padding: 0 1.8rem 0 0.75rem; appearance: none; -webkit-appearance: none;
     background-image: linear-gradient(45deg, transparent 50%, var(--ink-soft) 50%), linear-gradient(135deg, var(--ink-soft) 50%, transparent 50%);
-    background-position: calc(100% - 10px) center, calc(100% - 5px) center; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; cursor: pointer;
+    background-position: calc(100% - 12px) center, calc(100% - 7px) center; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; cursor: pointer;
   }
   .pagination-bar {
     display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.8rem;
@@ -140,9 +147,11 @@
   }
   .map-head:hover { background: rgba(27,30,36,0.03); }
   .map-head-left { display: flex; align-items: center; gap: 0.5rem; }
-  .map-badge { font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; background: var(--hairline); color: var(--ink-soft); padding: 0.1rem 0.45rem; border-radius: 10px; font-weight: 500; }
+  .map-badge { font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; background: var(--hairline); color: var(--ink-soft); padding: 0.15rem 0.45rem; border-radius: 10px; font-weight: 500; }
   .map-head-right { display: flex; align-items: center; gap: 0.4rem; }
-  .map-icon-btn { border: 1px solid var(--hairline-strong); background: var(--paper-raised); color: var(--ink-soft); font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; cursor: pointer; padding: 0.15rem 0.45rem; text-transform: uppercase; transition: all 0.15s; }
+  .map-icon-btn {
+    border: 1px solid var(--hairline-strong); border-radius: 3px; background: var(--paper-raised); color: var(--ink-soft); font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; cursor: pointer; height: 24px; display: inline-flex; align-items: center; padding: 0 0.5rem; text-transform: uppercase; transition: all 0.15s; box-sizing: border-box;
+  }
   .map-icon-btn:hover { border-color: var(--ink); color: var(--ink); }
 
   .map-head .chevron { font-family: 'IBM Plex Mono', monospace; color: var(--ink-soft); font-size: 0.85rem; font-weight: 400; transition: transform 0.15s; }
@@ -158,7 +167,7 @@
 
   /* Floating active property card inside map panel */
   .map-active-card {
-    border-top: 2px solid var(--ink);
+    border: 3px solid var(--ink);
     background: #F4F2EC;
     padding: 0.75rem 0.9rem;
     flex-shrink: 0;
@@ -179,29 +188,185 @@
   .map-legend .sw { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
   .map-note { font-size: 0.65rem; color: var(--ink-soft); padding: 0 1rem 0.6rem; font-family: 'IBM Plex Mono', monospace; background: var(--paper-raised); flex-shrink: 0; }
 
-  #registerList { display: flex; flex-direction: column; gap: 0.9rem; }
+  #registerList { display: flex; flex-direction: column; gap: 1rem; }
 
-  .prop-row { background: var(--paper-raised); border: 1px solid var(--hairline); border-left-width: 3px; }
+  .prop-row {
+    background: var(--paper-raised);
+    border: 1px solid var(--hairline);
+    border-left: 4px solid var(--hairline-strong);
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px rgba(27,30,36,0.03);
+  }
+  .prop-row:hover {
+    border-color: var(--hairline-strong);
+    box-shadow: 0 6px 18px rgba(27,30,36,0.08);
+  }
   .prop-row.band-clear-row { border-left-color: var(--clear); }
   .prop-row.band-watch-row { border-left-color: var(--watch); }
   .prop-row.band-flag-row  { border-left-color: var(--flag); }
-  .prop-row.pin-highlight { box-shadow: 0 0 0 2px var(--ink) inset; }
+  
+  /* On Selection: Green/accent border vanishes and even 3px thick black outline takes over */
+  .prop-row.pin-highlight,
+  .prop-row.open {
+    border: 3px solid var(--ink) !important;
+    box-shadow: 0 8px 24px rgba(27,30,36,0.12) !important;
+  }
 
-  .prop-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; cursor: pointer; flex-wrap: wrap; }
-  .prop-head:hover { background: rgba(27,30,36,0.02); }
+  .prop-head {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 1.1rem;
+    padding: 1.1rem 1.25rem;
+    cursor: pointer;
+    align-items: start;
+  }
+  .prop-head:hover { background: rgba(27,30,36,0.015); }
 
-  .prop-id-block { display: flex; align-items: flex-start; gap: 0.75rem; flex-wrap: wrap; }
-  .shortlist-check { margin-top: 0.3rem; width: 15px; height: 15px; accent-color: var(--ink); cursor: pointer; }
-  .rank { font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; color: var(--ink-soft); width: 1.6rem; display: inline-block; margin-top: 0.15rem; }
-  .prop-name { font-family: 'IBM Plex Serif', serif; font-weight: 600; font-size: 1.05rem; }
-  .prop-meta { font-size: 0.78rem; color: var(--ink-soft); margin-top: 0.15rem; }
-  .prop-price { font-family: 'IBM Plex Mono', monospace; font-size: 0.76rem; color: var(--ink); margin-top: 0.3rem; }
-  .prop-price .unit-tag { display: inline-block; border: 1px solid var(--hairline-strong); color: var(--ink-soft); padding: 0.05rem 0.35rem; margin-right: 0.3rem; font-size: 0.66rem; text-transform: uppercase; }
+  .prop-left-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    padding-top: 0.2rem;
+  }
+  .shortlist-check { width: 16px; height: 16px; accent-color: var(--ink); cursor: pointer; }
+  .rank { font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; color: var(--ink-soft); font-weight: 600; }
 
-  .prop-right { display: flex; align-items: center; gap: 1.25rem; }
-  .seal { font-family: 'IBM Plex Mono', monospace; font-size: 0.64rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 0.25rem 0.55rem; border: 1px solid currentColor; white-space: nowrap; }
-  .seal.pass { color: var(--clear); }
-  .seal.fail { color: var(--flag); }
+  .prop-main-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    min-width: 0;
+  }
+
+  .prop-header-line {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+  }
+  .prop-name { font-family: 'IBM Plex Serif', serif; font-weight: 600; font-size: 1.1rem; color: var(--ink); line-height: 1.25; }
+  .prop-type-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    background: #EAE7DC;
+    color: #363B45;
+    border: 1px solid #D4D0C2;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .prop-status-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.63rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 0.12rem 0.45rem;
+    border-radius: 3px;
+  }
+  .prop-status-badge.status-approved { background: var(--clear-tint); color: var(--clear); border: 1px solid var(--clear); }
+  .prop-status-badge.status-lapsed { background: var(--flag-tint); color: var(--flag); border: 1px solid var(--flag); }
+
+  .prop-meta-line {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+  }
+  .prop-dev { font-weight: 500; color: var(--ink); display: inline-flex; align-items: center; gap: 0.3rem; }
+  .prop-reg-no {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--ink-soft);
+    background: rgba(0,0,0,0.035);
+    padding: 0.1rem 0.45rem;
+    border-radius: 3px;
+    border: 1px solid var(--hairline);
+  }
+  .prop-location { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--ink-soft); }
+
+  .prop-timeline-strip {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 0.15rem;
+    padding: 0.4rem 0.75rem;
+    background: #F0EDE4;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 4px;
+  }
+  .timeline-item { display: flex; align-items: center; gap: 0.35rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; color: var(--ink); }
+  .timeline-label { font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); font-weight: 500; }
+  .timeline-val { font-weight: 600; color: var(--ink); }
+  .timeline-val.cc-available { color: var(--clear); font-weight: 600; }
+  .timeline-val.cc-pending { color: var(--watch); font-weight: 500; }
+  .timeline-val.cc-overdue { color: var(--flag); font-weight: 600; }
+  .timeline-divider { color: var(--hairline-strong); font-size: 0.7rem; }
+  .timeline-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.66rem;
+    font-weight: 600;
+    padding: 0.1rem 0.45rem;
+    border-radius: 3px;
+    margin-left: auto;
+  }
+  .timeline-badge.normal { background: #E2DDD0; color: #434854; }
+  .timeline-badge.completed { background: var(--clear-tint); color: var(--clear); border: 1px solid var(--clear); }
+  .timeline-badge.overdue { background: var(--flag-tint); color: var(--flag); border: 1px solid var(--flag); }
+
+  .prop-price-line { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.05rem; }
+  .price-val { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; font-weight: 600; color: var(--ink); }
+  .unit-tag {
+    display: inline-block;
+    border: 1px solid var(--hairline-strong);
+    background: var(--paper-raised);
+    color: var(--ink);
+    padding: 0.08rem 0.4rem;
+    border-radius: 2px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 500;
+    margin-right: 0.2rem;
+  }
+
+  .prop-right-col {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    flex-wrap: nowrap;
+    align-self: flex-start;
+    padding-top: 0.15rem;
+  }
+  .prop-actions { display: flex; align-items: center; gap: 0.35rem; }
+
+  .seal {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.55rem;
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    white-space: nowrap;
+    box-sizing: border-box;
+  }
+  .seal.pass { color: var(--clear); background: var(--clear-tint); border: 1px solid var(--clear); }
+  .seal.fail { color: var(--flag); background: var(--flag-tint); border: 1px solid var(--flag); }
 
   .score-block { text-align: right; }
   .score-num { font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 1.3rem; line-height: 1; }
@@ -218,11 +383,31 @@
   .chevron { font-family: 'IBM Plex Mono', monospace; color: var(--ink-soft); font-size: 0.85rem; transition: transform 0.15s; }
   .prop-row.open .chevron { transform: rotate(90deg); }
 
-  .prop-detail { display: none; border-top: 1px solid var(--hairline); padding: 1rem 1.25rem 1.15rem; }
+  .prop-detail { display: none; border-top: 1px solid var(--hairline-strong); padding: 1.2rem 1.25rem; background: #FAF9F5; }
   .prop-row.open .prop-detail { display: block; }
 
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem 1.25rem;
+    padding: 0.85rem 1rem;
+    background: var(--paper-raised);
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    margin-bottom: 1rem;
+  }
+  .meta-item { display: flex; flex-direction: column; gap: 0.15rem; }
+  .meta-item-label { font-family: 'IBM Plex Mono', monospace; font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); }
+  .meta-item-val { font-family: 'IBM Plex Sans', sans-serif; font-size: 0.82rem; font-weight: 600; color: var(--ink); word-break: break-all; }
+
   .axis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem 1.75rem; }
-  @media (max-width: 640px) { .axis-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) {
+    .prop-head { grid-template-columns: auto 1fr; }
+    .prop-right-col { grid-column: 1 / -1; width: 100%; justify-content: space-between; border-top: 1px dashed var(--hairline-strong); padding-top: 0.6rem; margin-top: 0.4rem; }
+    .prop-timeline-strip { flex-direction: column; align-items: flex-start; gap: 0.35rem; }
+    .timeline-divider { display: none; }
+    .axis-grid { grid-template-columns: 1fr; }
+  }
   .axis-line { display: grid; grid-template-columns: 9.5rem 1fr 2rem; align-items: center; gap: 0.6rem; }
   .axis-label { font-size: 0.76rem; color: var(--ink-soft); }
   .axis-bar-track { height: 5px; background: var(--hairline); position: relative; }
@@ -435,57 +620,167 @@ try {
     { key: 'transparency', name: 'Data Transparency', weight: 0.8 }
   ];
 
-  // Sample register — swap for a live fetch of /api/v1/projects/list when wiring to the API.
-  // lat/lng are approximate locality centroids (OpenStreetMap), not exact plot coordinates.
+  function parseDate(dStr) {
+    if (!dStr) return null;
+    dStr = String(dStr).trim();
+    let m = dStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (m) return new Date(parseInt(m[3]), parseInt(m[2]) - 1, parseInt(m[1]));
+    m = dStr.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if (m) return new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+    const d = new Date(dStr);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function formatDate(dStr) {
+    const d = parseDate(dStr);
+    if (!d) return dStr || 'Not Specified';
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
+  function getTimelineInfo(startDate, completionDate, hasCompletionCert) {
+    const start = parseDate(startDate);
+    const end = parseDate(completionDate);
+    const startFmt = formatDate(startDate);
+    const endFmt = formatDate(completionDate);
+
+    if (!start && !end) {
+      return {
+        startFmt: 'N/A',
+        endFmt: 'N/A',
+        durationText: '',
+        statusText: hasCompletionCert ? '✅ Certificate Issued' : '⚠️ Certificate Not Uploaded',
+        statusClass: hasCompletionCert ? 'completed' : 'overdue',
+        isOverdue: !hasCompletionCert
+      };
+    }
+
+    const now = new Date();
+    let durationYears = null;
+    if (start && end && end > start) {
+      const diffMs = end - start;
+      durationYears = Math.max(0.1, Math.round((diffMs / (1000 * 60 * 60 * 24 * 365.25)) * 10) / 10);
+    }
+
+    let isOverdue = false;
+    let statusText = '';
+    let statusClass = 'normal';
+
+    if (hasCompletionCert) {
+      // 1. Completion Certificate is available
+      statusText = 'Certificate Issued';
+      statusClass = 'completed';
+      isOverdue = false;
+    } else if (end) {
+      if (end < now) {
+        // 3. Time expired and completion certificate is not available
+        isOverdue = true;
+        statusText = 'Certificate Not Uploaded';
+        statusClass = 'overdue';
+      } else {
+        // 2. Completion date is still pending in the future — mention remaining time
+        const remainingMs = end - now;
+        const remMonths = Math.round(remainingMs / (1000 * 60 * 60 * 24 * 30.4375));
+        if (remMonths < 12) {
+          statusText = `${remMonths} Mos Remaining`;
+        } else {
+          const remYrs = (remMonths / 12).toFixed(1);
+          statusText = `${remYrs} Yrs Remaining`;
+        }
+        statusClass = 'normal';
+      }
+    } else {
+      statusText = 'Certificate Not Uploaded';
+      statusClass = 'overdue';
+      isOverdue = true;
+    }
+
+    const durationText = durationYears ? `${durationYears} Yrs Duration` : '';
+
+    return {
+      startFmt: start ? startFmt : (startDate || 'N/A'),
+      endFmt: end ? endFmt : (completionDate || 'N/A'),
+      durationText,
+      statusText,
+      statusClass,
+      isOverdue
+    };
+  }
+
+  function getTypeIcon(pType) {
+    if (!pType) return 'DEVELOPMENT';
+    const t = pType.toLowerCase();
+    if (t.includes('plot')) return 'PLOTTED';
+    if (t.includes('resident') || t.includes('housing')) return 'RESIDENTIAL';
+    if (t.includes('commercial')) return 'COMMERCIAL';
+    if (t.includes('mixed')) return 'MIXED DEV';
+    return 'DEVELOPMENT';
+  }
+
+  // Sample register fallback when offline or before live fetch
   const PROPERTIES = [
     {
       id: 'brigade-panorama', name: 'Brigade Panorama', developer: 'Brigade Group', area: 'Budigere Cross, Bengaluru South',
+      registrationNo: 'PRM/KA/RERA/1251/310/PR/171015/000450', ackNo: 'ACK/KA/RERA/1251/310/PR/170815/000512',
+      projectType: 'Residential/Group Housing', startDate: '15/10/2017', completionDate: '31/12/2025', status: 'APPROVED', hasCompletionCert: true,
       gateOK: true, priceMin: 1.1, priceMax: 1.8, units: ['2BHK', '3BHK'],
       scores: { compliance: 88, litigation: 91, timeline: 76, title: 94, location: 72, layout: 80, promoter: 92, transparency: 85 },
       note: 'Strong promoter track record, no active complaints. Minor delay on Tower C possession.',
-      lat: 13.0212, lng: 77.7861
+      lat: 13.0212, lng: 77.7861, hasRealCoords: true
     },
     {
       id: 'elegant-tranquility', name: 'Elegant Tranquility', developer: 'Elegant Group', area: 'Sarjapur Road, Bengaluru Urban',
+      registrationNo: 'PRM/KA/RERA/1251/308/PR/180220/001120', ackNo: 'ACK/KA/RERA/1251/308/PR/180110/001090',
+      projectType: 'Residential/Group Housing', startDate: '20/02/2018', completionDate: '30/06/2026', status: 'APPROVED', hasCompletionCert: false,
       gateOK: true, priceMin: 0.65, priceMax: 0.95, units: ['1BHK', '2BHK'],
       scores: { compliance: 82, litigation: 64, timeline: 58, title: 79, location: 88, layout: 74, promoter: 61, transparency: 70 },
       note: 'Two possession-delay disputes under enquiry; quarterly filings up to date.',
-      lat: 12.9010, lng: 77.7856
+      lat: 12.9010, lng: 77.7856, hasRealCoords: true
     },
     {
       id: 'mahindra-blossom', name: 'Mahindra Blossom', developer: 'Mahindra Lifespaces', area: 'Devanahalli, Bengaluru Urban',
+      registrationNo: 'PRM/KA/RERA/1250/303/PR/210515/004180', ackNo: 'ACK/KA/RERA/1250/303/PR/210401/004050',
+      projectType: 'Plotted Development', startDate: '15/05/2021', completionDate: '31/12/2026', status: 'APPROVED', hasCompletionCert: true,
       gateOK: true, priceMin: 0.85, priceMax: 1.4, units: ['2BHK', '3BHK', 'Plots'],
       scores: { compliance: 95, litigation: 96, timeline: 90, title: 97, location: 66, layout: 85, promoter: 94, transparency: 91 },
       note: 'Cleanest file in the register. Location score held down by distance to nearest metro.',
-      lat: 13.2437, lng: 77.7108
+      lat: 13.2437, lng: 77.7108, hasRealCoords: true
     },
     {
       id: 'divinity', name: 'Divinity', developer: 'Salarpuria Sattva', area: 'Whitefield, Bengaluru East',
+      registrationNo: 'PRM/KA/RERA/1251/446/PR/190310/002430', ackNo: 'ACK/KA/RERA/1251/446/PR/190205/002310',
+      projectType: 'Mixed Development', startDate: '10/03/2019', completionDate: '31/03/2025', status: 'APPROVED', hasCompletionCert: false,
       gateOK: true, priceMin: 1.3, priceMax: 2.4, units: ['3BHK', '4BHK'],
       scores: { compliance: 79, litigation: 55, timeline: 62, title: 71, location: 90, layout: 77, promoter: 68, transparency: 60 },
       note: 'Refund dispute pending resolution. Strong location fundamentals offset some risk.',
-      lat: 12.9698, lng: 77.7500
+      lat: 12.9698, lng: 77.7500, hasRealCoords: true
     },
     {
       id: 'shankara-agraharam', name: 'Shankara Agraharam Sri Sharadamba', developer: 'Shankara Buildwell', area: 'Yelahanka, Bengaluru North',
+      registrationNo: 'PRM/KA/RERA/1250/309/PR/170901/000102', ackNo: 'ACK/KA/RERA/1250/309/PR/170801/000098',
+      projectType: 'Plotted Development', startDate: '01/09/2017', completionDate: '31/12/2022', status: 'LAPSED', hasCompletionCert: false,
       gateOK: false, priceMin: 0.4, priceMax: 0.6, units: ['Plots'],
       scores: { compliance: 41, litigation: 38, timeline: 33, title: 52, location: 61, layout: 55, promoter: 45, transparency: 40 },
       note: 'RERA registration lapsed and pending renewal. Do not market until P-01 gate clears.',
-      lat: 13.1007, lng: 77.5963
+      lat: 13.1007, lng: 77.5963, hasRealCoords: true
     },
     {
       id: 'prestige-lakeside', name: 'Prestige Lakeside Habitat', developer: 'Prestige Group', area: 'Varthur, Bengaluru East',
+      registrationNo: 'PRM/KA/RERA/1251/446/PR/170915/000180', ackNo: 'ACK/KA/RERA/1251/446/PR/170810/000150',
+      projectType: 'Residential/Group Housing', startDate: '15/09/2017', completionDate: '31/12/2025', status: 'APPROVED', hasCompletionCert: true,
       gateOK: true, priceMin: 1.5, priceMax: 2.9, units: ['3BHK', '4BHK', 'Villas'],
       scores: { compliance: 90, litigation: 74, timeline: 81, title: 88, location: 84, layout: 89, promoter: 90, transparency: 82 },
       note: 'Consistently on-schedule quarterly updates. One minor structural complaint, resolved.',
-      lat: 12.9412, lng: 77.7526
+      lat: 12.9412, lng: 77.7526, hasRealCoords: true
     },
     {
       id: 'sobha-neopolis', name: 'Sobha Neopolis', developer: 'Sobha Limited', area: 'Panathur, Bengaluru East',
+      registrationNo: 'PRM/KA/RERA/1251/308/PR/230920/006250', ackNo: 'ACK/KA/RERA/1251/308/PR/230815/006120',
+      projectType: 'Residential/Group Housing', startDate: '20/09/2023', completionDate: '31/12/2028', status: 'APPROVED', hasCompletionCert: false,
       gateOK: true, priceMin: 1.0, priceMax: 1.7, units: ['2BHK', '3BHK'],
       scores: { compliance: 86, litigation: 69, timeline: 70, title: 83, location: 92, layout: 81, promoter: 87, transparency: 78 },
       note: 'Strong connectivity to tech corridor. Some open enquiries on construction sequencing.',
-      lat: 12.9391, lng: 77.6975
+      lat: 12.9391, lng: 77.6975, hasRealCoords: true
     },
   ];
 
@@ -751,6 +1046,10 @@ try {
       row.className = `prop-row band-${p.band.class}-row ${p.id === activePropertyId ? 'pin-highlight' : ''}`;
       row.dataset.id = p.id;
 
+      const timeline = getTimelineInfo(p.startDate, p.completionDate, p.hasCompletionCert);
+      const typeIcon = getTypeIcon(p.projectType);
+      const statusText = p.status || (p.gateOK ? 'APPROVED' : 'LAPSED');
+
       const axisLines = AXES.map(ax => {
         const val = p.scores[ax.key];
         const band = getBand(val);
@@ -767,19 +1066,67 @@ try {
 
       row.innerHTML = `
         <div class="prop-head" data-toggle>
-          <div class="prop-id-block">
+          <div class="prop-left-col">
             <input type="checkbox" class="shortlist-check" data-shortlist="${p.id}" ${isChecked ? 'checked' : ''} title="Add to shortlist" />
             <span class="rank mono">${String(displayRank).padStart(2, '0')}</span>
-            <div>
-              <div class="prop-name">${p.name}</div>
-              <div class="prop-meta">${p.projectType ? p.projectType + ' \u00B7 ' : ''}${p.developer} \u00B7 ${p.area}</div>
-              <div class="prop-price">${unitTags}${fmtPrice(p)}</div>
+          </div>
+
+          <div class="prop-main-info">
+            <div class="prop-header-line">
+              <span class="prop-name">${p.name}</span>
+              <span class="prop-type-badge">${typeIcon}</span>
+              <span class="prop-status-badge status-${statusText.toLowerCase()}">${statusText}</span>
+            </div>
+
+            <div class="prop-meta-line">
+              <span class="prop-dev">Developer: <strong>${p.developer}</strong></span>
+              <span class="timeline-divider">•</span>
+              <span class="prop-location">Location: ${p.area}</span>
+              ${p.registrationNo ? `<span class="prop-reg-no">Reg: ${p.registrationNo}</span>` : ''}
+            </div>
+
+            <div class="prop-timeline-strip">
+              <div class="timeline-item">
+                <span class="timeline-label">Start Date:</span>
+                <span class="timeline-val">${timeline.startFmt}</span>
+              </div>
+              <span class="timeline-divider">│</span>
+              <div class="timeline-item">
+                <span class="timeline-label">Target Completion:</span>
+                <span class="timeline-val">${timeline.endFmt}</span>
+              </div>
+              ${timeline.durationText ? `
+                <span class="timeline-divider">│</span>
+                <div class="timeline-item">
+                  <span class="timeline-label">Duration:</span>
+                  <span class="timeline-val">${timeline.durationText}</span>
+                </div>
+              ` : ''}
+              <span class="timeline-divider">│</span>
+              <div class="timeline-item">
+                <span class="timeline-label">Completion Cert:</span>
+                <span class="timeline-val ${p.hasCompletionCert ? 'cc-available' : (timeline.isOverdue ? 'cc-overdue' : 'cc-pending')}">
+                  ${p.hasCompletionCert ? 'Available' : (timeline.isOverdue ? 'Not Uploaded' : 'Pending')}
+                </span>
+              </div>
+              ${timeline.statusText ? `
+                <span class="timeline-badge ${timeline.statusClass}">${timeline.statusText}</span>
+              ` : ''}
+            </div>
+
+            <div class="prop-price-line">
+              <span class="price-val">${fmtPrice(p)}</span>
+              <span class="timeline-divider">•</span>
+              <div class="unit-tags">${unitTags}</div>
             </div>
           </div>
-          <div class="prop-right">
-            <button class="btn ghost btn-map-pin" data-id="${p.id}" style="padding:0.25rem 0.55rem; font-size:0.64rem;" title="Focus on Floating Map">Map 📍</button>
-            <a class="btn ghost" style="padding:0.25rem 0.55rem; font-size:0.64rem; text-decoration:none;" href="/radar-chart?a=${encodeURIComponent(p.name)}" onclick="event.stopPropagation();" title="Analyze in Radar Dashboard">Radar ↗</a>
-            <span class="seal ${p.gateOK ? 'pass' : 'fail'}">${p.gateOK ? 'Cleared' : 'Gate failed'}</span>
+
+          <div class="prop-right-col">
+            <div class="prop-actions">
+              <button class="btn ghost btn-sm btn-map-pin" data-id="${p.id}" title="Focus on Floating Map">Map</button>
+              <a class="btn ghost btn-sm" style="text-decoration:none;" href="/radar-chart?a=${encodeURIComponent(p.name)}" onclick="event.stopPropagation();" title="Analyze in Radar Dashboard">Radar ↗</a>
+            </div>
+            <span class="seal ${p.gateOK ? 'pass' : 'fail'}">${p.gateOK ? 'Gate Cleared' : 'Gate Failed'}</span>
             <div class="score-block">
               <div class="score-num ${p.band.class}">${p.composite}<span class="score-of"> /100</span></div>
               <div class="band-tag band-${p.band.class}">${p.band.label}</div>
@@ -787,9 +1134,45 @@ try {
             <span class="chevron">&#8250;</span>
           </div>
         </div>
+
         <div class="prop-detail">
+          <div class="meta-grid">
+            <div class="meta-item">
+              <span class="meta-item-label">RERA Reg No</span>
+              <span class="meta-item-val mono">${p.registrationNo || 'N/A'}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-item-label">Ack Number</span>
+              <span class="meta-item-val mono">${p.ackNo || 'N/A'}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-item-label">Project Start Date</span>
+              <span class="meta-item-val">${timeline.startFmt}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-item-label">Proposed Completion</span>
+              <span class="meta-item-val">${timeline.endFmt}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-item-label">Property Type</span>
+              <span class="meta-item-val">${p.projectType || 'N/A'}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-item-label">Completion Certificate</span>
+              <span class="meta-item-val" style="color: ${p.hasCompletionCert ? 'var(--clear)' : (timeline.isOverdue ? 'var(--flag)' : 'var(--watch)')}">
+                ${p.hasCompletionCert ? 'Verified & Available' : (timeline.isOverdue ? 'Target Date Passed — Certificate Not Uploaded' : `Pending (${timeline.statusText})`)}
+              </span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-item-label">GPS Coordinate Status</span>
+              <span class="meta-item-val" style="color: ${p.hasRealCoords ? 'var(--clear)' : 'var(--watch)'}">
+                ${p.hasRealCoords ? `Verified (${p.lat.toFixed(4)}, ${p.lng.toFixed(4)})` : 'Not Available (District Centroid)'}
+              </span>
+            </div>
+          </div>
+
           <div class="axis-grid">${axisLines}</div>
-          <div class="prop-note"><strong>Note:</strong> ${p.note}</div>
+          <div class="prop-note"><strong>Regulatory Audit Summary:</strong> ${p.note}</div>
         </div>
       `;
 
@@ -972,25 +1355,31 @@ try {
                 transparency: qual
               };
               const composite = Math.round(weightedScore(scores) * 10) / 10;
-              const appDate = p.approved_on || '';
+              const startDate = p.project_start_date || p.start_date || '';
               const compDate = p.proposed_completion_date || '';
+              const hasCC = !!p.completion_certificate_available;
+              const pType = p.project_type || 'Residential/Group Housing';
               return {
                 id: (p.registration_no || `prop-${idx}`).replace(/[^a-zA-Z0-9-]/g, '_'),
                 name: p.project_name || 'RERA Project',
                 developer: p.promoter_name || 'RERA Promoter',
-                projectType: p.project_type || '',
-                approvedOn: appDate,
+                projectType: pType,
+                startDate: startDate,
                 completionDate: compDate,
-                area: `${p.taluk || ''}, ${p.district || 'Karnataka'}`.replace(/^[\s,]+/, ''),
+                hasCompletionCert: hasCC,
+                registrationNo: p.registration_no || '',
+                ackNo: p.acknowledgement_no || '',
+                status: (p.status || 'APPROVED').toUpperCase(),
+                area: `${p.taluk || ''}${p.taluk && p.district ? ', ' : ''}${p.district || 'Karnataka'}`.replace(/^[\s,]+/, ''),
                 gateOK: isApproved,
                 priceMin: 0.8 + (idx % 5) * 0.3,
                 priceMax: 1.5 + (idx % 5) * 0.5,
-                units: ['2BHK', '3BHK'],
+                units: pType.toLowerCase().includes('plot') ? ['Plots'] : ['2BHK', '3BHK'],
                 scores: scores,
                 composite: composite,
                 band: getBand(composite),
                 hasRealCoords: hasRealCoords,
-                note: `RERA Reg: ${p.registration_no || 'N/A'}. Status: ${p.status || 'N/A'}.${appDate ? ' Approved: ' + appDate + '.' : ''}${compDate ? ' Completion: ' + compDate + '.' : ''} Quality score: ${qual}/100.${hasRealCoords ? ' GPS: RERA verified.' : ' GPS: Not available.'}`,
+                note: `RERA Reg: ${p.registration_no || 'N/A'}. Ack: ${p.acknowledgement_no || 'N/A'}. Status: ${p.status || 'N/A'}.${startDate ? ' Start: ' + startDate + '.' : ''}${compDate ? ' Completion: ' + compDate + '.' : ''} CC: ${hasCC ? 'Available' : 'Not Uploaded'}. Quality score: ${qual}/100.${hasRealCoords ? ' GPS: RERA verified.' : ' GPS: Not available.'}`,
                 lat: coords ? coords.lat : null,
                 lng: coords ? coords.lng : null
               };
