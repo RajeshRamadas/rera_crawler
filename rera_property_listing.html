@@ -1125,6 +1125,7 @@ try {
           <div class="prop-right-col">
             <div class="prop-actions">
               <button class="btn ghost btn-sm btn-map-pin" data-id="${p.id}" title="Focus on Floating Map">Map</button>
+              <a class="btn ghost btn-sm" style="text-decoration:none;" href="/property-detail?q=${encodeURIComponent(p.name)}" onclick="event.stopPropagation();" target="_blank" title="View Detailed Property Audit Page">Full Audit ↗</a>
               <a class="btn ghost btn-sm" style="text-decoration:none;" href="/radar-chart?a=${encodeURIComponent(p.name)}" onclick="event.stopPropagation();" title="Analyze in Radar Dashboard">Radar ↗</a>
             </div>
             <span class="seal ${p.gateOK ? 'pass' : 'fail'}">${p.gateOK ? 'Gate Cleared' : 'Gate Failed'}</span>
@@ -1174,6 +1175,9 @@ try {
 
           <div class="axis-grid">${axisLines}</div>
           <div class="prop-note"><strong>Regulatory Audit Summary:</strong> ${p.note}</div>
+          <div style="margin-top: 1rem; text-align: right;">
+            <a class="btn btn-sm" style="text-decoration:none;" href="/property-detail?q=${encodeURIComponent(p.name)}" target="_blank" onclick="event.stopPropagation();">Open Full Property Audit Page ↗</a>
+          </div>
         </div>
       `;
 

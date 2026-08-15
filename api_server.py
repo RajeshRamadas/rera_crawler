@@ -70,6 +70,16 @@ def get_property_listing():
     return FileResponse(html_path, media_type="text/html")
 
 
+@app.get("/property-detail", summary="Detailed Property Audit & Compliance Page")
+@app.get("/detail", summary="Detailed Property Audit & Compliance Page")
+def get_property_detail_page():
+    """Serves the single-file HTML Detailed Property Audit & Compliance page."""
+    html_path = os.path.join(os.path.dirname(__file__), "property_detail.html")
+    if not os.path.exists(html_path):
+        raise HTTPException(status_code=404, detail="property_detail.html not found.")
+    return FileResponse(html_path, media_type="text/html")
+
+
 
 def get_db_connection():
     """Establish connection to PostgreSQL database."""
