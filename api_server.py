@@ -116,6 +116,8 @@ def list_projects(
     status: Optional[str] = Query(None, description="Filter by project status (e.g. APPROVED)"),
     promoter: Optional[str] = Query(None, description="Filter by promoter / builder name"),
     project_type: Optional[str] = Query(None, description="Filter by project / property type (e.g. Residential/Group Housing)"),
+    approval_year: Optional[str] = Query(None, description="Filter by RERA approval year (e.g. 2024)"),
+    completion_year: Optional[str] = Query(None, description="Filter by proposed completion year (e.g. 2028)"),
     q: Optional[str] = Query(None, description="Search term matching project name, promoter, or reg no"),
     min_quality_score: Optional[int] = Query(None, ge=0, le=100, description="Filter by minimum data quality score (0-100)"),
     limit: int = Query(20, ge=1, le=100, description="Page limit (default: 20, max: 100)"),
@@ -139,6 +141,14 @@ def list_projects(
             if project_type:
                 where_clauses.append("LOWER(COALESCE(data->>'project_type', '')) LIKE %s")
                 params.append(f"%{project_type.lower()}%")
+
+            if approval_year:
+                where_clauses.append("(data->>'approved_on' LIKE %s OR data->>'approved_on' LIKE %s)")
+                params.extend([f"%/{approval_year}", f"%-{approval_year}"])
+
+            if completion_year:
+                where_clauses.append("(data->>'proposed_completion_date' LIKE %s OR data->>'proposed_completion_date' LIKE %s OR data->>'proposed_completion_date_at_registration' LIKE %s)")
+                params.extend([f"%/{completion_year}", f"%-{completion_year}", f"%-{completion_year}"])
 
             if promoter:
                 where_clauses.append("LOWER(firm_name) LIKE %s")
@@ -164,6 +174,8 @@ def list_projects(
                     crawled_at,
                     COALESCE(data->>'status', 'APPROVED') as status,
                     COALESCE(data->>'project_type', 'Residential/Group Housing') as project_type,
+                    data->>'approved_on' as approved_on,
+                    COALESCE(data->>'proposed_completion_date', data->>'proposed_completion_date_at_registration') as proposed_completion_date,
                     COALESCE(data->'project_location'->>'district', data->>'district', 'Karnataka') as district,
                     COALESCE(data->'project_location'->>'taluk', data->>'taluk', '') as taluk,
                     data->'project_location'->>'latitude' as latitude,

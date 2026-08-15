@@ -114,28 +114,70 @@
   .page-btn { padding: 0.35rem 0.65rem; font-size: 0.7rem; }
   .page-current { font-weight: 600; padding: 0 0.5rem; color: var(--ink); }
 
-  .main-layout { display: grid; grid-template-columns: 320px 1fr; gap: 1.5rem; align-items: start; }
+  .main-layout { display: grid; grid-template-columns: 340px 1fr; gap: 1.5rem; align-items: start; }
   @media (max-width: 900px) { .main-layout { grid-template-columns: 1fr; } }
 
-  .map-panel { background: var(--paper-raised); border: 1px solid var(--hairline); }
-  .map-head {
-    padding: 0.85rem 1rem; border-bottom: 1px solid var(--hairline); font-family: 'IBM Plex Serif', serif; font-weight: 600; font-size: 0.92rem;
-    display: flex; align-items: center; justify-content: space-between; cursor: pointer;
+  .map-panel {
+    background: var(--paper-raised);
+    border: 1px solid var(--hairline-strong);
+    border-radius: 6px;
+    box-shadow: 0 10px 30px rgba(27,30,36,0.08);
+    position: sticky;
+    top: 1.25rem;
+    z-index: 100;
+    max-height: calc(100vh - 2.5rem);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: box-shadow 0.2s ease;
   }
-  .map-head:hover { background: rgba(27,30,36,0.02); }
+  .map-panel:hover {
+    box-shadow: 0 14px 36px rgba(27,30,36,0.14);
+  }
+  .map-head {
+    padding: 0.75rem 1rem; border-bottom: 1px solid var(--hairline); font-family: 'IBM Plex Serif', serif; font-weight: 600; font-size: 0.92rem;
+    display: flex; align-items: center; justify-content: space-between; cursor: pointer; background: var(--paper-raised); user-select: none; flex-shrink: 0;
+  }
+  .map-head:hover { background: rgba(27,30,36,0.03); }
+  .map-head-left { display: flex; align-items: center; gap: 0.5rem; }
+  .map-badge { font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; background: var(--hairline); color: var(--ink-soft); padding: 0.1rem 0.45rem; border-radius: 10px; font-weight: 500; }
+  .map-head-right { display: flex; align-items: center; gap: 0.4rem; }
+  .map-icon-btn { border: 1px solid var(--hairline-strong); background: var(--paper-raised); color: var(--ink-soft); font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; cursor: pointer; padding: 0.15rem 0.45rem; text-transform: uppercase; transition: all 0.15s; }
+  .map-icon-btn:hover { border-color: var(--ink); color: var(--ink); }
+
   .map-head .chevron { font-family: 'IBM Plex Mono', monospace; color: var(--ink-soft); font-size: 0.85rem; font-weight: 400; transition: transform 0.15s; }
   .map-panel.open .map-head .chevron { transform: rotate(90deg); }
-  .map-body { display: none; }
-  .map-panel.open .map-body { display: block; }
-  #mapContainer { width: 100%; height: 340px; background: #eee; }
+  
+  .map-body { display: flex; flex-direction: column; flex: 1; overflow-y: auto; }
+  .map-panel:not(.open) .map-body { display: none; }
+  #mapContainer { width: 100%; height: 310px; min-height: 220px; background: #eee; flex-shrink: 0; position: relative; }
   .leaflet-popup-content-wrapper { border-radius: 0; font-family: 'IBM Plex Sans', sans-serif; }
   .leaflet-popup-content { font-size: 0.8rem; margin: 0.6rem 0.75rem; }
   .popup-title { font-family: 'IBM Plex Serif', serif; font-weight: 600; margin-bottom: 0.15rem; }
   .popup-score { font-family: 'IBM Plex Mono', monospace; font-weight: 600; }
-  .map-legend { display: flex; gap: 0.9rem; flex-wrap: wrap; padding: 0.7rem 1rem 0.9rem; font-size: 0.7rem; color: var(--ink-soft); }
+
+  /* Floating active property card inside map panel */
+  .map-active-card {
+    border-top: 2px solid var(--ink);
+    background: #F4F2EC;
+    padding: 0.75rem 0.9rem;
+    flex-shrink: 0;
+    animation: fadeInCard 0.2s ease-out;
+  }
+  @keyframes fadeInCard {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .map-active-card .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
+  .map-active-card .card-title { font-family: 'IBM Plex Serif', serif; font-weight: 600; font-size: 0.9rem; color: var(--ink); line-height: 1.25; }
+  .map-active-card .card-dev { font-size: 0.74rem; color: var(--ink-soft); margin-top: 0.15rem; }
+  .map-active-card .card-row2 { display: flex; align-items: center; justify-content: space-between; margin-top: 0.5rem; }
+  .map-active-card .card-actions { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid var(--hairline); }
+
+  .map-legend { display: flex; gap: 0.8rem; flex-wrap: wrap; padding: 0.6rem 1rem; font-size: 0.7rem; color: var(--ink-soft); border-top: 1px solid var(--hairline); background: var(--paper-raised); flex-shrink: 0; }
   .map-legend .item { display: flex; align-items: center; gap: 0.35rem; }
   .map-legend .sw { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
-  .map-note { font-size: 0.68rem; color: var(--ink-soft); padding: 0 1rem 0.9rem; font-family: 'IBM Plex Mono', monospace; }
+  .map-note { font-size: 0.65rem; color: var(--ink-soft); padding: 0 1rem 0.6rem; font-family: 'IBM Plex Mono', monospace; background: var(--paper-raised); flex-shrink: 0; }
 
   #registerList { display: flex; flex-direction: column; gap: 0.9rem; }
 
@@ -271,6 +313,32 @@
         <option value="APPROVED">Approved</option>
         <option value="LAPSED">Lapsed / Suspended</option>
       </select>
+      <select id="approvalYearFilter" class="filter-select">
+        <option value="">All Approval Years</option>
+        <option value="2026">Approved 2026</option>
+        <option value="2025">Approved 2025</option>
+        <option value="2024">Approved 2024</option>
+        <option value="2023">Approved 2023</option>
+        <option value="2022">Approved 2022</option>
+        <option value="2021">Approved 2021</option>
+        <option value="2020">Approved 2020</option>
+        <option value="2019">Approved 2019</option>
+        <option value="2018">Approved 2018</option>
+        <option value="2017">Approved 2017</option>
+      </select>
+      <select id="completionYearFilter" class="filter-select">
+        <option value="">All Completion Years</option>
+        <option value="2032">Completion 2032</option>
+        <option value="2031">Completion 2031</option>
+        <option value="2030">Completion 2030</option>
+        <option value="2029">Completion 2029</option>
+        <option value="2028">Completion 2028</option>
+        <option value="2027">Completion 2027</option>
+        <option value="2026">Completion 2026</option>
+        <option value="2025">Completion 2025</option>
+        <option value="2024">Completion 2024</option>
+        <option value="2023">Completion 2023</option>
+      </select>
       <button class="btn ghost" id="clearShortlistBtn">Clear shortlist</button>
       <button class="btn" id="exportBtn" disabled>Export shortlist (0)</button>
     </div>
@@ -291,11 +359,34 @@
   <div class="main-layout">
     <div class="map-panel open" id="mapPanel">
       <div class="map-head" id="mapHead">
-        <span>Location Overview</span>
-        <span class="chevron">&#8250;</span>
+        <div class="map-head-left">
+          <span>Location Overview</span>
+          <span class="map-badge" id="mapBadge">0 projects</span>
+        </div>
+        <div class="map-head-right">
+          <button class="map-icon-btn" id="mapFitBtn" title="Fit all markers in view">Fit All</button>
+          <span class="chevron" id="mapChevron">&#8250;</span>
+        </div>
       </div>
       <div class="map-body">
         <div id="mapContainer"></div>
+        <div class="map-active-card" id="mapActiveCard" style="display:none;">
+          <div class="card-top">
+            <div>
+              <div class="card-title" id="activeCardTitle">Selected Property</div>
+              <div class="card-dev" id="activeCardDev">Developer Name</div>
+            </div>
+            <button class="map-icon-btn" id="activeCardClose" style="font-size:0.8rem; padding:0 0.3rem;" title="Close preview">&times;</button>
+          </div>
+          <div class="card-row2">
+            <span id="activeCardPrice" class="mono" style="font-size:0.72rem; color:var(--ink);">₹0.00 Cr</span>
+            <div id="activeCardScoreTag"></div>
+          </div>
+          <div class="card-actions">
+            <button class="btn ghost" id="activeCardJumpBtn" style="padding:0.2rem 0.5rem; font-size:0.65rem; flex:1;">Focus in List ↓</button>
+            <a class="btn ghost" id="activeCardRadarBtn" style="padding:0.2rem 0.5rem; font-size:0.65rem; text-decoration:none;" href="#" target="_blank">Radar ↗</a>
+          </div>
+        </div>
         <div class="map-legend">
           <span class="item"><span class="sw" style="background:#2F6E4F;"></span>Clear</span>
           <span class="item"><span class="sw" style="background:#97701A;"></span>Watch</span>
@@ -425,6 +516,8 @@ try {
   let selectedDistrict = '';
   let selectedStatus = '';
   let selectedPropertyType = '';
+  let selectedApprovalYear = '';
+  let selectedCompletionYear = '';
   let activeFilter = 'all';
   let activeSort = 'score-desc';
   let searchTerm = '';
@@ -516,38 +609,103 @@ try {
     updateMapMarkers();
   }
 
+  let activePropertyId = null;
+
   function updateMapMarkers() {
     if (!leafletMap) return;
     Object.values(markerById).forEach(m => leafletMap.removeLayer(m));
     for (const k in markerById) delete markerById[k];
 
-    if (!PROPERTIES.length) return;
+    const badge = document.getElementById('mapBadge');
+    if (badge) badge.textContent = `${PROPERTIES.length} mapped`;
+
+    if (!PROPERTIES.length) {
+      clearActiveProperty();
+      return;
+    }
 
     const bounds = [];
     PROPERTIES.forEach(p => {
+      const isSelected = p.id === activePropertyId;
       const marker = L.circleMarker([p.lat, p.lng], {
-        radius: 7, color: '#1B1E24', weight: 1, fillColor: p.band.hex, fillOpacity: 0.85
+        radius: isSelected ? 10 : 7,
+        color: '#1B1E24',
+        weight: isSelected ? 2.5 : 1,
+        fillColor: p.band.hex,
+        fillOpacity: 0.85
       }).addTo(leafletMap);
+
       marker.bindPopup(`<div class="popup-title">${p.name}</div><div class="popup-score">${p.composite}/100 &middot; ${p.band.label}</div>`);
-      marker.on('click', () => focusRow(p.id));
+      marker.on('click', () => {
+        selectActiveProperty(p.id, true);
+      });
       markerById[p.id] = marker;
       bounds.push([p.lat, p.lng]);
     });
 
-    if (bounds.length > 0) {
-      try {
-        leafletMap.fitBounds(bounds, { padding: [25, 25], maxZoom: 12 });
-      } catch (e) {}
+    if (bounds.length > 0 && !activePropertyId) {
+      fitAllMapMarkers();
     }
   }
 
+  function fitAllMapMarkers() {
+    if (!leafletMap || !PROPERTIES.length) return;
+    const bounds = PROPERTIES.map(p => [p.lat, p.lng]);
+    try {
+      leafletMap.fitBounds(bounds, { padding: [25, 25], maxZoom: 12 });
+    } catch (e) {}
+  }
+
+  function selectActiveProperty(id, scrollToList = false) {
+    const prop = PROPERTIES.find(p => p.id === id);
+    if (!prop) return;
+
+    activePropertyId = id;
+
+    // Highlight row in list
+    document.querySelectorAll('.prop-row').forEach(r => {
+      if (r.dataset.id === id) {
+        r.classList.add('pin-highlight');
+        if (scrollToList) {
+          r.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      } else {
+        r.classList.remove('pin-highlight');
+      }
+    });
+
+    // Fly map to location and open popup
+    if (leafletMap && markerById[id]) {
+      const marker = markerById[id];
+      leafletMap.flyTo([prop.lat, prop.lng], 13, { duration: 0.8 });
+      marker.openPopup();
+    }
+
+    // Update floating active property preview card on map
+    const activeCard = document.getElementById('mapActiveCard');
+    if (activeCard) {
+      document.getElementById('activeCardTitle').textContent = prop.name;
+      document.getElementById('activeCardDev').textContent = `${prop.developer} · ${prop.area}`;
+      document.getElementById('activeCardPrice').textContent = fmtPrice(prop);
+      document.getElementById('activeCardScoreTag').innerHTML = `
+        <span class="score-num ${prop.band.class}" style="font-size:1rem;">${prop.composite}</span>
+        <span class="band-tag band-${prop.band.class}" style="margin-left:0.3rem;">${prop.band.label}</span>
+      `;
+      document.getElementById('activeCardRadarBtn').href = `/radar-chart?a=${encodeURIComponent(prop.name)}`;
+      activeCard.style.display = 'block';
+    }
+  }
+
+  function clearActiveProperty() {
+    activePropertyId = null;
+    document.querySelectorAll('.prop-row.pin-highlight').forEach(r => r.classList.remove('pin-highlight'));
+    const activeCard = document.getElementById('mapActiveCard');
+    if (activeCard) activeCard.style.display = 'none';
+    if (leafletMap) leafletMap.closePopup();
+  }
+
   function focusRow(id) {
-    const row = document.querySelector(`.prop-row[data-id="${id}"]`);
-    if (!row) { showToast('Property not in current page view'); return; }
-    row.classList.add('open');
-    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    row.classList.add('pin-highlight');
-    setTimeout(() => row.classList.remove('pin-highlight'), 1200);
+    selectActiveProperty(id, true);
   }
 
   function showBanner(msg) {
@@ -565,7 +723,7 @@ try {
     PROPERTIES.forEach((p, i) => {
       const displayRank = (currentPage - 1) * PAGE_SIZE + (i + 1);
       const row = document.createElement('div');
-      row.className = `prop-row band-${p.band.class}-row`;
+      row.className = `prop-row band-${p.band.class}-row ${p.id === activePropertyId ? 'pin-highlight' : ''}`;
       row.dataset.id = p.id;
 
       const axisLines = AXES.map(ax => {
@@ -594,6 +752,7 @@ try {
             </div>
           </div>
           <div class="prop-right">
+            <button class="btn ghost btn-map-pin" data-id="${p.id}" style="padding:0.25rem 0.55rem; font-size:0.64rem;" title="Focus on Floating Map">Map 📍</button>
             <a class="btn ghost" style="padding:0.25rem 0.55rem; font-size:0.64rem; text-decoration:none;" href="/radar-chart?a=${encodeURIComponent(p.name)}" onclick="event.stopPropagation();" title="Analyze in Radar Dashboard">Radar ↗</a>
             <span class="seal ${p.gateOK ? 'pass' : 'fail'}">${p.gateOK ? 'Cleared' : 'Gate failed'}</span>
             <div class="score-block">
@@ -610,8 +769,28 @@ try {
       `;
 
       row.querySelector('[data-toggle]').addEventListener('click', (e) => {
-        if (e.target.closest('.shortlist-check')) return;
+        if (e.target.closest('.shortlist-check') || e.target.closest('.btn')) return;
         row.classList.toggle('open');
+        selectActiveProperty(p.id, false);
+      });
+
+      const mapPinBtn = row.querySelector('.btn-map-pin');
+      if (mapPinBtn) {
+        mapPinBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          selectActiveProperty(p.id, false);
+        });
+      }
+
+      row.addEventListener('mouseenter', () => {
+        if (markerById[p.id] && p.id !== activePropertyId) {
+          markerById[p.id].setStyle({ radius: 9, weight: 2 });
+        }
+      });
+      row.addEventListener('mouseleave', () => {
+        if (markerById[p.id] && p.id !== activePropertyId) {
+          markerById[p.id].setStyle({ radius: 7, weight: 1 });
+        }
       });
 
       const checkbox = row.querySelector('.shortlist-check');
@@ -771,6 +950,8 @@ try {
     if (selectedDistrict) queryParams.append('district', selectedDistrict);
     if (selectedStatus) queryParams.append('status', selectedStatus);
     if (selectedPropertyType) queryParams.append('project_type', selectedPropertyType);
+    if (selectedApprovalYear) queryParams.append('approval_year', selectedApprovalYear);
+    if (selectedCompletionYear) queryParams.append('completion_year', selectedCompletionYear);
 
     const urls = [
       `/api/v1/projects?${queryParams.toString()}`,
@@ -803,11 +984,15 @@ try {
                 transparency: qual
               };
               const composite = Math.round(weightedScore(scores) * 10) / 10;
+              const appDate = p.approved_on || '';
+              const compDate = p.proposed_completion_date || '';
               return {
                 id: (p.registration_no || `prop-${idx}`).replace(/[^a-zA-Z0-9-]/g, '_'),
                 name: p.project_name || 'RERA Project',
                 developer: p.promoter_name || 'RERA Promoter',
                 projectType: p.project_type || '',
+                approvedOn: appDate,
+                completionDate: compDate,
                 area: `${p.taluk || ''}, ${p.district || 'Karnataka'}`.replace(/^[\s,]+/, ''),
                 gateOK: isApproved,
                 priceMin: 0.8 + (idx % 5) * 0.3,
@@ -816,7 +1001,7 @@ try {
                 scores: scores,
                 composite: composite,
                 band: getBand(composite),
-                note: `RERA Reg: ${p.registration_no || 'N/A'}. Status: ${p.status || 'N/A'}. Quality score: ${qual}/100.`,
+                note: `RERA Reg: ${p.registration_no || 'N/A'}. Status: ${p.status || 'N/A'}.${appDate ? ' Approved: ' + appDate + '.' : ''}${compDate ? ' Completion: ' + compDate + '.' : ''} Quality score: ${qual}/100.`,
                 lat: coords.lat,
                 lng: coords.lng
               };
@@ -901,6 +1086,18 @@ try {
     loadAndRender();
   });
 
+  document.getElementById('approvalYearFilter').addEventListener('change', (e) => {
+    selectedApprovalYear = e.target.value;
+    currentPage = 1;
+    loadAndRender();
+  });
+
+  document.getElementById('completionYearFilter').addEventListener('change', (e) => {
+    selectedCompletionYear = e.target.value;
+    currentPage = 1;
+    loadAndRender();
+  });
+
   document.getElementById('sortBy').addEventListener('change', (e) => {
     activeSort = e.target.value;
     loadAndRender();
@@ -930,7 +1127,28 @@ try {
     showToast('Shortlist cleared');
   });
 
-  document.getElementById('mapHead').addEventListener('click', () => {
+  document.getElementById('mapFitBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    fitAllMapMarkers();
+  });
+
+  document.getElementById('activeCardClose').addEventListener('click', (e) => {
+    e.stopPropagation();
+    clearActiveProperty();
+  });
+
+  document.getElementById('activeCardJumpBtn').addEventListener('click', () => {
+    if (activePropertyId) {
+      const row = document.querySelector(`.prop-row[data-id="${activePropertyId}"]`);
+      if (row) {
+        row.classList.add('open');
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  });
+
+  document.getElementById('mapHead').addEventListener('click', (e) => {
+    if (e.target.closest('#mapFitBtn')) return;
     const panel = document.getElementById('mapPanel');
     const nowOpen = panel.classList.toggle('open');
     if (nowOpen && leafletMap) {
