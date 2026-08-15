@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Property Risk & Compliance Register — RERA Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --paper: #F6F5F1;
+    --paper-raised: #FCFBF8;
+    --ink: #1B1E24;
+    --ink-soft: #565B66;
+    --hairline: #DBD7CC;
+    --hairline-strong: #C7C2B3;
+    --clear: #2F6E4F;
+    --clear-tint: #2F6E4F12;
+    --watch: #97701A;
+    --watch-tint: #97701A14;
+    --flag: #AC2C2C;
+    --flag-tint: #AC2C2C12;
+    --gold: #8A6A1F;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 0 0 4rem;
+    line-height: 1.5;
+    font-size: 15px;
+  }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+  .container { max-width: 1180px; margin: 0 auto; padding: 0 2rem; }
+
+  header.masthead { border-bottom: 1px solid var(--hairline-strong); padding: 2.25rem 0 1.5rem; margin-bottom: 1.5rem; }
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ink-soft); display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem;
+  }
+  .eyebrow .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--ink-soft); }
+  h1 { font-family: 'IBM Plex Serif', serif; font-weight: 600; font-size: 2rem; letter-spacing: -0.01em; }
+  .masthead p.sub { font-size: 0.9rem; color: var(--ink-soft); margin-top: 0.4rem; max-width: 62ch; }
+
+  .banner {
+    border: 1px solid var(--hairline-strong);
+    background: #FBF7EC;
+    color: #6b5416;
+    font-size: 0.8rem;
+    padding: 0.7rem 1rem;
+    margin-bottom: 1.25rem;
+    display: none;
+  }
+  .banner.show { display: block; }
+
+  .summary-strip { display: grid; grid-template-columns: repeat(5, 1fr); border: 1px solid var(--hairline); background: var(--paper-raised); margin-bottom: 1.25rem; }
+  .summary-cell { padding: 0.9rem 1.1rem; border-left: 1px solid var(--hairline); }
+  .summary-cell:first-child { border-left: none; }
+  .summary-cell .num { font-family: 'IBM Plex Mono', monospace; font-size: 1.5rem; font-weight: 600; line-height: 1; }
+  .summary-cell .lbl { font-family: 'IBM Plex Mono', monospace; font-size: 0.63rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); margin-top: 0.3rem; }
+  .summary-cell.clear .num { color: var(--clear); }
+  .summary-cell.watch .num { color: var(--watch); }
+  .summary-cell.flag .num { color: var(--flag); }
+  .summary-cell.gold .num { color: var(--gold); }
+  @media (max-width: 760px) { .summary-strip { grid-template-columns: repeat(2, 1fr); } .summary-cell:nth-child(odd) { border-left: none; } }
+
+  .toolbar { margin-bottom: 1.5rem; }
+  .toolbar-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; }
+  .toolbar-row + .toolbar-row { margin-top: 0.75rem; }
+
+  .search-wrap { flex: 1; min-width: 220px; border: 1px solid var(--hairline-strong); background: var(--paper-raised); display: flex; align-items: center; padding: 0.1rem 0.75rem; }
+  .search-wrap span.icon { font-family: 'IBM Plex Mono', monospace; color: var(--ink-soft); font-size: 0.85rem; margin-right: 0.5rem; }
+  #searchInput { flex: 1; border: none; outline: none; background: none; font-family: 'IBM Plex Sans', sans-serif; font-size: 0.88rem; color: var(--ink); padding: 0.55rem 0; }
+  #searchInput::placeholder { color: var(--ink-soft); }
+
+  .btn {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+    border: 1px solid var(--ink); background: var(--ink); color: var(--paper); padding: 0.6rem 1rem; cursor: pointer; transition: opacity 0.15s; white-space: nowrap;
+  }
+  .btn:hover { opacity: 0.82; }
+  .btn.ghost { background: none; color: var(--ink); border-color: var(--hairline-strong); }
+  .btn.ghost:hover { border-color: var(--ink); opacity: 1; }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .filters { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .filter-chip {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; letter-spacing: 0.03em; text-transform: uppercase;
+    border: 1px solid var(--hairline-strong); background: var(--paper-raised); color: var(--ink-soft); padding: 0.35rem 0.7rem; cursor: pointer; transition: all 0.15s;
+  }
+  .filter-chip:hover { border-color: var(--ink); color: var(--ink); }
+  .filter-chip.active { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+  .sort-group { display: flex; align-items: center; gap: 0.5rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); }
+  select#sortBy, select.filter-select {
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 0.85rem; font-weight: 500; color: var(--ink); background: var(--paper-raised); border: 1px solid var(--hairline-strong);
+    padding: 0.35rem 1.6rem 0.35rem 0.6rem; appearance: none; -webkit-appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink-soft) 50%), linear-gradient(135deg, var(--ink-soft) 50%, transparent 50%);
+    background-position: calc(100% - 10px) center, calc(100% - 5px) center; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; cursor: pointer;
+  }
+  .pagination-bar {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.8rem;
+    margin-top: 1.25rem; padding: 0.85rem 1rem; background: var(--paper-raised); border: 1px solid var(--hairline);
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.76rem;
+  }
+  .page-controls { display: flex; align-items: center; gap: 0.35rem; }
+  .page-btn { padding: 0.35rem 0.65rem; font-size: 0.7rem; }
+  .page-current { font-weight: 600; padding: 0 0.5rem; color: var(--ink); }
+
+  .main-layout { display: grid; grid-template-columns: 320px 1fr; gap: 1.5rem; align-items: start; }
+  @media (max-width: 900px) { .main-layout { grid-template-columns: 1fr; } }
+
+  .map-panel { background: var(--paper-raised); border: 1px solid var(--hairline); }
+  .map-head {
+    padding: 0.85rem 1rem; border-bottom: 1px solid var(--hairline); font-family: 'IBM Plex Serif', serif; font-weight: 600; font-size: 0.92rem;
+    display: flex; align-items: center; justify-content: space-between; cursor: pointer;
+  }
+  .map-head:hover { background: rgba(27,30,36,0.02); }
+  .map-head .chevron { font-family: 'IBM Plex Mono', monospace; color: var(--ink-soft); font-size: 0.85rem; font-weight: 400; transition: transform 0.15s; }
+  .map-panel.open .map-head .chevron { transform: rotate(90deg); }
+  .map-body { display: none; }
+  .map-panel.open .map-body { display: block; }
+  #mapContainer { width: 100%; height: 340px; background: #eee; }
+  .leaflet-popup-content-wrapper { border-radius: 0; font-family: 'IBM Plex Sans', sans-serif; }
+  .leaflet-popup-content { font-size: 0.8rem; margin: 0.6rem 0.75rem; }
+  .popup-title { font-family: 'IBM Plex Serif', serif; font-weight: 600; margin-bottom: 0.15rem; }
+  .popup-score { font-family: 'IBM Plex Mono', monospace; font-weight: 600; }
+  .map-legend { display: flex; gap: 0.9rem; flex-wrap: wrap; padding: 0.7rem 1rem 0.9rem; font-size: 0.7rem; color: var(--ink-soft); }
+  .map-legend .item { display: flex; align-items: center; gap: 0.35rem; }
+  .map-legend .sw { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .map-note { font-size: 0.68rem; color: var(--ink-soft); padding: 0 1rem 0.9rem; font-family: 'IBM Plex Mono', monospace; }
+
+  #registerList { display: flex; flex-direction: column; gap: 0.9rem; }
+
+  .prop-row { background: var(--paper-raised); border: 1px solid var(--hairline); border-left-width: 3px; }
+  .prop-row.band-clear-row { border-left-color: var(--clear); }
+  .prop-row.band-watch-row { border-left-color: var(--watch); }
+  .prop-row.band-flag-row  { border-left-color: var(--flag); }
+  .prop-row.pin-highlight { box-shadow: 0 0 0 2px var(--ink) inset; }
+
+  .prop-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; cursor: pointer; flex-wrap: wrap; }
+  .prop-head:hover { background: rgba(27,30,36,0.02); }
+
+  .prop-id-block { display: flex; align-items: flex-start; gap: 0.75rem; flex-wrap: wrap; }
+  .shortlist-check { margin-top: 0.3rem; width: 15px; height: 15px; accent-color: var(--ink); cursor: pointer; }
+  .rank { font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; color: var(--ink-soft); width: 1.6rem; display: inline-block; margin-top: 0.15rem; }
+  .prop-name { font-family: 'IBM Plex Serif', serif; font-weight: 600; font-size: 1.05rem; }
+  .prop-meta { font-size: 0.78rem; color: var(--ink-soft); margin-top: 0.15rem; }
+  .prop-price { font-family: 'IBM Plex Mono', monospace; font-size: 0.76rem; color: var(--ink); margin-top: 0.3rem; }
+  .prop-price .unit-tag { display: inline-block; border: 1px solid var(--hairline-strong); color: var(--ink-soft); padding: 0.05rem 0.35rem; margin-right: 0.3rem; font-size: 0.66rem; text-transform: uppercase; }
+
+  .prop-right { display: flex; align-items: center; gap: 1.25rem; }
+  .seal { font-family: 'IBM Plex Mono', monospace; font-size: 0.64rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 0.25rem 0.55rem; border: 1px solid currentColor; white-space: nowrap; }
+  .seal.pass { color: var(--clear); }
+  .seal.fail { color: var(--flag); }
+
+  .score-block { text-align: right; }
+  .score-num { font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 1.3rem; line-height: 1; }
+  .score-num.clear { color: var(--clear); }
+  .score-num.watch { color: var(--watch); }
+  .score-num.flag { color: var(--flag); }
+  .score-of { font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; color: var(--ink-soft); }
+
+  .band-tag { font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; padding: 0.15rem 0.45rem; display: inline-block; margin-top: 0.25rem; }
+  .band-clear { background: var(--clear-tint); color: var(--clear); }
+  .band-watch { background: var(--watch-tint); color: var(--watch); }
+  .band-flag  { background: var(--flag-tint); color: var(--flag); }
+
+  .chevron { font-family: 'IBM Plex Mono', monospace; color: var(--ink-soft); font-size: 0.85rem; transition: transform 0.15s; }
+  .prop-row.open .chevron { transform: rotate(90deg); }
+
+  .prop-detail { display: none; border-top: 1px solid var(--hairline); padding: 1rem 1.25rem 1.15rem; }
+  .prop-row.open .prop-detail { display: block; }
+
+  .axis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem 1.75rem; }
+  @media (max-width: 640px) { .axis-grid { grid-template-columns: 1fr; } }
+  .axis-line { display: grid; grid-template-columns: 9.5rem 1fr 2rem; align-items: center; gap: 0.6rem; }
+  .axis-label { font-size: 0.76rem; color: var(--ink-soft); }
+  .axis-bar-track { height: 5px; background: var(--hairline); position: relative; }
+  .axis-bar-fill { height: 100%; }
+  .axis-bar-fill.clear { background: var(--clear); }
+  .axis-bar-fill.watch { background: var(--watch); }
+  .axis-bar-fill.flag { background: var(--flag); }
+  .axis-value { font-family: 'IBM Plex Mono', monospace; font-size: 0.76rem; font-weight: 600; text-align: right; }
+
+  .prop-note { font-size: 0.8rem; color: var(--ink-soft); margin-top: 0.9rem; padding-top: 0.75rem; border-top: 1px solid var(--hairline); }
+
+  .empty-state { text-align: center; padding: 3rem 1rem; color: var(--ink-soft); font-size: 0.9rem; border: 1px dashed var(--hairline-strong); }
+
+  .note { font-size: 0.78rem; color: var(--ink-soft); line-height: 1.5; border-top: 1px solid var(--hairline); padding-top: 1rem; margin-top: 1.5rem; }
+  .toast {
+    position: fixed; bottom: 1.25rem; left: 50%; transform: translateX(-50%) translateY(8px);
+    background: var(--ink); color: var(--paper); font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem;
+    padding: 0.55rem 0.9rem; opacity: 0; pointer-events: none; transition: all 0.2s; z-index: 2000;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header class="masthead">
+    <div class="eyebrow">
+      <span><span class="dot"></span> RERA Karnataka Intelligence · Property Register</span>
+      <a href="/radar-chart" style="margin-left: auto; color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink); font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; text-transform: uppercase;">Compare Radar ↗</a>
+    </div>
+    <h1>Property Risk & Compliance Register</h1>
+    <p class="sub">All tracked developments in one list, ranked by weighted composite score. Search, shortlist, and export the ones worth marketing.</p>
+  </header>
+
+  <div class="banner" id="errorBanner"></div>
+
+  <div class="summary-strip" id="summaryStrip"></div>
+
+  <div class="toolbar">
+    <div class="toolbar-row">
+      <div class="search-wrap">
+        <span class="icon">Find</span>
+        <input id="searchInput" type="text" placeholder="Search Project Name, Developer, Reg No, Ack No, Area…" />
+      </div>
+      <select id="districtFilter" class="filter-select">
+        <option value="">All Districts</option>
+        <option value="Bengaluru Urban">Bengaluru Urban</option>
+        <option value="Bengaluru Rural">Bengaluru Rural</option>
+        <option value="Mysore">Mysore</option>
+        <option value="Dakshina Kannada">Dakshina Kannada</option>
+        <option value="Belagavi">Belagavi</option>
+        <option value="Tumakuru">Tumakuru</option>
+        <option value="Hassan">Hassan</option>
+      </select>
+      <select id="statusFilter" class="filter-select">
+        <option value="">All Statuses</option>
+        <option value="APPROVED">Approved</option>
+        <option value="LAPSED">Lapsed / Suspended</option>
+      </select>
+      <button class="btn ghost" id="clearShortlistBtn">Clear shortlist</button>
+      <button class="btn" id="exportBtn" disabled>Export shortlist (0)</button>
+    </div>
+    <div class="toolbar-row">
+      <div class="filters" id="filterChips"></div>
+      <div class="sort-group">
+        Sort
+        <select id="sortBy">
+          <option value="score-desc">Score, high to low</option>
+          <option value="score-asc">Score, low to high</option>
+          <option value="name-asc">Name, A–Z</option>
+          <option value="price-asc">Price, low to high</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-layout">
+    <div class="map-panel open" id="mapPanel">
+      <div class="map-head" id="mapHead">
+        <span>Location Overview</span>
+        <span class="chevron">&#8250;</span>
+      </div>
+      <div class="map-body">
+        <div id="mapContainer"></div>
+        <div class="map-legend">
+          <span class="item"><span class="sw" style="background:#2F6E4F;"></span>Clear</span>
+          <span class="item"><span class="sw" style="background:#97701A;"></span>Watch</span>
+          <span class="item"><span class="sw" style="background:#AC2C2C;"></span>Flag</span>
+        </div>
+        <div class="map-note">OpenStreetMap · approximate locality coordinates</div>
+      </div>
+    </div>
+
+    <div>
+      <div id="registerList"></div>
+      <div class="empty-state" id="emptyState" style="display:none;">No properties match the current search and filters.</div>
+
+      <div class="pagination-bar" id="paginationBar">
+        <div class="page-info" id="pageInfo">Showing 1–20 of 0 properties</div>
+        <div class="page-controls">
+          <button class="btn ghost page-btn" id="firstPageBtn" title="First Page">« First</button>
+          <button class="btn ghost page-btn" id="prevPageBtn" title="Previous Page">‹ Prev</button>
+          <span class="page-current mono" id="pageCurrent">Page 1 of 1</span>
+          <button class="btn ghost page-btn" id="nextPageBtn" title="Next Page">Next ›</button>
+          <button class="btn ghost page-btn" id="lastPageBtn" title="Last Page">Last »</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    Sample data for layout review only — not sourced from the live RERA registry. Composite score uses the same weighted average as the comparison report. Map tiles © OpenStreetMap contributors. Shortlist selections are saved to this browser and are private to you.
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+try {
+
+  const AXES = [
+    { key: 'compliance', name: 'Regulatory Compliance', weight: 1.0 },
+    { key: 'litigation', name: 'Litigation Risk', weight: 1.2 },
+    { key: 'timeline', name: 'Timeline Adherence', weight: 1.1 },
+    { key: 'title', name: 'Land & Title Clarity', weight: 1.1 },
+    { key: 'location', name: 'Location & Connectivity', weight: 0.9 },
+    { key: 'layout', name: 'Layout & Amenities', weight: 0.7 },
+    { key: 'promoter', name: 'Promoter Reputation', weight: 1.0 },
+    { key: 'transparency', name: 'Data Transparency', weight: 0.8 }
+  ];
+
+  // Sample register — swap for a live fetch of /api/v1/projects/list when wiring to the API.
+  // lat/lng are approximate locality centroids (OpenStreetMap), not exact plot coordinates.
+  const PROPERTIES = [
+    {
+      id: 'brigade-panorama', name: 'Brigade Panorama', developer: 'Brigade Group', area: 'Budigere Cross, Bengaluru South',
+      gateOK: true, priceMin: 1.1, priceMax: 1.8, units: ['2BHK', '3BHK'],
+      scores: { compliance: 88, litigation: 91, timeline: 76, title: 94, location: 72, layout: 80, promoter: 92, transparency: 85 },
+      note: 'Strong promoter track record, no active complaints. Minor delay on Tower C possession.',
+      lat: 13.0212, lng: 77.7861
+    },
+    {
+      id: 'elegant-tranquility', name: 'Elegant Tranquility', developer: 'Elegant Group', area: 'Sarjapur Road, Bengaluru Urban',
+      gateOK: true, priceMin: 0.65, priceMax: 0.95, units: ['1BHK', '2BHK'],
+      scores: { compliance: 82, litigation: 64, timeline: 58, title: 79, location: 88, layout: 74, promoter: 61, transparency: 70 },
+      note: 'Two possession-delay disputes under enquiry; quarterly filings up to date.',
+      lat: 12.9010, lng: 77.7856
+    },
+    {
+      id: 'mahindra-blossom', name: 'Mahindra Blossom', developer: 'Mahindra Lifespaces', area: 'Devanahalli, Bengaluru Urban',
+      gateOK: true, priceMin: 0.85, priceMax: 1.4, units: ['2BHK', '3BHK', 'Plots'],
+      scores: { compliance: 95, litigation: 96, timeline: 90, title: 97, location: 66, layout: 85, promoter: 94, transparency: 91 },
+      note: 'Cleanest file in the register. Location score held down by distance to nearest metro.',
+      lat: 13.2437, lng: 77.7108
+    },
+    {
+      id: 'divinity', name: 'Divinity', developer: 'Salarpuria Sattva', area: 'Whitefield, Bengaluru East',
+      gateOK: true, priceMin: 1.3, priceMax: 2.4, units: ['3BHK', '4BHK'],
+      scores: { compliance: 79, litigation: 55, timeline: 62, title: 71, location: 90, layout: 77, promoter: 68, transparency: 60 },
+      note: 'Refund dispute pending resolution. Strong location fundamentals offset some risk.',
+      lat: 12.9698, lng: 77.7500
+    },
+    {
+      id: 'shankara-agraharam', name: 'Shankara Agraharam Sri Sharadamba', developer: 'Shankara Buildwell', area: 'Yelahanka, Bengaluru North',
+      gateOK: false, priceMin: 0.4, priceMax: 0.6, units: ['Plots'],
+      scores: { compliance: 41, litigation: 38, timeline: 33, title: 52, location: 61, layout: 55, promoter: 45, transparency: 40 },
+      note: 'RERA registration lapsed and pending renewal. Do not market until P-01 gate clears.',
+      lat: 13.1007, lng: 77.5963
+    },
+    {
+      id: 'prestige-lakeside', name: 'Prestige Lakeside Habitat', developer: 'Prestige Group', area: 'Varthur, Bengaluru East',
+      gateOK: true, priceMin: 1.5, priceMax: 2.9, units: ['3BHK', '4BHK', 'Villas'],
+      scores: { compliance: 90, litigation: 74, timeline: 81, title: 88, location: 84, layout: 89, promoter: 90, transparency: 82 },
+      note: 'Consistently on-schedule quarterly updates. One minor structural complaint, resolved.',
+      lat: 12.9412, lng: 77.7526
+    },
+    {
+      id: 'sobha-neopolis', name: 'Sobha Neopolis', developer: 'Sobha Limited', area: 'Panathur, Bengaluru East',
+      gateOK: true, priceMin: 1.0, priceMax: 1.7, units: ['2BHK', '3BHK'],
+      scores: { compliance: 86, litigation: 69, timeline: 70, title: 83, location: 92, layout: 81, promoter: 87, transparency: 78 },
+      note: 'Strong connectivity to tech corridor. Some open enquiries on construction sequencing.',
+      lat: 12.9391, lng: 77.6975
+    },
+  ];
+
+  function getBand(score) {
+    if (score >= 70) return { label: 'Clear', class: 'clear', hex: '#2F6E4F' };
+    if (score >= 40) return { label: 'Watch', class: 'watch', hex: '#97701A' };
+    return { label: 'Flag', class: 'flag', hex: '#AC2C2C' };
+  }
+
+  function weightedScore(scores) {
+    const totalWeight = AXES.reduce((s, a) => s + a.weight, 0);
+    return AXES.reduce((s, a) => s + scores[a.key] * a.weight, 0) / totalWeight;
+  }
+
+  function fmtPrice(p) { return `\u20B9${p.priceMin.toFixed(2)} \u2013 \u20B9${p.priceMax.toFixed(2)} Cr`; }
+
+  PROPERTIES.forEach(p => {
+    p.composite = Math.round(weightedScore(p.scores) * 10) / 10;
+    p.band = getBand(p.composite);
+  });
+
+  const SAMPLE_PROPERTIES = [...PROPERTIES];
+
+  const PAGE_SIZE = 20;
+  let currentPage = 1;
+  let totalMatchingItems = 0;
+  let totalPagesCount = 1;
+
+  let selectedDistrict = '';
+  let selectedStatus = '';
+  let activeFilter = 'all';
+  let activeSort = 'score-desc';
+  let searchTerm = '';
+  let shortlist = [];
+
+  const STORAGE_KEY = 'rera_register_shortlist_v1';
+  const storageAvailable = !!(window.storage && window.storage.get && window.storage.set);
+
+  async function loadShortlist() {
+    if (!storageAvailable) return;
+    try {
+      const result = await window.storage.get(STORAGE_KEY, false);
+      if (result && result.value) shortlist = JSON.parse(result.value);
+    } catch (e) { shortlist = []; }
+  }
+
+  async function saveShortlist() {
+    if (!storageAvailable) return;
+    try { await window.storage.set(STORAGE_KEY, JSON.stringify(shortlist), false); }
+    catch (e) { console.warn('Could not persist shortlist:', e.message); }
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._tid);
+    showToast._tid = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  function renderSummary() {
+    const total = totalMatchingItems || PROPERTIES.length;
+    const clear = PROPERTIES.filter(p => p.band.class === 'clear' && p.gateOK).length;
+    const watch = PROPERTIES.filter(p => p.band.class === 'watch' && p.gateOK).length;
+    const flag = PROPERTIES.filter(p => p.band.class === 'flag' || !p.gateOK).length;
+    document.getElementById('summaryStrip').innerHTML = `
+      <div class="summary-cell"><div class="num">${total.toLocaleString()}</div><div class="lbl">Tracked properties</div></div>
+      <div class="summary-cell clear"><div class="num">${clear}</div><div class="lbl">Clear band (Page)</div></div>
+      <div class="summary-cell watch"><div class="num">${watch}</div><div class="lbl">Watch band (Page)</div></div>
+      <div class="summary-cell flag"><div class="num">${flag}</div><div class="lbl">Flag / gate failed</div></div>
+      <div class="summary-cell gold"><div class="num">${shortlist.length}</div><div class="lbl">Shortlisted</div></div>
+    `;
+  }
+
+  function renderFilters() {
+    const chips = [
+      { key: 'all', label: 'All' }, { key: 'clear', label: 'Clear' }, { key: 'watch', label: 'Watch' },
+      { key: 'flag', label: 'Flag' }, { key: 'shortlisted', label: 'Shortlisted' },
+    ];
+    const el = document.getElementById('filterChips');
+    el.innerHTML = chips.map(c => `<button class="filter-chip ${activeFilter === c.key ? 'active' : ''}" data-key="${c.key}">${c.label}</button>`).join('');
+    el.querySelectorAll('.filter-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeFilter = btn.dataset.key;
+        currentPage = 1;
+        renderFilters();
+        loadAndRender();
+      });
+    });
+  }
+
+  function renderPagination() {
+    const startIdx = totalMatchingItems > 0 ? (currentPage - 1) * PAGE_SIZE + 1 : 0;
+    const endIdx = Math.min(currentPage * PAGE_SIZE, totalMatchingItems);
+
+    document.getElementById('pageInfo').textContent = `Showing ${startIdx}–${endIdx} of ${totalMatchingItems.toLocaleString()} properties`;
+    document.getElementById('pageCurrent').textContent = `Page ${currentPage} of ${totalPagesCount}`;
+
+    document.getElementById('firstPageBtn').disabled = currentPage <= 1;
+    document.getElementById('prevPageBtn').disabled = currentPage <= 1;
+    document.getElementById('nextPageBtn').disabled = currentPage >= totalPagesCount;
+    document.getElementById('lastPageBtn').disabled = currentPage >= totalPagesCount;
+  }
+
+  // ---------- Leaflet / OSM map ----------
+  let leafletMap = null;
+  const markerById = {};
+
+  function initMap() {
+    if (typeof L === 'undefined') {
+      showBanner('Map library did not load (offline or blocked network) — the list below still works fully.');
+      return;
+    }
+    leafletMap = L.map('mapContainer', { scrollWheelZoom: false }).setView([13.02, 77.70], 9);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(leafletMap);
+    updateMapMarkers();
+  }
+
+  function updateMapMarkers() {
+    if (!leafletMap) return;
+    Object.values(markerById).forEach(m => leafletMap.removeLayer(m));
+    for (const k in markerById) delete markerById[k];
+
+    if (!PROPERTIES.length) return;
+
+    const bounds = [];
+    PROPERTIES.forEach(p => {
+      const marker = L.circleMarker([p.lat, p.lng], {
+        radius: 7, color: '#1B1E24', weight: 1, fillColor: p.band.hex, fillOpacity: 0.85
+      }).addTo(leafletMap);
+      marker.bindPopup(`<div class="popup-title">${p.name}</div><div class="popup-score">${p.composite}/100 &middot; ${p.band.label}</div>`);
+      marker.on('click', () => focusRow(p.id));
+      markerById[p.id] = marker;
+      bounds.push([p.lat, p.lng]);
+    });
+
+    if (bounds.length > 0) {
+      try {
+        leafletMap.fitBounds(bounds, { padding: [25, 25], maxZoom: 12 });
+      } catch (e) {}
+    }
+  }
+
+  function focusRow(id) {
+    const row = document.querySelector(`.prop-row[data-id="${id}"]`);
+    if (!row) { showToast('Property not in current page view'); return; }
+    row.classList.add('open');
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    row.classList.add('pin-highlight');
+    setTimeout(() => row.classList.remove('pin-highlight'), 1200);
+  }
+
+  function showBanner(msg) {
+    const b = document.getElementById('errorBanner');
+    b.textContent = msg;
+    b.classList.add('show');
+  }
+
+  function renderList() {
+    const container = document.getElementById('registerList');
+    const empty = document.getElementById('emptyState');
+    container.innerHTML = '';
+    empty.style.display = PROPERTIES.length ? 'none' : 'block';
+
+    PROPERTIES.forEach((p, i) => {
+      const displayRank = (currentPage - 1) * PAGE_SIZE + (i + 1);
+      const row = document.createElement('div');
+      row.className = `prop-row band-${p.band.class}-row`;
+      row.dataset.id = p.id;
+
+      const axisLines = AXES.map(ax => {
+        const val = p.scores[ax.key];
+        const band = getBand(val);
+        return `
+          <div class="axis-line">
+            <div class="axis-label">${ax.name}</div>
+            <div class="axis-bar-track"><div class="axis-bar-fill ${band.class}" style="width:${val}%;"></div></div>
+            <div class="axis-value">${val}</div>
+          </div>`;
+      }).join('');
+
+      const unitTags = p.units.map(u => `<span class="unit-tag">${u}</span>`).join('');
+      const isChecked = shortlist.includes(p.id);
+
+      row.innerHTML = `
+        <div class="prop-head" data-toggle>
+          <div class="prop-id-block">
+            <input type="checkbox" class="shortlist-check" data-shortlist="${p.id}" ${isChecked ? 'checked' : ''} title="Add to shortlist" />
+            <span class="rank mono">${String(displayRank).padStart(2, '0')}</span>
+            <div>
+              <div class="prop-name">${p.name}</div>
+              <div class="prop-meta">${p.developer} \u00B7 ${p.area}</div>
+              <div class="prop-price">${unitTags}${fmtPrice(p)}</div>
+            </div>
+          </div>
+          <div class="prop-right">
+            <a class="btn ghost" style="padding:0.25rem 0.55rem; font-size:0.64rem; text-decoration:none;" href="/radar-chart?a=${encodeURIComponent(p.name)}" onclick="event.stopPropagation();" title="Analyze in Radar Dashboard">Radar ↗</a>
+            <span class="seal ${p.gateOK ? 'pass' : 'fail'}">${p.gateOK ? 'Cleared' : 'Gate failed'}</span>
+            <div class="score-block">
+              <div class="score-num ${p.band.class}">${p.composite}<span class="score-of"> /100</span></div>
+              <div class="band-tag band-${p.band.class}">${p.band.label}</div>
+            </div>
+            <span class="chevron">&#8250;</span>
+          </div>
+        </div>
+        <div class="prop-detail">
+          <div class="axis-grid">${axisLines}</div>
+          <div class="prop-note"><strong>Note:</strong> ${p.note}</div>
+        </div>
+      `;
+
+      row.querySelector('[data-toggle]').addEventListener('click', (e) => {
+        if (e.target.closest('.shortlist-check')) return;
+        row.classList.toggle('open');
+      });
+
+      const checkbox = row.querySelector('.shortlist-check');
+      checkbox.addEventListener('click', (e) => e.stopPropagation());
+      checkbox.addEventListener('change', async (e) => {
+        const id = e.target.dataset.shortlist;
+        if (e.target.checked) { if (!shortlist.includes(id)) shortlist.push(id); }
+        else { shortlist = shortlist.filter(sid => sid !== id); }
+        await saveShortlist();
+        renderSummary();
+        updateExportButton();
+      });
+
+      container.appendChild(row);
+    });
+
+    updateMapMarkers();
+  }
+
+  function updateExportButton() {
+    const btn = document.getElementById('exportBtn');
+    btn.textContent = `Export shortlist (${shortlist.length})`;
+    btn.disabled = shortlist.length === 0;
+  }
+
+  function exportShortlistCSV() {
+    const rows = PROPERTIES.filter(p => shortlist.includes(p.id));
+    if (!rows.length) return;
+    const header = ['Name', 'Developer', 'Area', 'Price Range (Cr)', 'Unit Types', 'Composite Score', 'Band', 'Gate Status'];
+    const lines = [header.join(',')];
+    rows.forEach(p => {
+      const cells = [
+        p.name, p.developer, p.area, `${p.priceMin.toFixed(2)}-${p.priceMax.toFixed(2)}`,
+        p.units.join(' / '), p.composite, p.band.label, p.gateOK ? 'Cleared' : 'Gate failed'
+      ].map(v => `"${String(v).replace(/"/g, '""')}"`);
+      lines.push(cells.join(','));
+    });
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'property_shortlist.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(`Exported ${rows.length} propert${rows.length === 1 ? 'y' : 'ies'}`);
+  }
+
+  const DISTRICT_CENTROIDS = {
+    'bengaluru urban': { lat: 12.9716, lng: 77.5946 },
+    'bengaluru rural': { lat: 13.2257, lng: 77.5750 },
+    'mysore': { lat: 12.2958, lng: 76.6394 },
+    'mysuru': { lat: 12.2958, lng: 76.6394 },
+    'dakshina kannada': { lat: 12.9141, lng: 74.8560 },
+    'mangalore': { lat: 12.9141, lng: 74.8560 },
+    'belagavi': { lat: 15.8497, lng: 74.4977 },
+    'belgaum': { lat: 15.8497, lng: 74.4977 },
+    'tumakuru': { lat: 13.3379, lng: 77.1173 },
+    'tumkur': { lat: 13.3379, lng: 77.1173 },
+    'hassan': { lat: 13.0068, lng: 76.1004 },
+    'udupi': { lat: 13.3409, lng: 74.7421 },
+    'dharwad': { lat: 15.4589, lng: 75.0078 },
+    'chamarajanagar': { lat: 11.9261, lng: 76.9437 },
+    'kalaburagi': { lat: 17.3297, lng: 76.8343 },
+    'shivamogga': { lat: 13.9299, lng: 75.5681 },
+    'shimoga': { lat: 13.9299, lng: 75.5681 },
+    'mandya': { lat: 12.5218, lng: 76.8951 },
+    'chikkamagaluru': { lat: 13.3161, lng: 75.7720 },
+    'ballari': { lat: 15.1394, lng: 76.9214 },
+    'vijayapura': { lat: 16.8302, lng: 75.7100 },
+    'kolar': { lat: 13.1367, lng: 78.1291 },
+    'chikkaballapur': { lat: 13.4355, lng: 77.7275 },
+    'ramanagara': { lat: 12.7150, lng: 77.2814 }
+  };
+
+  function resolveCoordinates(p, idx) {
+    const rawLat = parseFloat(p.latitude);
+    const rawLng = parseFloat(p.longitude);
+
+    if (!isNaN(rawLat) && !isNaN(rawLng) && rawLat >= 11.0 && rawLat <= 19.0 && rawLng >= 74.0 && rawLng <= 78.8) {
+      return { lat: rawLat, lng: rawLng };
+    }
+
+    const distKey = (p.district || '').toLowerCase().trim();
+    let base = DISTRICT_CENTROIDS[distKey];
+    if (!base) {
+      for (const [k, coords] of Object.entries(DISTRICT_CENTROIDS)) {
+        if (distKey.includes(k) || k.includes(distKey)) {
+          base = coords;
+          break;
+        }
+      }
+    }
+    if (!base) base = { lat: 12.9716, lng: 77.5946 };
+
+    let hash = 0;
+    const str = p.registration_no || p.project_name || `idx-${idx}`;
+    for (let i = 0; i < str.length; i++) hash = (hash << 5) - hash + str.charCodeAt(i);
+    const offsetX = ((Math.abs(hash) % 100) - 50) * 0.0006;
+    const offsetY = ((Math.abs(hash >> 3) % 100) - 50) * 0.0006;
+
+    return { lat: base.lat + offsetY, lng: base.lng + offsetX };
+  }
+
+  async function fetchLiveProperties(page = 1) {
+    const offset = (page - 1) * PAGE_SIZE;
+    const queryParams = new URLSearchParams({
+      limit: PAGE_SIZE,
+      offset: offset
+    });
+
+    if (searchTerm) queryParams.append('q', searchTerm);
+    if (selectedDistrict) queryParams.append('district', selectedDistrict);
+    if (selectedStatus) queryParams.append('status', selectedStatus);
+
+    const urls = [
+      `/api/v1/projects?${queryParams.toString()}`,
+      `http://localhost:8000/api/v1/projects?${queryParams.toString()}`
+    ];
+
+    for (const url of urls) {
+      try {
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.results) {
+            totalMatchingItems = data.total ?? data.results.length;
+            totalPagesCount = Math.max(1, Math.ceil(totalMatchingItems / PAGE_SIZE));
+            
+            const mapped = data.results.map((p, idx) => {
+              const coords = resolveCoordinates(p, idx);
+              const isApproved = (p.status || '').toUpperCase() === 'APPROVED';
+              const qual = p.quality_score || 85;
+              const scores = {
+                compliance: isApproved ? 95 : 0,
+                litigation: Math.min(100, qual + 5),
+                timeline: Math.min(100, qual),
+                title: 95,
+                location: p.latitude ? 95 : 65,
+                layout: qual,
+                promoter: Math.min(100, qual + 2),
+                transparency: qual
+              };
+              const composite = Math.round(weightedScore(scores) * 10) / 10;
+              return {
+                id: (p.registration_no || `prop-${idx}`).replace(/[^a-zA-Z0-9-]/g, '_'),
+                name: p.project_name || 'RERA Project',
+                developer: p.promoter_name || 'RERA Promoter',
+                area: `${p.taluk || ''}, ${p.district || 'Karnataka'}`.replace(/^[\s,]+/, ''),
+                gateOK: isApproved,
+                priceMin: 0.8 + (idx % 5) * 0.3,
+                priceMax: 1.5 + (idx % 5) * 0.5,
+                units: ['2BHK', '3BHK'],
+                scores: scores,
+                composite: composite,
+                band: getBand(composite),
+                note: `RERA Reg: ${p.registration_no || 'N/A'}. Status: ${p.status || 'N/A'}. Quality score: ${qual}/100.`,
+                lat: coords.lat,
+                lng: coords.lng
+              };
+            });
+            return mapped;
+          }
+        }
+      } catch (e) {}
+    }
+    return null;
+  }
+
+  async function loadAndRender() {
+    const liveProps = await fetchLiveProperties(currentPage);
+    if (liveProps !== null) {
+      PROPERTIES.length = 0;
+      PROPERTIES.push(...liveProps);
+    } else {
+      totalMatchingItems = SAMPLE_PROPERTIES.length;
+      totalPagesCount = Math.ceil(totalMatchingItems / PAGE_SIZE) || 1;
+      PROPERTIES.length = 0;
+      PROPERTIES.push(...SAMPLE_PROPERTIES.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE));
+    }
+
+    if (activeSort === 'score-desc') PROPERTIES.sort((a, b) => b.composite - a.composite);
+    else if (activeSort === 'score-asc') PROPERTIES.sort((a, b) => a.composite - b.composite);
+    else if (activeSort === 'name-asc') PROPERTIES.sort((a, b) => a.name.localeCompare(b.name));
+    else if (activeSort === 'price-asc') PROPERTIES.sort((a, b) => a.priceMin - b.priceMin);
+
+    renderSummary();
+    renderPagination();
+    updateExportButton();
+    renderList();
+  }
+
+  let searchTimer = null;
+  document.getElementById('searchInput').addEventListener('input', (e) => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      searchTerm = e.target.value.trim();
+      currentPage = 1;
+      loadAndRender();
+    }, 300);
+  });
+
+  document.getElementById('districtFilter').addEventListener('change', (e) => {
+    selectedDistrict = e.target.value;
+    currentPage = 1;
+    loadAndRender();
+  });
+
+  document.getElementById('statusFilter').addEventListener('change', (e) => {
+    selectedStatus = e.target.value;
+    currentPage = 1;
+    loadAndRender();
+  });
+
+  document.getElementById('sortBy').addEventListener('change', (e) => {
+    activeSort = e.target.value;
+    loadAndRender();
+  });
+
+  document.getElementById('firstPageBtn').addEventListener('click', () => {
+    if (currentPage > 1) { currentPage = 1; loadAndRender(); }
+  });
+  document.getElementById('prevPageBtn').addEventListener('click', () => {
+    if (currentPage > 1) { currentPage--; loadAndRender(); }
+  });
+  document.getElementById('nextPageBtn').addEventListener('click', () => {
+    if (currentPage < totalPagesCount) { currentPage++; loadAndRender(); }
+  });
+  document.getElementById('lastPageBtn').addEventListener('click', () => {
+    if (currentPage < totalPagesCount) { currentPage = totalPagesCount; loadAndRender(); }
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', exportShortlistCSV);
+  document.getElementById('clearShortlistBtn').addEventListener('click', async () => {
+    if (!shortlist.length) return;
+    shortlist = [];
+    await saveShortlist();
+    renderSummary();
+    updateExportButton();
+    renderList();
+    showToast('Shortlist cleared');
+  });
+
+  document.getElementById('mapHead').addEventListener('click', () => {
+    const panel = document.getElementById('mapPanel');
+    const nowOpen = panel.classList.toggle('open');
+    if (nowOpen && leafletMap) {
+      setTimeout(() => leafletMap.invalidateSize(), 50);
+    }
+  });
+
+  (async function init() {
+    try { await loadShortlist(); } catch (e) {}
+    renderFilters();
+    initMap();
+    await loadAndRender();
+  })();
+
+} catch (err) {
+  const b = document.getElementById('errorBanner');
+  if (b) { b.textContent = 'A script error occurred: ' + err.message; b.classList.add('show'); }
+  console.error(err);
+}
+</script>
+
+</body>
+</html>

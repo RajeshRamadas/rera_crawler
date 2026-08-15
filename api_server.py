@@ -60,6 +60,17 @@ def get_radar_chart():
     return FileResponse(html_path, media_type="text/html")
 
 
+@app.get("/register", summary="Property Risk & Compliance Register Listing")
+@app.get("/listing", summary="Property Risk & Compliance Register Listing")
+def get_property_listing():
+    """Serves the single-file HTML Property Risk & Compliance Register dashboard."""
+    html_path = os.path.join(os.path.dirname(__file__), "rera_property_listing.html")
+    if not os.path.exists(html_path):
+        raise HTTPException(status_code=404, detail="rera_property_listing.html not found.")
+    return FileResponse(html_path, media_type="text/html")
+
+
+
 def get_db_connection():
     """Establish connection to PostgreSQL database."""
     try:
@@ -102,9 +113,9 @@ def healthcheck():
 @app.get("/api/v1/projects", summary="List and filter RERA projects")
 def list_projects(
     district: Optional[str] = Query(None, description="Filter by district (e.g. Bengaluru Urban)"),
-    status: Optional[str] = Query(None, description="Filter by project status (e.g. New Project Launch)"),
+    status: Optional[str] = Query(None, description="Filter by project status (e.g. APPROVED)"),
     promoter: Optional[str] = Query(None, description="Filter by promoter / builder name"),
-    q: Optional[str] = Query(None, description="Search term matching project name or promoter name"),
+    q: Optional[str] = Query(None, description="Search term matching project name, promoter, or reg no"),
     min_quality_score: Optional[int] = Query(None, ge=0, le=100, description="Filter by minimum data quality score (0-100)"),
     limit: int = Query(20, ge=1, le=100, description="Page limit (default: 20, max: 100)"),
     offset: int = Query(0, ge=0, description="Offset index for pagination"),
@@ -113,56 +124,56 @@ def list_projects(
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            query = """
+            where_clauses = ["project_name IS NOT NULL", "project_name != ''"]
+            params = []
+
+            if district:
+                where_clauses.append("(LOWER(COALESCE(data->'project_location'->>'district', data->>'district', '')) LIKE %s)")
+                params.append(f"%{district.lower()}%")
+
+            if status:
+                where_clauses.append("LOWER(COALESCE(data->>'status', '')) LIKE %s")
+                params.append(f"%{status.lower()}%")
+
+            if promoter:
+                where_clauses.append("LOWER(firm_name) LIKE %s")
+                params.append(f"%{promoter.lower()}%")
+
+            if q:
+                where_clauses.append("(LOWER(project_name) LIKE %s OR LOWER(firm_name) LIKE %s OR LOWER(registration_no) LIKE %s OR LOWER(acknowledgement_no) LIKE %s OR LOWER(COALESCE(data->'project_location'->>'district', data->>'district', '')) LIKE %s)")
+                param_q = f"%{q.lower()}%"
+                params.extend([param_q, param_q, param_q, param_q, param_q])
+
+            if min_quality_score is not None:
+                where_clauses.append("(data->'data_quality'->>'quality_score')::int >= %s")
+                params.append(min_quality_score)
+
+            where_str = " AND ".join(where_clauses)
+
+            data_query = f"""
                 SELECT 
                     registration_no,
                     acknowledgement_no,
                     project_name,
                     firm_name as promoter_name,
                     crawled_at,
-                    data->'status' as status,
-                    data->'district' as district,
-                    data->'taluk' as taluk,
+                    COALESCE(data->>'status', 'APPROVED') as status,
+                    COALESCE(data->'project_location'->>'district', data->>'district', 'Karnataka') as district,
+                    COALESCE(data->'project_location'->>'taluk', data->>'taluk', '') as taluk,
                     data->'project_location'->>'latitude' as latitude,
                     data->'project_location'->>'longitude' as longitude,
                     data->'project_location'->>'coordinate_source' as coordinate_source,
                     (data->'data_quality'->>'quality_score')::int as quality_score,
                     (data->'data_quality'->>'is_complete')::boolean as is_complete
                 FROM rera_projects
-                WHERE 1=1
+                WHERE {where_str}
+                ORDER BY crawled_at DESC LIMIT %s OFFSET %s;
             """
-            params = []
-
-            if district:
-                query += " AND LOWER(data->'project_location'->>'district') LIKE %s"
-                params.append(f"%{district.lower()}%")
-
-            if status:
-                query += " AND LOWER(data->>'status') LIKE %s"
-                params.append(f"%{status.lower()}%")
-
-            if promoter:
-                query += " AND LOWER(firm_name) LIKE %s"
-                params.append(f"%{promoter.lower()}%")
-
-            if q:
-                query += " AND (LOWER(project_name) LIKE %s OR LOWER(firm_name) LIKE %s)"
-                params.append(f"%{q.lower()}%")
-                params.append(f"%{q.lower()}%")
-
-            if min_quality_score is not None:
-                query += " AND (data->'data_quality'->>'quality_score')::int >= %s"
-                params.append(min_quality_score)
-
-            query += " ORDER BY crawled_at DESC LIMIT %s OFFSET %s;"
-            params.extend([limit, offset])
-
-            cur.execute(query, params)
+            cur.execute(data_query, params + [limit, offset])
             rows = cur.fetchall()
 
-            # Count total query matches for pagination metadata
-            count_query = "SELECT COUNT(*) as total FROM rera_projects WHERE 1=1;"
-            cur.execute(count_query)
+            count_query = f"SELECT COUNT(*) as total FROM rera_projects WHERE {where_str};"
+            cur.execute(count_query, params)
             total_count = cur.fetchone()["total"]
 
         return {

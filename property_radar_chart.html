@@ -251,6 +251,128 @@
       align-items: start;
     }
 
+    .grid.single-mode {
+      grid-template-columns: 1fr;
+    }
+
+    .btn-compare-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: var(--paper-raised);
+      border: 1px solid var(--hairline-strong);
+      color: var(--ink);
+      padding: 0.45rem 0.85rem;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.76rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.15s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .btn-compare-toggle:hover {
+      background: var(--paper);
+      border-color: var(--ink);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    }
+
+    /* ---------- Search Combobox ---------- */
+    .search-combobox {
+      position: relative;
+      width: 100%;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-input {
+      width: 100%;
+      background: var(--paper-raised);
+      border: 1px solid var(--hairline-strong);
+      border-radius: 4px;
+      color: var(--ink);
+      padding: 0.55rem 2.2rem 0.55rem 0.75rem;
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 0.88rem;
+      outline: none;
+      transition: all 0.15s ease;
+    }
+
+    .search-input:focus {
+      border-color: var(--ink);
+      box-shadow: 0 0 0 2px rgba(44, 74, 110, 0.12);
+    }
+
+    .clear-btn {
+      position: absolute;
+      right: 0.6rem;
+      background: none;
+      border: none;
+      color: var(--ink-soft);
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: none;
+      padding: 0 0.2rem;
+    }
+
+    .clear-btn:hover {
+      color: var(--ink);
+    }
+
+    .dropdown-results {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: var(--paper-raised);
+      border: 1px solid var(--hairline-strong);
+      border-radius: 4px;
+      box-shadow: 0 8px 24px rgba(27, 30, 36, 0.14);
+      max-height: 280px;
+      overflow-y: auto;
+      z-index: 1000;
+      display: none;
+    }
+
+    .dropdown-results.active {
+      display: block;
+    }
+
+    .result-item {
+      padding: 0.6rem 0.85rem;
+      border-bottom: 1px solid var(--hairline);
+      cursor: pointer;
+      transition: background 0.1s ease;
+    }
+
+    .result-item:last-child {
+      border-bottom: none;
+    }
+
+    .result-item:hover,
+    .result-item.highlighted {
+      background: rgba(44, 74, 110, 0.07);
+    }
+
+    .result-title {
+      font-weight: 600;
+      font-size: 0.88rem;
+      color: var(--ink);
+    }
+
+    .result-meta {
+      font-size: 0.75rem;
+      color: var(--ink-soft);
+      font-family: 'IBM Plex Mono', monospace;
+      margin-top: 0.15rem;
+    }
+
     @media (max-width: 1024px) {
       .grid {
         grid-template-columns: 1fr;
@@ -637,20 +759,38 @@
 
   <div class="container">
     <header class="masthead">
-      <div class="eyebrow"><span class="dot"></span> RERA Karnataka Intelligence · Internal Use</div>
+      <div class="eyebrow">
+        <span><span class="dot"></span> RERA Karnataka Intelligence · Internal Use</span>
+        <a href="/register" style="margin-left: auto; color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink); font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; text-transform: uppercase;">Full Property Register ↗</a>
+      </div>
       <h1>Property Risk & Compliance Report</h1>
       <p class="sub">Composite scoring across 37 verification points (P&#8209;01–P&#8209;37), rolled up into eight risk
         and quality axes for side-by-side evaluation.</p>
     </header>
 
-    <div class="controls-panel">
-      <div class="select-group">
-        <label for="selA"><span class="swatch a"></span>Property A — Primary target</label>
-        <select id="selA"></select>
+    <div class="controls-panel" style="display: flex; align-items: flex-end; gap: 1.25rem; flex-wrap: wrap;">
+      <div class="select-group" style="flex: 1; min-width: 280px;">
+        <label for="inputA"><span class="swatch a"></span>Target Property</label>
+        <div class="search-combobox" id="comboA">
+          <div class="input-wrapper">
+            <input type="text" id="inputA" class="search-input" placeholder="🔍 Type property name, promoter, reg no..." autocomplete="off">
+            <button class="clear-btn" id="clearA" title="Clear">&times;</button>
+          </div>
+          <div class="dropdown-results" id="resultsA"></div>
+        </div>
       </div>
-      <div class="select-group">
-        <label for="selB"><span class="swatch b"></span>Property B — Benchmark</label>
-        <select id="selB"></select>
+      <div class="select-group" id="groupSelB" style="flex: 1; min-width: 280px; display: none;">
+        <label for="inputB"><span class="swatch b"></span>Benchmark Property</label>
+        <div class="search-combobox" id="comboB">
+          <div class="input-wrapper">
+            <input type="text" id="inputB" class="search-input" placeholder="🔍 Type benchmark property..." autocomplete="off">
+            <button class="clear-btn" id="clearB" title="Clear">&times;</button>
+          </div>
+          <div class="dropdown-results" id="resultsB"></div>
+        </div>
+      </div>
+      <div style="margin-bottom: 0.1rem;">
+        <button id="btnToggleCompare" class="btn-compare-toggle">+ Compare with Benchmark</button>
       </div>
     </div>
 
@@ -670,9 +810,9 @@
       </div>
     </div>
 
-    <!-- Side-by-Side Breakdown Tables for Property A & Property B -->
-    <div class="grid">
-      <div class="panel">
+    <!-- Axis Breakdown Tables -->
+    <div class="grid single-mode" id="breakdownGrid">
+      <div class="panel" id="panelA">
         <div class="panel-head">
           <span id="breakdownTitleA">Property A — Axis Breakdown</span>
         </div>
@@ -689,7 +829,7 @@
         </table>
       </div>
 
-      <div class="panel">
+      <div class="panel" id="panelB" style="display: none;">
         <div class="panel-head">
           <span id="breakdownTitleB">Property B — Axis Breakdown</span>
         </div>
@@ -896,19 +1036,172 @@
       return { type, tag, text };
     }
 
-    const selA = document.getElementById('selA');
-    const selB = document.getElementById('selB');
+    let isCompareMode = false;
 
-    PROPERTY_NAMES.forEach(p => {
-      const optA = document.createElement('option');
-      optA.value = p.query; optA.textContent = p.label;
-      selA.appendChild(optA);
-      const optB = document.createElement('option');
-      optB.value = p.query; optB.textContent = p.label;
-      selB.appendChild(optB);
+    const urlParams = new URLSearchParams(window.location.search);
+    const paramA = urlParams.get('a') || urlParams.get('propertyA') || urlParams.get('queryA') || 'ELEGANT TRANQUILITY';
+    const paramB = urlParams.get('b') || urlParams.get('propertyB') || urlParams.get('queryB') || 'Brigade Panorama';
+
+    if (urlParams.get('b') || urlParams.get('propertyB') || urlParams.get('queryB')) {
+      isCompareMode = true;
+    }
+
+    const btnToggleCompare = document.getElementById('btnToggleCompare');
+    const groupSelB = document.getElementById('groupSelB');
+    const panelB = document.getElementById('panelB');
+    const comparePanel = document.querySelector('.compare-panel');
+    const breakdownGrid = document.getElementById('breakdownGrid');
+
+    function updateModeUI() {
+      if (isCompareMode) {
+        groupSelB.style.display = 'block';
+        if (panelB) panelB.style.display = 'block';
+        if (comparePanel) comparePanel.style.display = 'block';
+        if (breakdownGrid) breakdownGrid.classList.remove('single-mode');
+        btnToggleCompare.textContent = '✕ Close Comparison';
+      } else {
+        groupSelB.style.display = 'none';
+        if (panelB) panelB.style.display = 'none';
+        if (comparePanel) comparePanel.style.display = 'none';
+        if (breakdownGrid) breakdownGrid.classList.add('single-mode');
+        btnToggleCompare.textContent = '+ Compare with Benchmark';
+      }
+    }
+
+    btnToggleCompare.addEventListener('click', () => {
+      isCompareMode = !isCompareMode;
+      updateModeUI();
+      render();
     });
-    selA.value = PROPERTY_NAMES[0].query;
-    selB.value = PROPERTY_NAMES[3].query;
+
+    let ALL_PROJECTS_REGISTRY = [];
+
+    function setupCombobox(inputId, clearId, resultsId, initialVal, onSelect) {
+      const inputEl = document.getElementById(inputId);
+      const clearBtn = document.getElementById(clearId);
+      const resultsEl = document.getElementById(resultsId);
+      let debounceTimer = null;
+
+      if (initialVal) {
+        inputEl.value = initialVal;
+        clearBtn.style.display = 'block';
+      }
+
+      function renderResults(items) {
+        resultsEl.innerHTML = '';
+        if (!items || items.length === 0) {
+          resultsEl.innerHTML = '<div class="result-item" style="color: var(--ink-soft); font-size: 0.82rem;">No matching properties found</div>';
+          resultsEl.classList.add('active');
+          return;
+        }
+
+        items.forEach(item => {
+          const name = item.project_name || item.name || item;
+          const promoter = item.promoter_name || item.developer_name || item.developer || '';
+          const district = item.district || '';
+          const regNo = item.registration_no || '';
+
+          const div = document.createElement('div');
+          div.className = 'result-item';
+          
+          let metaText = [promoter, district, regNo].filter(Boolean).join(' · ');
+          if (!metaText) metaText = 'RERA Verified Property';
+
+          div.innerHTML = `
+            <div class="result-title">${name}</div>
+            <div class="result-meta">${metaText}</div>
+          `;
+
+          div.addEventListener('click', () => {
+            inputEl.value = name;
+            clearBtn.style.display = 'block';
+            resultsEl.classList.remove('active');
+            onSelect(name);
+          });
+
+          resultsEl.appendChild(div);
+        });
+
+        resultsEl.classList.add('active');
+      }
+
+      async function doSearch(q) {
+        const query = (q || '').trim().toLowerCase();
+        let matches = [];
+
+        if (ALL_PROJECTS_REGISTRY.length > 0) {
+          matches = ALL_PROJECTS_REGISTRY.filter(p => {
+            const name = (p.project_name || '').toLowerCase();
+            const prom = (p.promoter_name || '').toLowerCase();
+            const reg = (p.registration_no || '').toLowerCase();
+            const dist = (p.district || '').toLowerCase();
+            return name.includes(query) || prom.includes(query) || reg.includes(query) || dist.includes(query);
+          }).slice(0, 12);
+        }
+
+        if (matches.length < 5 && query.length >= 1) {
+          try {
+            const res = await fetch(`/api/v1/projects?q=${encodeURIComponent(query)}&limit=15`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data && data.results && data.results.length > 0) {
+                const existingNames = new Set(matches.map(m => (m.project_name || '').toLowerCase()));
+                data.results.forEach(r => {
+                  if (!existingNames.has((r.project_name || '').toLowerCase())) {
+                    matches.push(r);
+                  }
+                });
+              }
+            }
+          } catch (e) {}
+        }
+
+        if (matches.length === 0 && PROPERTY_NAMES) {
+          matches = PROPERTY_NAMES.map(p => ({ project_name: p.query, promoter_name: p.label }));
+        }
+
+        renderResults(matches.slice(0, 15));
+      }
+
+      inputEl.addEventListener('input', () => {
+        const q = inputEl.value;
+        clearBtn.style.display = q ? 'block' : 'none';
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => doSearch(q), 180);
+      });
+
+      inputEl.addEventListener('focus', () => {
+        doSearch(inputEl.value);
+      });
+
+      clearBtn.addEventListener('click', () => {
+        inputEl.value = '';
+        clearBtn.style.display = 'none';
+        resultsEl.classList.remove('active');
+        inputEl.focus();
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!inputEl.contains(e.target) && !resultsEl.contains(e.target) && !clearBtn.contains(e.target)) {
+          resultsEl.classList.remove('active');
+        }
+      });
+    }
+
+    setupCombobox('inputA', 'clearA', 'resultsA', paramA, (selected) => render());
+    setupCombobox('inputB', 'clearB', 'resultsB', paramB, (selected) => render());
+
+    updateModeUI();
+
+    // Preload database projects for local instant search
+    fetch('/api/v1/projects?limit=500')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && data.results) {
+          ALL_PROJECTS_REGISTRY = data.results;
+        }
+      })
+      .catch(e => {});
 
     // Subtle risk-zone shading behind the radar grid, kept quiet rather than glowing.
     const backgroundRingsPlugin = {
@@ -959,55 +1252,7 @@
       }
     });
 
-    async function render() {
-      const queryA = selA.value;
-      const queryB = selB.value;
-      const elTitleA = document.getElementById('breakdownTitleA');
-      const elTitleB = document.getElementById('breakdownTitleB');
-      if (elTitleA) elTitleA.textContent = 'Loading Property A…';
-      if (elTitleB) elTitleB.textContent = 'Loading Property B…';
-
-      const [propA, propB] = await Promise.all([fetchProperty(queryA), fetchProperty(queryB)]);
-
-      const gateBox = document.getElementById('gateContent');
-      gateBox.innerHTML = `
-      <div class="gate-status ${propA.gateOK ? 'pass' : 'fail'}">
-        <div>
-          <strong>Property A — ${propA.name}</strong>
-          <div class="meta">P&#8209;01 registration status · Health score ${propA.healthScore}/100</div>
-        </div>
-        <span class="seal">${propA.gateOK ? 'Cleared' : 'Flagged'}</span>
-      </div>
-      <div class="gate-status ${propB.gateOK ? 'pass' : 'fail'}">
-        <div>
-          <strong>Property B — ${propB.name}</strong>
-          <div class="meta">P&#8209;01 registration status · Health score ${propB.healthScore}/100</div>
-        </div>
-        <span class="seal">${propB.gateOK ? 'Cleared' : 'Flagged'}</span>
-      </div>
-    `;
-
-      const dataA = AXES.map(ax => propA.scores[ax.key]);
-      const dataB = AXES.map(ax => propB.scores[ax.key]);
-
-      radarChart.data.datasets = [
-        {
-          label: propA.name, data: dataA,
-          backgroundColor: 'rgba(44, 74, 110, 0.14)', borderColor: '#2C4A6E', borderWidth: 2,
-          pointBackgroundColor: '#2C4A6E', pointRadius: 3
-        },
-        {
-          label: propB.name, data: dataB,
-          backgroundColor: 'rgba(140, 65, 48, 0.12)', borderColor: '#8C4130', borderWidth: 2,
-          pointBackgroundColor: '#8C4130', pointRadius: 3
-        }
-      ];
-      radarChart.update();
-
-      document.getElementById('breakdownTitleA').textContent = 'Loading Property A…';
-      document.getElementById('breakdownTitleB').textContent = 'Loading Property B…';
-
-      function populateBreakdownTable(prop, query, prefix, bodyId, titleId) {
+    function populateBreakdownTable(prop, query, prefix, bodyId, titleId) {
         document.getElementById(titleId).textContent = `${prop.name} — Axis Breakdown`;
         const bodyEl = document.getElementById(bodyId);
         bodyEl.innerHTML = '';
@@ -1045,6 +1290,76 @@
           bodyEl.appendChild(tr);
         });
       }
+
+    async function render() {
+      const queryA = (document.getElementById('inputA').value || '').trim() || 'ELEGANT TRANQUILITY';
+      const queryB = (document.getElementById('inputB').value || '').trim() || 'Brigade Panorama';
+      const elTitleA = document.getElementById('breakdownTitleA');
+      const elTitleB = document.getElementById('breakdownTitleB');
+      if (elTitleA) elTitleA.textContent = 'Loading Target Property…';
+      if (elTitleB) elTitleB.textContent = 'Loading Benchmark Property…';
+
+      if (!isCompareMode) {
+        const propA = await fetchProperty(queryA);
+        const gateBox = document.getElementById('gateContent');
+        gateBox.innerHTML = `
+          <div class="gate-status ${propA.gateOK ? 'pass' : 'fail'}" style="flex: 1;">
+            <div>
+              <strong>${propA.name}</strong>
+              <div class="meta">P&#8209;01 registration status &middot; Health score ${propA.healthScore}/100 &middot; ${propA.developer || 'RERA Developer'}</div>
+            </div>
+            <span class="seal">${propA.gateOK ? 'Cleared' : 'Flagged'}</span>
+          </div>
+        `;
+        const dataA = AXES.map(ax => propA.scores[ax.key]);
+        radarChart.data.datasets = [
+          {
+            label: propA.name, data: dataA,
+            backgroundColor: 'rgba(44, 74, 110, 0.20)', borderColor: '#2C4A6E', borderWidth: 2.5,
+            pointBackgroundColor: '#2C4A6E', pointRadius: 4
+          }
+        ];
+        radarChart.update();
+        populateBreakdownTable(propA, queryA, 'a', 'breakdownBodyA', 'breakdownTitleA');
+        return;
+      }
+
+      // Compare mode
+      const [propA, propB] = await Promise.all([fetchProperty(queryA), fetchProperty(queryB)]);
+      const gateBox = document.getElementById('gateContent');
+      gateBox.innerHTML = `
+        <div class="gate-status ${propA.gateOK ? 'pass' : 'fail'}">
+          <div>
+            <strong>Property A — ${propA.name}</strong>
+            <div class="meta">P&#8209;01 registration status · Health score ${propA.healthScore}/100</div>
+          </div>
+          <span class="seal">${propA.gateOK ? 'Cleared' : 'Flagged'}</span>
+        </div>
+        <div class="gate-status ${propB.gateOK ? 'pass' : 'fail'}">
+          <div>
+            <strong>Property B — ${propB.name}</strong>
+            <div class="meta">P&#8209;01 registration status · Health score ${propB.healthScore}/100</div>
+          </div>
+          <span class="seal">${propB.gateOK ? 'Cleared' : 'Flagged'}</span>
+        </div>
+      `;
+
+      const dataA = AXES.map(ax => propA.scores[ax.key]);
+      const dataB = AXES.map(ax => propB.scores[ax.key]);
+
+      radarChart.data.datasets = [
+        {
+          label: propA.name, data: dataA,
+          backgroundColor: 'rgba(44, 74, 110, 0.14)', borderColor: '#2C4A6E', borderWidth: 2,
+          pointBackgroundColor: '#2C4A6E', pointRadius: 3
+        },
+        {
+          label: propB.name, data: dataB,
+          backgroundColor: 'rgba(140, 65, 48, 0.12)', borderColor: '#8C4130', borderWidth: 2,
+          pointBackgroundColor: '#8C4130', pointRadius: 3
+        }
+      ];
+      radarChart.update();
 
       populateBreakdownTable(propA, queryA, 'a', 'breakdownBodyA', 'breakdownTitleA');
       populateBreakdownTable(propB, queryB, 'b', 'breakdownBodyB', 'breakdownTitleB');
@@ -1089,9 +1404,9 @@
       <div class="score-readout">
         <span class="a">A ${wavgA} / 100</span>
         <span class="b">B ${wavgB} / 100</span>
-        <span class="delta ${avgDeltaClass}">&#916; ${avgDeltaStr}</span>
+        <span class="delta ${avgDeltaClass}">${avgDeltaStr}</span>
       </div>
-    `;
+      `;
     }
 
     const SOURCE_POINTS_MAP = {
@@ -1213,9 +1528,6 @@
     function closePointsModal(e) {
       document.getElementById('pointsModal').classList.remove('active');
     }
-
-    selA.addEventListener('change', () => render());
-    selB.addEventListener('change', () => render());
 
     render();
   </script>
