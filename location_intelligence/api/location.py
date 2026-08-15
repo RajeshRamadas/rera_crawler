@@ -28,6 +28,13 @@ from psycopg2.pool import ThreadedConnectionPool
 from fastapi import FastAPI, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+try:
+    from project_analyzer import analyze_by_name_or_reg
+except ImportError:
+    analyze_by_name_or_reg = None
+
 from config import settings
 from maps.geojson import build_geojson
 from maps.static_map import render_static_map
@@ -250,7 +257,18 @@ def get_developer_projects(developer: Optional[str] = None, developer_name: Opti
     }
 
 
-# ── Full Project Details Endpoint ──────────────────────────────────────────────
+# ── Full Project Details & Analysis Endpoints ─────────────────────────────────────
+
+@app.get("/api/projects/{identifier}/analysis", summary="Analyze project info, positives and negatives")
+def get_project_analysis(identifier: str):
+    """Given a project name, ID, or registration number, returns full analysis with Positives and Negatives."""
+    if analyze_by_name_or_reg is None:
+        raise HTTPException(status_code=500, detail="Project analyzer engine not loaded.")
+    res = analyze_by_name_or_reg(identifier)
+    if res.get("error"):
+        raise HTTPException(status_code=404, detail=res.get("message"))
+    return res
+
 
 @app.get("/api/projects/{identifier}/full", response_model=FullProjectDetailResponse)
 def get_full_project_detail(identifier: str, model_version: str = settings.default_model_version):

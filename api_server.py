@@ -28,6 +28,9 @@ except ImportError as err:
     print(f"[!] Missing required package: {err}", file=sys.stderr)
     print("[!] Install dependencies with: pip install fastapi uvicorn psycopg2-binary", file=sys.stderr)
 
+from fastapi.responses import FileResponse
+from project_analyzer import search_project, analyze_project_data, analyze_by_name_or_reg
+
 DB_URI = os.getenv("DATABASE_URL", "postgresql://rera_user:rera_password@localhost:5432/rera_db")
 
 app = FastAPI(
@@ -46,6 +49,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/radar-chart", summary="Property Composite Risk & Quality Radar Dashboard")
+def get_radar_chart():
+    """Serves the single-file HTML property composite risk radar dashboard."""
+    html_path = os.path.join(os.path.dirname(__file__), "property_radar_chart.html")
+    if not os.path.exists(html_path):
+        raise HTTPException(status_code=404, detail="property_radar_chart.html not found.")
+    return FileResponse(html_path, media_type="text/html")
 
 
 def get_db_connection():
@@ -162,6 +174,38 @@ def list_projects(
         }
     finally:
         conn.close()
+
+
+@app.get("/api/v1/projects/analyze", summary="Analyze project information, positives and negatives")
+def analyze_project(
+    q: Optional[str] = Query(None, description="Search term for project name, promoter name, or registration number"),
+    name: Optional[str] = Query(None, description="Project name")
+):
+    """
+    Given a project name or registration number, fetches all project details,
+    analyzes regulatory approvals, filing completeness, timeline delays, complaints,
+    and produces a comprehensive Positives (+) vs Negatives (-) Risk Evaluation Report.
+    """
+    query_str = name or q
+    if not query_str:
+        raise HTTPException(status_code=400, detail="Must provide 'q' or 'name' parameter to analyze a project.")
+    
+    result = analyze_by_name_or_reg(query_str)
+    if result.get("error"):
+        raise HTTPException(status_code=404, detail=result.get("message"))
+    return result
+
+
+@app.get("/api/v1/projects/analyze/{query:path}", summary="Analyze project by path query")
+def analyze_project_by_path(query: str):
+    """
+    Given a project name or registration number in path, fetches all project details and returns Positives/Negatives report.
+    """
+    decoded_q = urllib.parse.unquote(query)
+    result = analyze_by_name_or_reg(decoded_q)
+    if result.get("error"):
+        raise HTTPException(status_code=404, detail=result.get("message"))
+    return result
 
 
 @app.get("/api/v1/projects/{registration_no:path}", summary="Get complete project details")
