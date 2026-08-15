@@ -382,6 +382,7 @@
             <span id="activeCardPrice" class="mono" style="font-size:0.72rem; color:var(--ink);">₹0.00 Cr</span>
             <div id="activeCardScoreTag"></div>
           </div>
+          <div id="activeCardGps" style="font-family:'IBM Plex Mono',monospace; font-size:0.63rem; margin-top:0.35rem;"></div>
           <div class="card-actions">
             <button class="btn ghost" id="activeCardJumpBtn" style="padding:0.2rem 0.5rem; font-size:0.65rem; flex:1;">Focus in List ↓</button>
             <a class="btn ghost" id="activeCardRadarBtn" style="padding:0.2rem 0.5rem; font-size:0.65rem; text-decoration:none;" href="#" target="_blank">Radar ↗</a>
@@ -392,7 +393,7 @@
           <span class="item"><span class="sw" style="background:#97701A;"></span>Watch</span>
           <span class="item"><span class="sw" style="background:#AC2C2C;"></span>Flag</span>
         </div>
-        <div class="map-note">OpenStreetMap · approximate locality coordinates</div>
+        <div class="map-note">Only RERA GPS-verified projects shown &middot; OpenStreetMap tiles</div>
       </div>
     </div>
 
@@ -616,16 +617,24 @@ try {
     Object.values(markerById).forEach(m => leafletMap.removeLayer(m));
     for (const k in markerById) delete markerById[k];
 
-    const badge = document.getElementById('mapBadge');
-    if (badge) badge.textContent = `${PROPERTIES.length} mapped`;
+    // Only plot properties that have real verified coordinates
+    const plottable = PROPERTIES.filter(p => p.hasRealCoords);
+    const unmapped  = PROPERTIES.length - plottable.length;
 
-    if (!PROPERTIES.length) {
-      clearActiveProperty();
+    const badge = document.getElementById('mapBadge');
+    if (badge) {
+      badge.textContent = unmapped > 0
+        ? `${plottable.length} located · ${unmapped} no GPS`
+        : `${plottable.length} located`;
+    }
+
+    if (!plottable.length) {
+      if (!PROPERTIES.length) clearActiveProperty();
       return;
     }
 
     const bounds = [];
-    PROPERTIES.forEach(p => {
+    plottable.forEach(p => {
       const isSelected = p.id === activePropertyId;
       const marker = L.circleMarker([p.lat, p.lng], {
         radius: isSelected ? 10 : 7,
@@ -635,10 +644,12 @@ try {
         fillOpacity: 0.85
       }).addTo(leafletMap);
 
-      marker.bindPopup(`<div class="popup-title">${p.name}</div><div class="popup-score">${p.composite}/100 &middot; ${p.band.label}</div>`);
-      marker.on('click', () => {
-        selectActiveProperty(p.id, true);
-      });
+      marker.bindPopup(
+        `<div class="popup-title">${p.name}</div>` +
+        `<div class="popup-score">${p.composite}/100 &middot; ${p.band.label}</div>` +
+        `<div style="font-size:0.68rem;color:#888;margin-top:0.2rem;">RERA GPS · ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</div>`
+      );
+      marker.on('click', () => selectActiveProperty(p.id, true));
       markerById[p.id] = marker;
       bounds.push([p.lat, p.lng]);
     });
@@ -650,7 +661,9 @@ try {
 
   function fitAllMapMarkers() {
     if (!leafletMap || !PROPERTIES.length) return;
-    const bounds = PROPERTIES.map(p => [p.lat, p.lng]);
+    const plottable = PROPERTIES.filter(p => p.hasRealCoords);
+    if (!plottable.length) return;
+    const bounds = plottable.map(p => [p.lat, p.lng]);
     try {
       leafletMap.fitBounds(bounds, { padding: [25, 25], maxZoom: 12 });
     } catch (e) {}
@@ -674,11 +687,10 @@ try {
       }
     });
 
-    // Fly map to location and open popup
-    if (leafletMap && markerById[id]) {
-      const marker = markerById[id];
+    // Fly map to location and open popup — only if we have real coords
+    if (prop.hasRealCoords && leafletMap && markerById[id]) {
       leafletMap.flyTo([prop.lat, prop.lng], 13, { duration: 0.8 });
-      marker.openPopup();
+      markerById[id].openPopup();
     }
 
     // Update floating active property preview card on map
@@ -692,6 +704,19 @@ try {
         <span class="band-tag band-${prop.band.class}" style="margin-left:0.3rem;">${prop.band.label}</span>
       `;
       document.getElementById('activeCardRadarBtn').href = `/radar-chart?a=${encodeURIComponent(prop.name)}`;
+
+      // GPS availability indicator
+      const gpsEl = document.getElementById('activeCardGps');
+      if (gpsEl) {
+        if (prop.hasRealCoords) {
+          gpsEl.textContent = `📍 GPS: ${prop.lat.toFixed(5)}, ${prop.lng.toFixed(5)}`;
+          gpsEl.style.color = 'var(--clear)';
+        } else {
+          gpsEl.textContent = '⚠️ No GPS data in RERA record';
+          gpsEl.style.color = 'var(--watch)';
+        }
+      }
+
       activeCard.style.display = 'block';
     }
   }
@@ -837,60 +862,22 @@ try {
     showToast(`Exported ${rows.length} propert${rows.length === 1 ? 'y' : 'ies'}`);
   }
 
-  const DISTRICT_CENTROIDS = {
-    'bengaluru urban': { lat: 12.9716, lng: 77.5946 },
-    'bengaluru rural': { lat: 13.2257, lng: 77.5750 },
-    'mysore': { lat: 12.2958, lng: 76.6394 },
-    'mysuru': { lat: 12.2958, lng: 76.6394 },
-    'dakshina kannada': { lat: 12.9141, lng: 74.8560 },
-    'mangalore': { lat: 12.9141, lng: 74.8560 },
-    'belagavi': { lat: 15.8497, lng: 74.4977 },
-    'belgaum': { lat: 15.8497, lng: 74.4977 },
-    'tumakuru': { lat: 13.3379, lng: 77.1173 },
-    'tumkur': { lat: 13.3379, lng: 77.1173 },
-    'hassan': { lat: 13.0068, lng: 76.1004 },
-    'udupi': { lat: 13.3409, lng: 74.7421 },
-    'dharwad': { lat: 15.4589, lng: 75.0078 },
-    'chamarajanagar': { lat: 11.9261, lng: 76.9437 },
-    'kalaburagi': { lat: 17.3297, lng: 76.8343 },
-    'shivamogga': { lat: 13.9299, lng: 75.5681 },
-    'shimoga': { lat: 13.9299, lng: 75.5681 },
-    'mandya': { lat: 12.5218, lng: 76.8951 },
-    'chikkamagaluru': { lat: 13.3161, lng: 75.7720 },
-    'ballari': { lat: 15.1394, lng: 76.9214 },
-    'vijayapura': { lat: 16.8302, lng: 75.7100 },
-    'kolar': { lat: 13.1367, lng: 78.1291 },
-    'chikkaballapur': { lat: 13.4355, lng: 77.7275 },
-    'ramanagara': { lat: 12.7150, lng: 77.2814 }
-  };
-
-  function resolveCoordinates(p, idx) {
+  /**
+   * Returns { lat, lng } ONLY when the project has real RERA-sourced coordinates
+   * within Karnataka's geographic bounds. Returns null for all others.
+   * We never fabricate district-centroid positions — false precision on a map
+   * is worse than showing no marker at all.
+   */
+  function resolveCoordinates(p) {
     const rawLat = parseFloat(p.latitude);
     const rawLng = parseFloat(p.longitude);
-
-    if (!isNaN(rawLat) && !isNaN(rawLng) && rawLat >= 11.0 && rawLat <= 19.0 && rawLng >= 74.0 && rawLng <= 78.8) {
+    // Karnataka bounding box: lat 11.5–18.5, lng 74.0–78.6
+    if (!isNaN(rawLat) && !isNaN(rawLng)
+        && rawLat >= 11.5 && rawLat <= 18.5
+        && rawLng >= 74.0 && rawLng <= 78.6) {
       return { lat: rawLat, lng: rawLng };
     }
-
-    const distKey = (p.district || '').toLowerCase().trim();
-    let base = DISTRICT_CENTROIDS[distKey];
-    if (!base) {
-      for (const [k, coords] of Object.entries(DISTRICT_CENTROIDS)) {
-        if (distKey.includes(k) || k.includes(distKey)) {
-          base = coords;
-          break;
-        }
-      }
-    }
-    if (!base) base = { lat: 12.9716, lng: 77.5946 };
-
-    let hash = 0;
-    const str = p.registration_no || p.project_name || `idx-${idx}`;
-    for (let i = 0; i < str.length; i++) hash = (hash << 5) - hash + str.charCodeAt(i);
-    const offsetX = ((Math.abs(hash) % 100) - 50) * 0.0006;
-    const offsetY = ((Math.abs(hash >> 3) % 100) - 50) * 0.0006;
-
-    return { lat: base.lat + offsetY, lng: base.lng + offsetX };
+    return null; // no reliable coordinate — do not plot
   }
 
   async function populateDistrictDropdown() {
@@ -970,7 +957,8 @@ try {
             }
             
             const mapped = data.results.map((p, idx) => {
-              const coords = resolveCoordinates(p, idx);
+              const coords = resolveCoordinates(p);
+              const hasRealCoords = coords !== null;
               const isApproved = (p.status || '').toUpperCase() === 'APPROVED';
               const qual = p.quality_score || 85;
               const scores = {
@@ -978,7 +966,7 @@ try {
                 litigation: Math.min(100, qual + 5),
                 timeline: Math.min(100, qual),
                 title: 95,
-                location: p.latitude ? 95 : 65,
+                location: hasRealCoords ? 95 : 65,
                 layout: qual,
                 promoter: Math.min(100, qual + 2),
                 transparency: qual
@@ -1001,9 +989,10 @@ try {
                 scores: scores,
                 composite: composite,
                 band: getBand(composite),
-                note: `RERA Reg: ${p.registration_no || 'N/A'}. Status: ${p.status || 'N/A'}.${appDate ? ' Approved: ' + appDate + '.' : ''}${compDate ? ' Completion: ' + compDate + '.' : ''} Quality score: ${qual}/100.`,
-                lat: coords.lat,
-                lng: coords.lng
+                hasRealCoords: hasRealCoords,
+                note: `RERA Reg: ${p.registration_no || 'N/A'}. Status: ${p.status || 'N/A'}.${appDate ? ' Approved: ' + appDate + '.' : ''}${compDate ? ' Completion: ' + compDate + '.' : ''} Quality score: ${qual}/100.${hasRealCoords ? ' GPS: RERA verified.' : ' GPS: Not available.'}`,
+                lat: coords ? coords.lat : null,
+                lng: coords ? coords.lng : null
               };
             });
             return mapped;
