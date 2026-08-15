@@ -115,6 +115,7 @@ def list_projects(
     district: Optional[str] = Query(None, description="Filter by district (e.g. Bengaluru Urban)"),
     status: Optional[str] = Query(None, description="Filter by project status (e.g. APPROVED)"),
     promoter: Optional[str] = Query(None, description="Filter by promoter / builder name"),
+    project_type: Optional[str] = Query(None, description="Filter by project / property type (e.g. Residential/Group Housing)"),
     q: Optional[str] = Query(None, description="Search term matching project name, promoter, or reg no"),
     min_quality_score: Optional[int] = Query(None, ge=0, le=100, description="Filter by minimum data quality score (0-100)"),
     limit: int = Query(20, ge=1, le=100, description="Page limit (default: 20, max: 100)"),
@@ -134,6 +135,10 @@ def list_projects(
             if status:
                 where_clauses.append("LOWER(COALESCE(data->>'status', '')) LIKE %s")
                 params.append(f"%{status.lower()}%")
+
+            if project_type:
+                where_clauses.append("LOWER(COALESCE(data->>'project_type', '')) LIKE %s")
+                params.append(f"%{project_type.lower()}%")
 
             if promoter:
                 where_clauses.append("LOWER(firm_name) LIKE %s")
@@ -158,6 +163,7 @@ def list_projects(
                     firm_name as promoter_name,
                     crawled_at,
                     COALESCE(data->>'status', 'APPROVED') as status,
+                    COALESCE(data->>'project_type', 'Residential/Group Housing') as project_type,
                     COALESCE(data->'project_location'->>'district', data->>'district', 'Karnataka') as district,
                     COALESCE(data->'project_location'->>'taluk', data->>'taluk', '') as taluk,
                     data->'project_location'->>'latitude' as latitude,
@@ -205,6 +211,28 @@ def get_districts():
             rows = cur.fetchall()
             districts = [r["district"] for r in rows if r.get("district")]
             return {"districts": districts}
+    finally:
+        conn.close()
+
+
+@app.get("/api/v1/property-types", summary="Get all distinct property / project types")
+def get_property_types():
+    """Returns a list of all unique project/property types found in registered projects."""
+    conn = get_db_connection()
+    if not conn:
+        return {"property_types": []}
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT DISTINCT TRIM(data->>'project_type') as p_type
+                FROM rera_projects
+                WHERE data->>'project_type' IS NOT NULL
+                  AND TRIM(data->>'project_type') != ''
+                ORDER BY p_type;
+            """)
+            rows = cur.fetchall()
+            types = [r["p_type"] for r in rows if r.get("p_type")]
+            return {"property_types": types}
     finally:
         conn.close()
 

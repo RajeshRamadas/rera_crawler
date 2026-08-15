@@ -259,6 +259,13 @@
         <option value="Vijayapura">Vijayapura</option>
         <option value="Yadgir">Yadgir</option>
       </select>
+      <select id="propertyTypeFilter" class="filter-select">
+        <option value="">All Property Types</option>
+        <option value="Residential/Group Housing">Residential</option>
+        <option value="Plotted Development">Plotted Layout</option>
+        <option value="Mixed Development">Mixed Development</option>
+        <option value="Commercial">Commercial</option>
+      </select>
       <select id="statusFilter" class="filter-select">
         <option value="">All Statuses</option>
         <option value="APPROVED">Approved</option>
@@ -417,6 +424,7 @@ try {
 
   let selectedDistrict = '';
   let selectedStatus = '';
+  let selectedPropertyType = '';
   let activeFilter = 'all';
   let activeSort = 'score-desc';
   let searchTerm = '';
@@ -581,7 +589,7 @@ try {
             <span class="rank mono">${String(displayRank).padStart(2, '0')}</span>
             <div>
               <div class="prop-name">${p.name}</div>
-              <div class="prop-meta">${p.developer} \u00B7 ${p.area}</div>
+              <div class="prop-meta">${p.projectType ? p.projectType + ' \u00B7 ' : ''}${p.developer} \u00B7 ${p.area}</div>
               <div class="prop-price">${unitTags}${fmtPrice(p)}</div>
             </div>
           </div>
@@ -727,6 +735,27 @@ try {
     } catch (e) {}
   }
 
+  async function populatePropertyTypeDropdown() {
+    const typeSelect = document.getElementById('propertyTypeFilter');
+    try {
+      const res = await fetch('/api/v1/property-types');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.property_types && data.property_types.length > 0) {
+          const currentVal = typeSelect.value;
+          typeSelect.innerHTML = `<option value="">All Property Types (${data.property_types.length})</option>`;
+          data.property_types.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t;
+            opt.textContent = t;
+            typeSelect.appendChild(opt);
+          });
+          if (currentVal) typeSelect.value = currentVal;
+        }
+      }
+    } catch (e) {}
+  }
+
   async function fetchLiveProperties(page = 1) {
     const isFilteredByChip = activeFilter !== 'all';
     // If filtering by chip (Clear/Watch/Flag/Shortlisted), fetch a larger set (100) to filter locally accurately
@@ -741,6 +770,7 @@ try {
     if (searchTerm) queryParams.append('q', searchTerm);
     if (selectedDistrict) queryParams.append('district', selectedDistrict);
     if (selectedStatus) queryParams.append('status', selectedStatus);
+    if (selectedPropertyType) queryParams.append('project_type', selectedPropertyType);
 
     const urls = [
       `/api/v1/projects?${queryParams.toString()}`,
@@ -858,6 +888,12 @@ try {
     loadAndRender();
   });
 
+  document.getElementById('propertyTypeFilter').addEventListener('change', (e) => {
+    selectedPropertyType = e.target.value;
+    currentPage = 1;
+    loadAndRender();
+  });
+
   document.getElementById('statusFilter').addEventListener('change', (e) => {
     selectedStatus = e.target.value;
     currentPage = 1;
@@ -904,6 +940,7 @@ try {
   (async function init() {
     try { await loadShortlist(); } catch (e) {}
     await populateDistrictDropdown();
+    await populatePropertyTypeDropdown();
     renderFilters();
     initMap();
     await loadAndRender();
