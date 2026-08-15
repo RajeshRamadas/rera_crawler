@@ -73,32 +73,35 @@
   .toolbar-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; }
   .toolbar-row + .toolbar-row { margin-top: 0.75rem; }
 
-  .search-wrap { flex: 1; min-width: 220px; border: 1px solid var(--hairline-strong); background: var(--paper-raised); display: flex; align-items: center; padding: 0.1rem 0.75rem; }
-  .search-wrap span.icon { font-family: 'IBM Plex Mono', monospace; color: var(--ink-soft); font-size: 0.85rem; margin-right: 0.5rem; }
-  #searchInput { flex: 1; border: none; outline: none; background: none; font-family: 'IBM Plex Sans', sans-serif; font-size: 0.88rem; color: var(--ink); padding: 0.55rem 0; }
+  .search-wrap { flex: 1; min-width: 220px; height: 38px; border: 1px solid var(--hairline-strong); background: var(--paper-raised); display: flex; align-items: center; padding: 0 0.75rem; box-sizing: border-box; }
+  .search-wrap span.icon { font-family: 'IBM Plex Mono', monospace; color: var(--ink-soft); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-right: 0.5rem; flex-shrink: 0; }
+  #searchInput { flex: 1; border: none; outline: none; background: transparent; font-family: 'IBM Plex Sans', sans-serif; font-size: 0.85rem; color: var(--ink); height: 100%; padding: 0; box-sizing: border-box; }
   #searchInput::placeholder { color: var(--ink-soft); }
 
   .btn {
+    height: 38px; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
     font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
-    border: 1px solid var(--ink); background: var(--ink); color: var(--paper); padding: 0.6rem 1rem; cursor: pointer; transition: opacity 0.15s; white-space: nowrap;
+    border: 1px solid var(--ink); background: var(--ink); color: var(--paper); padding: 0 1rem; cursor: pointer; transition: opacity 0.15s, border-color 0.15s; white-space: nowrap;
   }
   .btn:hover { opacity: 0.82; }
-  .btn.ghost { background: none; color: var(--ink); border-color: var(--hairline-strong); }
+  .btn.ghost { background: var(--paper-raised); color: var(--ink); border-color: var(--hairline-strong); }
   .btn.ghost:hover { border-color: var(--ink); opacity: 1; }
   .btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
   .filters { display: flex; gap: 0.4rem; flex-wrap: wrap; }
   .filter-chip {
+    height: 38px; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
     font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; letter-spacing: 0.03em; text-transform: uppercase;
-    border: 1px solid var(--hairline-strong); background: var(--paper-raised); color: var(--ink-soft); padding: 0.35rem 0.7rem; cursor: pointer; transition: all 0.15s;
+    border: 1px solid var(--hairline-strong); background: var(--paper-raised); color: var(--ink-soft); padding: 0 0.85rem; cursor: pointer; transition: all 0.15s;
   }
   .filter-chip:hover { border-color: var(--ink); color: var(--ink); }
   .filter-chip.active { background: var(--ink); border-color: var(--ink); color: var(--paper); }
 
   .sort-group { display: flex; align-items: center; gap: 0.5rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); }
   select#sortBy, select.filter-select {
+    height: 38px; box-sizing: border-box;
     font-family: 'IBM Plex Sans', sans-serif; font-size: 0.85rem; font-weight: 500; color: var(--ink); background: var(--paper-raised); border: 1px solid var(--hairline-strong);
-    padding: 0.35rem 1.6rem 0.35rem 0.6rem; appearance: none; -webkit-appearance: none;
+    padding: 0 1.8rem 0 0.75rem; appearance: none; -webkit-appearance: none;
     background-image: linear-gradient(45deg, transparent 50%, var(--ink-soft) 50%), linear-gradient(135deg, var(--ink-soft) 50%, transparent 50%);
     background-position: calc(100% - 10px) center, calc(100% - 5px) center; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; cursor: pointer;
   }
@@ -223,14 +226,38 @@
         <input id="searchInput" type="text" placeholder="Search Project Name, Developer, Reg No, Ack No, Area…" />
       </div>
       <select id="districtFilter" class="filter-select">
-        <option value="">All Districts</option>
-        <option value="Bengaluru Urban">Bengaluru Urban</option>
-        <option value="Bengaluru Rural">Bengaluru Rural</option>
-        <option value="Mysore">Mysore</option>
-        <option value="Dakshina Kannada">Dakshina Kannada</option>
+        <option value="">All Districts (31)</option>
+        <option value="Bagalkot">Bagalkot</option>
+        <option value="Ballari">Ballari</option>
         <option value="Belagavi">Belagavi</option>
-        <option value="Tumakuru">Tumakuru</option>
+        <option value="Bengaluru Rural">Bengaluru Rural</option>
+        <option value="Bengaluru Urban">Bengaluru Urban</option>
+        <option value="Bidar">Bidar</option>
+        <option value="Chamarajanagar">Chamarajanagar</option>
+        <option value="Chikkaballapura">Chikkaballapura</option>
+        <option value="Chikkamagaluru">Chikkamagaluru</option>
+        <option value="Chitradurga">Chitradurga</option>
+        <option value="Dakshina Kannada">Dakshina Kannada</option>
+        <option value="Davangere">Davangere</option>
+        <option value="Dharwad">Dharwad</option>
+        <option value="Gadag">Gadag</option>
         <option value="Hassan">Hassan</option>
+        <option value="Haveri">Haveri</option>
+        <option value="Kalaburagi">Kalaburagi</option>
+        <option value="Kodagu">Kodagu</option>
+        <option value="Kolar">Kolar</option>
+        <option value="Koppal">Koppal</option>
+        <option value="Mandya">Mandya</option>
+        <option value="Mysore">Mysore</option>
+        <option value="Raichur">Raichur</option>
+        <option value="Ramanagara">Ramanagara</option>
+        <option value="Shivamogga">Shivamogga</option>
+        <option value="Tumakuru">Tumakuru</option>
+        <option value="Udupi">Udupi</option>
+        <option value="Uttara Kannada">Uttara Kannada</option>
+        <option value="Vijayanagara">Vijayanagara</option>
+        <option value="Vijayapura">Vijayapura</option>
+        <option value="Yadgir">Yadgir</option>
       </select>
       <select id="statusFilter" class="filter-select">
         <option value="">All Statuses</option>
@@ -679,10 +706,35 @@ try {
     return { lat: base.lat + offsetY, lng: base.lng + offsetX };
   }
 
+  async function populateDistrictDropdown() {
+    const distSelect = document.getElementById('districtFilter');
+    try {
+      const res = await fetch('/api/v1/districts');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.districts && data.districts.length > 0) {
+          const currentVal = distSelect.value;
+          distSelect.innerHTML = `<option value="">All Districts (${data.districts.length})</option>`;
+          data.districts.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d;
+            opt.textContent = d;
+            distSelect.appendChild(opt);
+          });
+          if (currentVal) distSelect.value = currentVal;
+        }
+      }
+    } catch (e) {}
+  }
+
   async function fetchLiveProperties(page = 1) {
-    const offset = (page - 1) * PAGE_SIZE;
+    const isFilteredByChip = activeFilter !== 'all';
+    // If filtering by chip (Clear/Watch/Flag/Shortlisted), fetch a larger set (100) to filter locally accurately
+    const fetchLimit = isFilteredByChip ? 100 : PAGE_SIZE;
+    const offset = isFilteredByChip ? 0 : (page - 1) * PAGE_SIZE;
+
     const queryParams = new URLSearchParams({
-      limit: PAGE_SIZE,
+      limit: fetchLimit,
       offset: offset
     });
 
@@ -701,8 +753,10 @@ try {
         if (res.ok) {
           const data = await res.json();
           if (data && data.results) {
-            totalMatchingItems = data.total ?? data.results.length;
-            totalPagesCount = Math.max(1, Math.ceil(totalMatchingItems / PAGE_SIZE));
+            if (!isFilteredByChip) {
+              totalMatchingItems = data.total ?? data.results.length;
+              totalPagesCount = Math.max(1, Math.ceil(totalMatchingItems / PAGE_SIZE));
+            }
             
             const mapped = data.results.map((p, idx) => {
               const coords = resolveCoordinates(p, idx);
@@ -745,21 +799,42 @@ try {
   }
 
   async function loadAndRender() {
-    const liveProps = await fetchLiveProperties(currentPage);
-    if (liveProps !== null) {
-      PROPERTIES.length = 0;
-      PROPERTIES.push(...liveProps);
-    } else {
-      totalMatchingItems = SAMPLE_PROPERTIES.length;
-      totalPagesCount = Math.ceil(totalMatchingItems / PAGE_SIZE) || 1;
-      PROPERTIES.length = 0;
-      PROPERTIES.push(...SAMPLE_PROPERTIES.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE));
+    let rawList = await fetchLiveProperties(currentPage);
+    let isLive = rawList !== null;
+
+    if (!isLive) {
+      rawList = [...SAMPLE_PROPERTIES];
     }
 
-    if (activeSort === 'score-desc') PROPERTIES.sort((a, b) => b.composite - a.composite);
-    else if (activeSort === 'score-asc') PROPERTIES.sort((a, b) => a.composite - b.composite);
-    else if (activeSort === 'name-asc') PROPERTIES.sort((a, b) => a.name.localeCompare(b.name));
-    else if (activeSort === 'price-asc') PROPERTIES.sort((a, b) => a.priceMin - b.priceMin);
+    // Apply Filter Chips (Clear, Watch, Flag, Shortlisted)
+    let filteredList = rawList;
+    if (activeFilter === 'clear') {
+      filteredList = rawList.filter(p => p.band.class === 'clear' && p.gateOK);
+    } else if (activeFilter === 'watch') {
+      filteredList = rawList.filter(p => p.band.class === 'watch' && p.gateOK);
+    } else if (activeFilter === 'flag') {
+      filteredList = rawList.filter(p => p.band.class === 'flag' || !p.gateOK);
+    } else if (activeFilter === 'shortlisted') {
+      filteredList = rawList.filter(p => shortlist.includes(p.id));
+    }
+
+    if (activeFilter !== 'all' || !isLive) {
+      totalMatchingItems = filteredList.length;
+      totalPagesCount = Math.max(1, Math.ceil(totalMatchingItems / PAGE_SIZE));
+    }
+
+    if (activeSort === 'score-desc') filteredList.sort((a, b) => b.composite - a.composite);
+    else if (activeSort === 'score-asc') filteredList.sort((a, b) => a.composite - b.composite);
+    else if (activeSort === 'name-asc') filteredList.sort((a, b) => a.name.localeCompare(b.name));
+    else if (activeSort === 'price-asc') filteredList.sort((a, b) => a.priceMin - b.priceMin);
+
+    PROPERTIES.length = 0;
+    if (activeFilter !== 'all' || !isLive) {
+      const pageStart = (currentPage - 1) * PAGE_SIZE;
+      PROPERTIES.push(...filteredList.slice(pageStart, pageStart + PAGE_SIZE));
+    } else {
+      PROPERTIES.push(...filteredList);
+    }
 
     renderSummary();
     renderPagination();
@@ -828,6 +903,7 @@ try {
 
   (async function init() {
     try { await loadShortlist(); } catch (e) {}
+    await populateDistrictDropdown();
     renderFilters();
     initMap();
     await loadAndRender();

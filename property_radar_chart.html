@@ -106,16 +106,26 @@
       background: var(--paper-raised);
       border: 1px solid var(--hairline);
       margin-bottom: 1.75rem;
+      align-items: stretch;
     }
 
     .select-group {
       flex: 1;
-      min-width: 240px;
+      min-width: 280px;
       padding: 0.9rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
     }
 
     .select-group+.select-group {
       border-left: 1px solid var(--hairline);
+    }
+
+    .action-group {
+      flex: 0 0 auto;
+      min-width: auto;
+      justify-content: flex-end;
     }
 
     .select-group label {
@@ -258,25 +268,40 @@
     .btn-compare-toggle {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 0.4rem;
+      height: 38px;
+      box-sizing: border-box;
       background: var(--paper-raised);
       border: 1px solid var(--hairline-strong);
       color: var(--ink);
-      padding: 0.45rem 0.85rem;
+      padding: 0 0.95rem;
       font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.76rem;
+      font-size: 0.72rem;
       font-weight: 600;
       cursor: pointer;
       border-radius: 4px;
       transition: all 0.15s ease;
       text-transform: uppercase;
       letter-spacing: 0.04em;
+      white-space: nowrap;
     }
 
     .btn-compare-toggle:hover {
       background: var(--paper);
       border-color: var(--ink);
       box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    }
+
+    .btn-compare-toggle.active-compare {
+      color: var(--flag);
+      border-color: rgba(172, 44, 44, 0.4);
+      background: var(--flag-tint);
+    }
+
+    .btn-compare-toggle.active-compare:hover {
+      background: rgba(172, 44, 44, 0.15);
+      border-color: var(--flag);
     }
 
     /* ---------- Search Combobox ---------- */
@@ -293,11 +318,13 @@
 
     .search-input {
       width: 100%;
+      height: 38px;
+      box-sizing: border-box;
       background: var(--paper-raised);
       border: 1px solid var(--hairline-strong);
       border-radius: 4px;
       color: var(--ink);
-      padding: 0.55rem 2.2rem 0.55rem 0.75rem;
+      padding: 0 2.2rem 0 0.75rem;
       font-family: 'IBM Plex Sans', sans-serif;
       font-size: 0.88rem;
       outline: none;
@@ -312,13 +339,17 @@
     .clear-btn {
       position: absolute;
       right: 0.6rem;
+      top: 50%;
+      transform: translateY(-50%);
       background: none;
       border: none;
       color: var(--ink-soft);
       font-size: 1.1rem;
+      line-height: 1;
       cursor: pointer;
       display: none;
       padding: 0 0.2rem;
+      z-index: 2;
     }
 
     .clear-btn:hover {
@@ -768,8 +799,8 @@
         and quality axes for side-by-side evaluation.</p>
     </header>
 
-    <div class="controls-panel" style="display: flex; align-items: flex-end; gap: 1.25rem; flex-wrap: wrap;">
-      <div class="select-group" style="flex: 1; min-width: 280px;">
+    <div class="controls-panel">
+      <div class="select-group">
         <label for="inputA"><span class="swatch a"></span>Target Property</label>
         <div class="search-combobox" id="comboA">
           <div class="input-wrapper">
@@ -779,7 +810,7 @@
           <div class="dropdown-results" id="resultsA"></div>
         </div>
       </div>
-      <div class="select-group" id="groupSelB" style="flex: 1; min-width: 280px; display: none;">
+      <div class="select-group" id="groupSelB" style="display: none;">
         <label for="inputB"><span class="swatch b"></span>Benchmark Property</label>
         <div class="search-combobox" id="comboB">
           <div class="input-wrapper">
@@ -789,7 +820,7 @@
           <div class="dropdown-results" id="resultsB"></div>
         </div>
       </div>
-      <div style="margin-bottom: 0.1rem;">
+      <div class="select-group action-group">
         <button id="btnToggleCompare" class="btn-compare-toggle">+ Compare with Benchmark</button>
       </div>
     </div>
@@ -1054,17 +1085,19 @@
 
     function updateModeUI() {
       if (isCompareMode) {
-        groupSelB.style.display = 'block';
+        groupSelB.style.display = 'flex';
         if (panelB) panelB.style.display = 'block';
         if (comparePanel) comparePanel.style.display = 'block';
         if (breakdownGrid) breakdownGrid.classList.remove('single-mode');
         btnToggleCompare.textContent = '✕ Close Comparison';
+        btnToggleCompare.classList.add('active-compare');
       } else {
         groupSelB.style.display = 'none';
         if (panelB) panelB.style.display = 'none';
         if (comparePanel) comparePanel.style.display = 'none';
         if (breakdownGrid) breakdownGrid.classList.add('single-mode');
         btnToggleCompare.textContent = '+ Compare with Benchmark';
+        btnToggleCompare.classList.remove('active-compare');
       }
     }
 

@@ -187,6 +187,28 @@ def list_projects(
         conn.close()
 
 
+@app.get("/api/v1/districts", summary="Get all distinct districts in the database")
+def get_districts():
+    """Returns a list of all unique districts found in registered projects."""
+    conn = get_db_connection()
+    if not conn:
+        return {"districts": []}
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT DISTINCT COALESCE(NULLIF(TRIM(data->'project_location'->>'district'), ''), NULLIF(TRIM(data->>'district'), '')) as district
+                FROM rera_projects
+                WHERE COALESCE(data->'project_location'->>'district', data->>'district') IS NOT NULL
+                  AND COALESCE(data->'project_location'->>'district', data->>'district') != ''
+                ORDER BY district;
+            """)
+            rows = cur.fetchall()
+            districts = [r["district"] for r in rows if r.get("district")]
+            return {"districts": districts}
+    finally:
+        conn.close()
+
+
 @app.get("/api/v1/projects/analyze", summary="Analyze project information, positives and negatives")
 def analyze_project(
     q: Optional[str] = Query(None, description="Search term for project name, promoter name, or registration number"),
