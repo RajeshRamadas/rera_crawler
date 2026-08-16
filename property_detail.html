@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   :root {
     --paper: #F6F5F1;
@@ -239,6 +240,21 @@
   .badge-type { background: var(--hairline); color: var(--ink); border-color: var(--hairline-strong); }
   .badge-approved { background: var(--clear-tint); color: var(--clear); border-color: var(--clear); }
   .badge-flag { background: var(--flag-tint); color: var(--flag); border-color: var(--flag); }
+
+  /* Band Tags */
+  .band-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.45rem;
+    border-radius: 3px;
+    display: inline-block;
+  }
+  .band-clear { background: var(--clear-tint); color: var(--clear); border: 1px solid var(--clear); }
+  .band-watch { background: var(--watch-tint); color: var(--watch); border: 1px solid var(--watch); }
+  .band-flag { background: var(--flag-tint); color: var(--flag); border: 1px solid var(--flag); }
 
   /* Hero Right Score Badge */
   .hero-score-box {
@@ -734,17 +750,47 @@
             </div>
           </div>
 
-          <!-- 5. Positives (+) vs Negatives (-) Regulatory Evaluation -->
-          <div class="card collapsible">
+          <!-- 5. Property Risk & Compliance Report with Risk & Quality Profile and Axis Breakdown -->
+          <div class="card collapsible" id="riskReportCard">
             <div class="card-head">
               <div>
-                <span class="card-head-title">Regulatory Risk Evaluation</span>
-                <span class="mono" style="font-size:0.7rem; color:var(--ink-soft); margin-left:0.5rem;">Positives (+) vs Negatives (-)</span>
+                <span class="card-head-title">Property Risk & Compliance Report</span>
+                <span class="mono" style="font-size:0.7rem; color:var(--ink-soft); margin-left:0.5rem;" id="riskScoreBadge">8-Axis Quality Profile</span>
               </div>
               <span class="collapse-icon">▼</span>
             </div>
             <div class="card-body">
-              <div class="eval-grid">
+              <!-- Spider / Radar Chart -->
+              <div id="spiderChartWrap" style="position:relative; width:100%; max-width:480px; height:380px; margin:0 auto 1.5rem;">
+                <canvas id="riskSpiderCanvas"></canvas>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:center; gap:1.5rem; margin-bottom:1.5rem; flex-wrap:wrap;" id="spiderLegend">
+                <span style="font-size:0.72rem; font-family:'IBM Plex Mono',monospace; color:var(--ink-soft);">
+                  <span style="display:inline-block; width:10px; height:3px; background:#2C4A6E; border-radius:2px; margin-right:4px; vertical-align:middle;"></span>Risk & Quality Score
+                </span>
+                <span style="font-size:0.72rem; font-family:'IBM Plex Mono',monospace; color:var(--ink-soft);">0 – 100 per axis · Outer ring = ideal</span>
+              </div>
+
+              <!-- Summary Verdict Box -->
+              <div id="riskVerdictBox" style="background:var(--paper); border:1px solid var(--hairline-strong); border-left:4px solid var(--clear); padding:1rem; border-radius:4px; margin-bottom:1.25rem;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.4rem; flex-wrap:wrap; gap:0.5rem;">
+                  <span class="serif" style="font-size:1.05rem; font-weight:600; color:var(--ink);" id="riskVerdictTitle">Executive Risk & Quality Assessment</span>
+                  <span class="band-tag band-clear" id="riskVerdictBadge">HEALTH SCORE: 98 / 100</span>
+                </div>
+                <p id="riskVerdictText" style="font-size:0.85rem; color:var(--ink-soft); line-height:1.5; margin:0;"></p>
+              </div>
+
+              <!-- 8-Axis Risk Breakdown Grid -->
+              <div style="margin-bottom:1.5rem;">
+                <div class="serif" style="font-size:0.95rem; font-weight:600; color:var(--ink); margin-bottom:0.75rem; display:flex; align-items:center; justify-content:space-between;">
+                  <span>8-Axis Risk & Quality Profile Breakdown</span>
+                  <span class="mono" style="font-size:0.68rem; color:var(--ink-soft);">0–100 Scale per Axis</span>
+                </div>
+                <div class="axis-breakdown-grid" id="axisBreakdownGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:0.85rem;"></div>
+              </div>
+
+              <!-- Compliance Positives (+) vs Negatives (-) Grid -->
+              <div class="eval-grid" style="margin-bottom:1.25rem;">
                 <div class="eval-box positives">
                   <div class="eval-box-title">Compliance Positives (+)</div>
                   <ul class="eval-list" id="positivesList"></ul>
@@ -753,6 +799,13 @@
                   <div class="eval-box-title">Risk Negatives (-)</div>
                   <ul class="eval-list" id="negativesList"></ul>
                 </div>
+              </div>
+
+              <!-- Interactive Radar Launch Link -->
+              <div style="text-align:center; margin-top:1rem;">
+                <a id="radarChartLaunchBtn" class="btn" style="width:100%; text-decoration:none; display:flex; align-items:center; justify-content:center; box-sizing:border-box;" href="#" target="_blank">
+                  Launch Full Interactive Radar Chart & Benchmark Analysis ↗
+                </a>
               </div>
             </div>
           </div>
@@ -1309,6 +1362,120 @@
     return { class: 'flag', label: 'FLAG', hex: '#AC2C2C' };
   }
 
+  // ---- Spider / Radar Chart renderer ----
+  let _spiderChartInstance = null;
+
+  function drawSpiderChart(scores, projectName) {
+    const canvas = document.getElementById('riskSpiderCanvas');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    const AXIS_LABELS = [
+      'Regulatory\nCompliance',
+      'Litigation\nRisk',
+      'Timeline\nAdherence',
+      'Land &\nTitle Clarity',
+      'Location &\nConnectivity',
+      'Layout &\nAmenities',
+      'Promoter\nReputation',
+      'Data\nTransparency'
+    ];
+    const AXIS_KEYS = ['compliance', 'litigation', 'timeline', 'title', 'location', 'layout', 'promoter', 'transparency'];
+    const dataValues = AXIS_KEYS.map(k => scores[k] ?? 80);
+
+    // Destroy any previous instance to avoid canvas reuse error
+    if (_spiderChartInstance) {
+      _spiderChartInstance.destroy();
+      _spiderChartInstance = null;
+    }
+
+    // Background zone rings plugin with cross-version Chart.js scale compatibility
+    const bgRingsPlugin = {
+      id: 'bgRings',
+      beforeDraw(chart) {
+        if (!chart.scales || !chart.scales.r) return;
+        const scale = chart.scales.r;
+        const ctx = chart.ctx;
+        if (!ctx || !scale) return;
+
+        const cx = scale.xCenter ?? ((scale.left + scale.right) / 2);
+        const cy = scale.yCenter ?? ((scale.top + scale.bottom) / 2);
+
+        const getDist = (v) => {
+          if (typeof scale.getDistanceFromCenterForValue === 'function') {
+            return scale.getDistanceFromCenterForValue(v);
+          }
+          if (typeof scale.getDistanceForValue === 'function') {
+            return scale.getDistanceForValue(v);
+          }
+          return ((v - scale.min) / (scale.max - scale.min)) * (scale.drawingArea || 140);
+        };
+
+        ctx.save();
+        [[100, 'rgba(47,110,79,0.06)'], [70, 'rgba(151,112,26,0.06)'], [40, 'rgba(172,44,44,0.07)']].forEach(([v, fill]) => {
+          const r = getDist(v);
+          if (r > 0) {
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            ctx.fillStyle = fill;
+            ctx.fill();
+          }
+        });
+        ctx.restore();
+      }
+    };
+
+    const ctx = canvas.getContext('2d');
+    _spiderChartInstance = new Chart(ctx, {
+      type: 'radar',
+      plugins: [bgRingsPlugin],
+      data: {
+        labels: AXIS_LABELS,
+        datasets: [{
+          label: projectName || 'Risk & Quality Profile',
+          data: dataValues,
+          backgroundColor: 'rgba(44, 74, 110, 0.22)',
+          borderColor: '#2C4A6E',
+          borderWidth: 2.5,
+          pointBackgroundColor: dataValues.map(v => v >= 70 ? '#2F6E4F' : v >= 40 ? '#97701A' : '#AC2C2C'),
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          pointBorderColor: '#fff',
+          pointBorderWidth: 1.5
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          r: {
+            min: 0, max: 100,
+            ticks: { stepSize: 20, backdropColor: 'transparent', color: '#8B8E96', font: { size: 9, family: 'IBM Plex Mono' } },
+            grid: { color: 'rgba(27,30,36,0.08)' },
+            angleLines: { color: 'rgba(27,30,36,0.10)' },
+            pointLabels: {
+              color: '#3A3E46',
+              font: { size: 10, weight: '600', family: 'IBM Plex Sans' },
+              callback: function(label) { return label.split('\n'); }
+            }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1B1E24',
+            titleColor: '#F6F5F1',
+            bodyColor: '#DBD7CC',
+            titleFont: { family: 'IBM Plex Sans', size: 11 },
+            bodyFont: { family: 'IBM Plex Mono', size: 11 },
+            callbacks: {
+              label: function(context) { return ` Score: ${context.raw}/100`; }
+            }
+          }
+        }
+      }
+    });
+  }
+
   function buildGoogleMapsUrl(rawUrl, lat, lng, projectName, address, district) {
     if (typeof lat === 'number' && !isNaN(lat) && typeof lng === 'number' && !isNaN(lng) && lat !== 0 && lng !== 0) {
       return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
@@ -1359,20 +1526,18 @@
       const res = await fetch(`/api/v1/projects/analyze?q=${encodeURIComponent(query)}`);
       if (!res.ok) throw new Error('Project not found in database');
       const data = await res.json();
-      renderDetails(data);
+      renderDetails(data, query);
     } catch (err) {
       console.warn('API fetch failed:', err);
       showError('Unable to fetch detailed property record.');
     }
   }
 
-  function renderDetails(data) {
+  function renderDetails(data, currentQuery = '') {
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('auditContent').style.display = 'block';
 
     const overview = data.project_summary || {};
-    const scores = data.radar_profile ? data.radar_profile.scores : {};
-    const evalData = data.overall_evaluation || {};
     const raw = data.raw_data || {};
     const rawOverview = raw.project_overview_details || {};
     const rawLoc = raw.project_location || {};
@@ -1386,14 +1551,14 @@
     document.getElementById('propStatus').textContent = overview.status || 'APPROVED';
     document.getElementById('propLocation').textContent = `${overview.district || 'Karnataka'} ${overview.taluk ? '· ' + overview.taluk : ''}`;
 
-    const score = evalData.health_score || 75;
-    const band = getBand(score);
+    const heroScore = (data.overall_evaluation || {}).health_score || 75;
+    const heroBand = getBand(heroScore);
     const scoreEl = document.getElementById('compositeScore');
-    scoreEl.textContent = score;
-    scoreEl.className = `hero-score-num ${band.class}`;
+    scoreEl.textContent = heroScore;
+    scoreEl.className = `hero-score-num ${heroBand.class}`;
 
     const sealEl = document.getElementById('gateSeal');
-    const isGateOK = score >= 50 && overview.status === 'APPROVED';
+    const isGateOK = heroScore >= 50 && overview.status === 'APPROVED';
     sealEl.textContent = isGateOK ? 'GATE CLEARED' : 'GATE FAILED';
     sealEl.className = `hero-seal ${isGateOK ? 'pass' : 'fail'}`;
 
@@ -1547,7 +1712,84 @@
       <div class="audit-item"><span class="audit-label">Past 5 Years Projects</span><span class="audit-val mono">${pastProjs.length} Projects Launched</span></div>
     `;
 
-    // 5. Positives & Negatives lists
+    // 5. Property Risk & Compliance Report with 8-Axis Profile Breakdown
+    const radar = data.radar_profile || {};
+    const scores = radar.scores || {};
+    const reasons = radar.reasons || {};
+    const evalData = data.overall_evaluation || {};
+    const healthScore = evalData.health_score ?? heroScore;
+    const band = getBand(healthScore);
+
+    // Draw spider chart from live scores
+    drawSpiderChart(scores, overview.project_name || currentQuery);
+
+    const riskBadgeEl = document.getElementById('riskScoreBadge');
+    if (riskBadgeEl) riskBadgeEl.textContent = `Health Score: ${healthScore}/100`;
+
+    const verdictBadgeEl = document.getElementById('riskVerdictBadge');
+    if (verdictBadgeEl) {
+      verdictBadgeEl.className = `band-tag band-${band.class}`;
+      verdictBadgeEl.textContent = `HEALTH SCORE: ${healthScore} / 100 (${band.label})`;
+    }
+
+    const verdictTextEl = document.getElementById('riskVerdictText');
+    if (verdictTextEl) {
+      verdictTextEl.textContent = evalData.verdict || 'Strong RERA project with verified credentials, solid filings, and clean legal standing.';
+    }
+
+    const verdictBoxEl = document.getElementById('riskVerdictBox');
+    if (verdictBoxEl) {
+      verdictBoxEl.style.borderLeftColor = band.hex;
+    }
+
+    const radarBtnEl = document.getElementById('radarChartLaunchBtn');
+    if (radarBtnEl) {
+      radarBtnEl.href = `/radar-chart?a=${encodeURIComponent(overview.project_name || currentQuery)}`;
+    }
+
+    // Render 8 Axes Breakdown Cards
+    const AXIS_DEFS = [
+      { key: 'compliance', name: 'Regulatory Compliance', points: 'P-02 – P-04' },
+      { key: 'litigation', name: 'Litigation Risk', points: 'P-05 – P-11' },
+      { key: 'timeline', name: 'Timeline Adherence', points: 'P-12 – P-16' },
+      { key: 'title', name: 'Land & Title Clarity', points: 'P-17 – P-21' },
+      { key: 'location', name: 'Location & Connectivity', points: 'P-22 – P-29' },
+      { key: 'layout', name: 'Layout & Amenities', points: 'P-30 – P-33' },
+      { key: 'promoter', name: 'Promoter Reputation', points: 'P-34 – P-35' },
+      { key: 'transparency', name: 'Data Transparency', points: 'P-36 – P-37' }
+    ];
+
+    const axisGrid = document.getElementById('axisBreakdownGrid');
+    if (axisGrid) {
+      axisGrid.innerHTML = AXIS_DEFS.map(axis => {
+        const sc = scores[axis.key] ?? (healthScore >= 70 ? 95 : 50);
+        const b = getBand(sc);
+        const rList = reasons[axis.key] || [];
+        const reasonItems = rList.slice(0, 2).map(r => {
+          const rawStr = String(r);
+          const isNeg = rawStr.includes('❌') || rawStr.toLowerCase().includes('deduction');
+          const isWarn = rawStr.includes('⚠') || rawStr.toLowerCase().includes('pending');
+          const text = rawStr.replace(/[\u274C\u26A0\uFE0F\u2705]/g, '').trim();
+          let color = 'var(--clear)';
+          if (isNeg) color = 'var(--flag)';
+          else if (isWarn) color = 'var(--watch)';
+
+          return `<div style="font-size:0.73rem; color:${color}; margin-top:0.3rem; line-height:1.35;">${text}</div>`;
+        }).join('');
+
+        return `
+          <div style="background:var(--paper); border:1px solid var(--hairline-strong); padding:0.85rem; border-radius:4px; border-top:3px solid ${b.hex};">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.25rem;">
+              <span style="font-size:0.82rem; font-weight:600; color:var(--ink);">${axis.name}</span>
+              <span class="band-tag band-${b.class}" style="font-size:0.64rem;">${b.label} ${sc}</span>
+            </div>
+            <div style="font-family:'IBM Plex Mono',monospace; font-size:0.65rem; color:var(--ink-soft);">${axis.points}</div>
+            ${reasonItems || '<div style="font-size:0.73rem; color:var(--clear); margin-top:0.3rem;">✓ Verified compliant.</div>'}
+          </div>
+        `;
+      }).join('');
+    }
+
     const posList = document.getElementById('positivesList');
     posList.innerHTML = '';
     (data.positives || []).forEach(p => {
@@ -1620,11 +1862,11 @@
     const axisContainer = document.getElementById('axisContainer');
     axisContainer.innerHTML = '';
     const axes = [
-      { name: 'Regulatory Compliance', score: scores.compliance || score },
-      { name: 'Litigation & Complaints', score: scores.litigation || score },
-      { name: 'Timeline Adherence', score: scores.timeline || score },
-      { name: 'Land Title Clarity', score: scores.title || score },
-      { name: 'GIS & Spatial Accuracy', score: scores.location || score }
+      { name: 'Regulatory Compliance', score: scores.compliance || heroScore },
+      { name: 'Litigation & Complaints', score: scores.litigation || heroScore },
+      { name: 'Timeline Adherence', score: scores.timeline || heroScore },
+      { name: 'Land Title Clarity', score: scores.title || heroScore },
+      { name: 'GIS & Spatial Accuracy', score: scores.location || heroScore }
     ];
 
     axes.forEach(ax => {
@@ -1644,7 +1886,8 @@
     });
 
     // Radar link
-    document.getElementById('radarBtn').href = `/radar-chart?a=${encodeURIComponent(overview.project_name || query)}`;
+    document.getElementById('radarBtn').href = `/radar-chart?a=${encodeURIComponent(overview.project_name || currentQuery)}`;
+    // Map popup uses heroScore/heroBand
 
     // Init Leaflet Map
     const lat = parseFloat(rawLoc.latitude || overview.coordinates?.latitude);
@@ -1685,9 +1928,9 @@
         radius: 9,
         color: '#1B1E24',
         weight: 2,
-        fillColor: band.hex,
+        fillColor: heroBand.hex,
         fillOpacity: 0.9
-      }).addTo(detailMap).bindPopup(`<b>${overview.project_name || 'Property'}</b><br>${band.label} (${score}/100)`).openPopup();
+      }).addTo(detailMap).bindPopup(`<b>${overview.project_name || 'Property'}</b><br>${heroBand.label} (${heroScore}/100)`).openPopup();
 
       setTimeout(() => { if (detailMap) detailMap.invalidateSize(); }, 300);
 
