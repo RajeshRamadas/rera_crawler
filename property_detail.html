@@ -378,28 +378,198 @@
     border: 1px solid var(--hairline-strong);
   }
 
-  /* Document Links Grid */
-  .doc-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 0.75rem;
+  /* Document Vault & Detailed Document Cards */
+  .doc-vault-desc {
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    margin-top: 0.25rem;
+    line-height: 1.4;
   }
-  .doc-item {
+  .doc-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 0.85rem;
+    margin-bottom: 1.25rem;
+    background: #EEECDF;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    border: 1px solid var(--hairline-strong);
+  }
+  .doc-search-box {
+    flex: 1;
+    min-width: 240px;
+    position: relative;
+  }
+  .doc-search-input {
+    width: 100%;
+    height: 36px;
+    padding: 0 0.85rem 0 2.2rem;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.82rem;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 4px;
+    background: #FCFBF8;
+    color: var(--ink);
+  }
+  .doc-search-input:focus {
+    outline: none;
+    border-color: var(--ink);
+    box-shadow: 0 0 0 2px rgba(27,30,36,0.1);
+  }
+  .doc-search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    pointer-events: none;
+  }
+  .doc-filter-pills {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+  .doc-pill {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 0.3rem 0.65rem;
+    border-radius: 4px;
+    background: var(--paper-raised);
+    border: 1px solid var(--hairline-strong);
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .doc-pill:hover {
+    color: var(--ink);
+    border-color: var(--ink);
+  }
+  .doc-pill.active {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+
+  .doc-vault-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .doc-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--hairline-strong);
+    border-radius: 6px;
+    padding: 1.15rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+  }
+  .doc-card:hover {
+    border-color: var(--ink);
+    box-shadow: 0 4px 14px rgba(27,30,36,0.08);
+    transform: translateY(-1px);
+  }
+
+  .doc-card-top {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.65rem 0.85rem;
-    background: var(--paper-raised);
-    border: 1px solid var(--hairline);
-    border-radius: 4px;
-    font-size: 0.8rem;
-    text-decoration: none;
-    color: var(--ink);
-    transition: all 0.15s ease;
+    gap: 0.75rem;
+    flex-wrap: wrap;
   }
-  .doc-item:hover {
-    border-color: var(--ink);
-    background: #F2EFE7;
+  .doc-cat-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.18rem 0.5rem;
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .doc-cat-tag.certs { background: var(--clear-tint); color: var(--clear); border: 1px solid var(--clear); }
+  .doc-cat-tag.statutory { background: var(--watch-tint); color: var(--watch); border: 1px solid var(--watch); }
+  .doc-cat-tag.legal { background: #EBF3FA; color: #1E56A0; border: 1px solid #1E56A0; }
+  .doc-cat-tag.promoter { background: #F5EBFB; color: #6B21A8; border: 1px solid #6B21A8; }
+  .doc-cat-tag.other { background: var(--hairline); color: var(--ink); border: 1px solid var(--hairline-strong); }
+
+  .doc-badges {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .doc-ref-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    background: #EEECDF;
+    color: var(--ink);
+    padding: 0.15rem 0.45rem;
+    border-radius: 3px;
+    border: 1px solid var(--hairline-strong);
+  }
+
+  .doc-title {
+    font-family: 'IBM Plex Serif', serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.35;
+  }
+  .doc-description {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    line-height: 1.45;
+  }
+
+  .doc-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-top: 0.6rem;
+    margin-top: 0.25rem;
+    border-top: 1px dashed var(--hairline);
+    flex-wrap: wrap;
+  }
+  .doc-meta-info {
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .doc-download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.9rem;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #fff;
+    background: var(--clear);
+    border: 1px solid var(--clear);
+    border-radius: 4px;
+    text-decoration: none;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+  }
+  .doc-download-btn:hover {
+    background: #23543B;
+    border-color: #23543B;
+    box-shadow: 0 2px 8px rgba(47,110,79,0.25);
   }
 
   /* Print Styles */
@@ -531,13 +701,34 @@
             <div id="quarterlyWrap"></div>
           </div>
 
-          <!-- 8. RERA Official Certificates & Documents Directory -->
-          <div class="card">
-            <div class="card-head">
-              <span class="card-head-title">RERA Official Certificates & Uploaded Document Vault</span>
-              <span class="mono" style="font-size:0.7rem; color:var(--ink-soft);" id="docCountText">0 Files</span>
+          <!-- 8. RERA Official Certificates & Uploaded Document Vault -->
+          <div class="card" id="docVaultCard">
+            <div class="card-head" style="margin-bottom: 0.5rem;">
+              <div>
+                <span class="card-head-title">RERA Official Certificates & Uploaded Document Vault</span>
+                <div class="doc-vault-desc">Full repository of verified download documents including RERA certificates, legal title deeds, CA/Architect/Engineer annexures, sanctioned plans, and promoter filings.</div>
+              </div>
+              <span class="mono" style="font-size:0.75rem; font-weight:600; color:var(--clear);" id="docCountText">0 Verified Files</span>
             </div>
-            <div class="doc-grid" id="docGrid"></div>
+
+            <!-- Controls: Search Input & Category Filter Pills -->
+            <div class="doc-controls">
+              <div class="doc-search-box">
+                <span class="doc-search-icon">🔍</span>
+                <input type="text" id="docSearchInput" class="doc-search-input" placeholder="Search documents by name, annexure, or reference ID..." />
+              </div>
+              <div class="doc-filter-pills" id="docFilterPills">
+                <button class="doc-pill active" data-cat="all">All (<span id="count-all">0</span>)</button>
+                <button class="doc-pill" data-cat="certs">Certificates (<span id="count-certs">0</span>)</button>
+                <button class="doc-pill" data-cat="statutory">Statutory Annexures (<span id="count-statutory">0</span>)</button>
+                <button class="doc-pill" data-cat="legal">Legal & Plans (<span id="count-legal">0</span>)</button>
+                <button class="doc-pill" data-cat="promoter">Promoter Filings (<span id="count-promoter">0</span>)</button>
+                <button class="doc-pill" data-cat="other">Other (<span id="count-other">0</span>)</button>
+              </div>
+            </div>
+
+            <!-- Container for Document Cards -->
+            <div class="doc-vault-grid" id="docVaultContainer"></div>
           </div>
 
         </div>
@@ -575,6 +766,325 @@
 
 <script>
   let detailMap = null;
+
+  function extractAllProjectDocuments(raw, overview) {
+    const docs = [];
+    const seenUrls = new Set();
+
+    function addDoc(item) {
+      if (!item.url || typeof item.url !== 'string' || !item.url.startsWith('http')) return;
+      const cleanUrl = item.url.trim();
+      if (seenUrls.has(cleanUrl)) return;
+      seenUrls.add(cleanUrl);
+      docs.push(item);
+    }
+
+    // 1. RERA Official Certificates & Orders
+    const certUrls = Array.isArray(raw.certificate_url) ? raw.certificate_url : (raw.certificate_url ? [raw.certificate_url] : []);
+    certUrls.forEach(url => {
+      addDoc({
+        title: 'RERA Official Registration Certificate',
+        categoryKey: 'certs',
+        categoryName: 'RERA Official Certificates',
+        categoryIcon: '📜',
+        ref: raw.registration_number || overview.registration_no || 'RERA Approved Order',
+        url: url,
+        annexure: 'Official Certificate',
+        fileType: 'PDF Document',
+        desc: 'Official certificate of registration granted by Karnataka Real Estate Regulatory Authority authorizing project launch, marketing, and sales under Section 5 of RERA Act.'
+      });
+    });
+
+    if (raw.renewed_certificate_url) {
+      addDoc({
+        title: 'Renewed RERA Registration Certificate',
+        categoryKey: 'certs',
+        categoryName: 'RERA Official Certificates',
+        categoryIcon: '📜',
+        ref: 'Renewal Order',
+        url: raw.renewed_certificate_url,
+        annexure: 'Renewal Order',
+        fileType: 'PDF Document',
+        desc: 'Official renewal certificate issued by RERA Karnataka granting formal extension of project registration.'
+      });
+    }
+
+    if (raw.further_extension_order_url) {
+      addDoc({
+        title: 'RERA Further Extension Order',
+        categoryKey: 'certs',
+        categoryName: 'RERA Official Certificates',
+        categoryIcon: '📜',
+        ref: 'Extension Order',
+        url: raw.further_extension_order_url,
+        annexure: 'Extension Order',
+        fileType: 'PDF Document',
+        desc: 'Formal regulatory extension order approved by RERA authority extending project completion timeline.'
+      });
+    }
+
+    if (raw.covid_certificate_url) {
+      addDoc({
+        title: 'RERA Force Majeure / COVID Extension Order',
+        categoryKey: 'certs',
+        categoryName: 'RERA Official Certificates',
+        categoryIcon: '📜',
+        ref: 'COVID Relief Order',
+        url: raw.covid_certificate_url,
+        annexure: 'COVID Order',
+        fileType: 'PDF Document',
+        desc: 'Statutory COVID-19 timeline extension order issued under regulatory pandemic relief guidelines.'
+      });
+    }
+
+    // 2. Promoter Credentials & Corporate Filings
+    const prom = raw.promoter_details || {};
+    Object.keys(prom).forEach(secName => {
+      const content = prom[secName];
+      if (content && typeof content === 'object' && !Array.isArray(content)) {
+        Object.keys(content).forEach(key => {
+          if (key.endsWith(' URL') || key.endsWith('_url')) {
+            const label = key.replace(/\s*URL$/, '').replace(/_url$/, '').trim();
+            const val = content[key];
+            const urls = Array.isArray(val) ? val : [val];
+            const fileRef = content[label] || 'Attached Filing';
+
+            urls.forEach(u => {
+              if (typeof u === 'string' && u.startsWith('http')) {
+                const annMatch = label.match(/Annexure\s*-\s*\d+/i);
+                const annTag = annMatch ? annMatch[0] : 'Promoter Credential';
+                addDoc({
+                  title: label,
+                  categoryKey: 'promoter',
+                  categoryName: 'Promoter Credentials & Corporate Filings',
+                  categoryIcon: '🏢',
+                  ref: typeof fileRef === 'string' ? fileRef : 'Attached',
+                  url: u,
+                  annexure: annTag,
+                  fileType: 'Corporate PDF',
+                  desc: `Statutory promoter verification filing (${label}). Submitted to authenticate developer firm legal identity, tax registration, and corporate authorization.`
+                });
+              }
+            });
+          }
+        });
+      }
+    });
+
+    // 3. Project Details & Land Titling
+    const proj = raw.project_details || {};
+    Object.keys(proj).forEach(secName => {
+      const content = proj[secName];
+      if (content && typeof content === 'object' && !Array.isArray(content)) {
+        Object.keys(content).forEach(key => {
+          if (key.endsWith(' URL') || key.endsWith('_url')) {
+            const label = key.replace(/\s*URL$/, '').replace(/_url$/, '').trim();
+            const val = content[key];
+            const urls = Array.isArray(val) ? val : [val];
+            const fileRef = content[label] || 'Attached Deed';
+
+            urls.forEach(u => {
+              if (typeof u === 'string' && u.startsWith('http')) {
+                const annMatch = label.match(/Annexure\s*-\s*\d+/i);
+                const annTag = annMatch ? annMatch[0] : 'Title & Legal';
+                addDoc({
+                  title: `${secName} — ${label}`,
+                  categoryKey: 'legal',
+                  categoryName: 'Legal Title Deeds & Sanctioned Plans',
+                  categoryIcon: '📐',
+                  ref: typeof fileRef === 'string' ? fileRef : 'Attached',
+                  url: u,
+                  annexure: annTag,
+                  fileType: 'Legal Document',
+                  desc: `Legal title deed, land survey document, or legal affidavit filed under ${secName} for property verification.`
+                });
+              }
+            });
+          }
+        });
+      }
+    });
+
+    // 4. Uploaded Documents Matrix (Statutory Annexures, Form 1/2/3, CA/Engineer/Architect)
+    const uploadedDocs = raw.uploaded_documents || [];
+    uploadedDocs.forEach((d, idx) => {
+      if (!d || typeof d !== 'object') return;
+      let rawUrl = d.file_url || d.url || d.download_url;
+      if (Array.isArray(rawUrl)) rawUrl = rawUrl[0];
+      if (!rawUrl || typeof rawUrl !== 'string' || !rawUrl.startsWith('http')) return;
+
+      const docName = d.financial_year || d.document_name || d.document_type || d.name || d.file || `Document Attachment #${idx + 1}`;
+      const fileRef = d.file || d.file_identifier || 'Attachment';
+      const docNameLower = String(docName).toLowerCase();
+
+      let catKey = 'statutory';
+      let catName = 'Statutory Annexures & CA / Engineer / Architect Forms';
+      let catIcon = '⚖️';
+      let annTag = 'Statutory Form';
+      let desc = `Official RERA project submission attachment: ${docName}. (Ref / Reg No: ${fileRef})`;
+
+      if (docNameLower.includes('icai') || docNameLower.includes('annexure-53') || docNameLower.includes('chartered accountant') || docNameLower.includes('form 1')) {
+        annTag = 'Form 1 (CA)';
+        desc = `Chartered Accountant ICAI Membership Certificate & Form 1 Financial Audit certifying land cost calculations, layout expenditure, and project escrow bank balance. (ICAI Member Reg: ${fileRef})`;
+      } else if (docNameLower.includes('licence') || docNameLower.includes('annexure-55') || docNameLower.includes('engineer') || docNameLower.includes('form 3')) {
+        annTag = 'Form 3 (Engineer)';
+        desc = `Structural Engineer Local Authority Licence & Form 3 Quality/Structural Certificate confirming construction progress and building stability. (Licence No: ${fileRef})`;
+      } else if (docNameLower.includes('coa') || docNameLower.includes('annexure-57') || docNameLower.includes('architect') || docNameLower.includes('form 2')) {
+        annTag = 'Form 2 (Architect)';
+        desc = `Architect Council of Architecture (COA) Registration Certificate & Form 2 layout design certification verifying floor area ratios and master plan compliance. (COA Reg: ${fileRef})`;
+      } else if (docNameLower.includes('title') || docNameLower.includes('deed') || docNameLower.includes('encumbrance') || docNameLower.includes('khatha') || docNameLower.includes('conversion')) {
+        catKey = 'legal';
+        catName = 'Legal Title Deeds & Sanctioned Plans';
+        catIcon = '📐';
+        annTag = 'Title & Land';
+        desc = `Legal land title deed, encumbrance clearance certificate, or agricultural land conversion order. (Ref ID: ${fileRef})`;
+      } else if (docNameLower.includes('plan') || docNameLower.includes('layout') || docNameLower.includes('sanction')) {
+        catKey = 'legal';
+        catName = 'Legal Title Deeds & Sanctioned Plans';
+        catIcon = '📐';
+        annTag = 'Sanction Plan';
+        desc = `Competent local authority approved building sanction plan, floor layouts, or structural layout drawing. (Ref ID: ${fileRef})`;
+      } else if (!annTag || annTag === 'Statutory Form') {
+        catKey = 'other';
+        catName = 'Other Uploaded Property Filings';
+        catIcon = '📁';
+      }
+
+      addDoc({
+        title: docName,
+        categoryKey: catKey,
+        categoryName: catName,
+        categoryIcon: catIcon,
+        ref: fileRef,
+        url: rawUrl,
+        annexure: annTag,
+        fileType: 'PDF Attachment',
+        desc: desc
+      });
+    });
+
+    // 5. Enquired Documents
+    const enquiredDocs = raw.enquired_documents || [];
+    enquiredDocs.forEach((d, idx) => {
+      if (!d || typeof d !== 'object') return;
+      let rawUrl = d.file_url || d.url || d.download_url || d.column_urls?.[0];
+      if (Array.isArray(rawUrl)) rawUrl = rawUrl[0];
+      if (!rawUrl || typeof rawUrl !== 'string' || !rawUrl.startsWith('http')) return;
+
+      const docName = d.document_name || d.document_type || d.name || `Enquired Document #${idx + 1}`;
+      addDoc({
+        title: docName,
+        categoryKey: 'other',
+        categoryName: 'Enquired & Miscellaneous Filings',
+        categoryIcon: '📁',
+        ref: d.file || 'Enquired Attachment',
+        url: rawUrl,
+        annexure: 'Enquired Doc',
+        fileType: 'Document',
+        desc: `Regulatory enquired document attachment submitted to RERA during project review.`
+      });
+    });
+
+    return docs;
+  }
+
+  function renderDocumentVault(allDocs) {
+    const container = document.getElementById('docVaultContainer');
+    const docCountEl = document.getElementById('docCountText');
+    if (docCountEl) docCountEl.textContent = `${allDocs.length} Verified Files`;
+
+    // Category Counters
+    const counts = { all: allDocs.length, certs: 0, statutory: 0, legal: 0, promoter: 0, other: 0 };
+    allDocs.forEach(d => {
+      if (counts[d.categoryKey] !== undefined) counts[d.categoryKey]++;
+      else counts.other++;
+    });
+
+    Object.keys(counts).forEach(k => {
+      const el = document.getElementById(`count-${k}`);
+      if (el) el.textContent = counts[k];
+    });
+
+    let currentCat = 'all';
+    let currentQuery = '';
+
+    function filterAndDraw() {
+      const q = currentQuery.toLowerCase().trim();
+      const filtered = allDocs.filter(d => {
+        const matchesCat = currentCat === 'all' || d.categoryKey === currentCat;
+        const matchesSearch = !q || 
+          d.title.toLowerCase().includes(q) || 
+          d.desc.toLowerCase().includes(q) || 
+          d.ref.toLowerCase().includes(q) || 
+          d.annexure.toLowerCase().includes(q) ||
+          d.categoryName.toLowerCase().includes(q);
+        return matchesCat && matchesSearch;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div style="text-align:center; padding:2rem 1rem; color:var(--ink-soft); background:#F9F8F5; border-radius:6px; border:1px dashed var(--hairline-strong);">
+            <p style="font-size:0.92rem; font-weight:600; color:var(--ink);">No documents found matching your filter criteria.</p>
+            <p style="font-size:0.8rem; margin-top:0.35rem;">Try adjusting your search query or selecting a different category tab.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(doc => `
+        <div class="doc-card">
+          <div class="doc-card-top">
+            <span class="doc-cat-tag ${doc.categoryKey}">
+              ${doc.categoryIcon} ${doc.categoryName}
+            </span>
+            <div class="doc-badges">
+              <span class="doc-ref-badge">${doc.annexure}</span>
+              <span class="doc-ref-badge" style="background:#F2EFE7;">${doc.fileType}</span>
+            </div>
+          </div>
+
+          <div class="doc-title-row">
+            <h3 class="doc-title">${doc.title}</h3>
+          </div>
+
+          <p class="doc-description">${doc.desc}</p>
+
+          <div class="doc-card-footer">
+            <div class="doc-meta-info">
+              <span><strong>Ref / File ID:</strong> <span class="mono">${doc.ref}</span></span>
+              <span style="color:var(--clear); font-weight:600;">✓ Verified RERA Link</span>
+            </div>
+            <a href="${doc.url}" target="_blank" class="doc-download-btn" title="Download ${doc.title}">
+              <span>Download PDF</span> ↗
+            </a>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Attach Event Listeners
+    const searchInput = document.getElementById('docSearchInput');
+    if (searchInput) {
+      searchInput.oninput = (e) => {
+        currentQuery = e.target.value;
+        filterAndDraw();
+      };
+    }
+
+    const pillContainer = document.getElementById('docFilterPills');
+    if (pillContainer) {
+      pillContainer.onclick = (e) => {
+        const btn = e.target.closest('.doc-pill');
+        if (!btn) return;
+        pillContainer.querySelectorAll('.doc-pill').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        currentCat = btn.dataset.cat;
+        filterAndDraw();
+      };
+    }
+
+    filterAndDraw();
+  }
 
   function getQueryParam(param) {
     const urlParams = new URLSearchParams(window.location.search);
@@ -792,102 +1302,9 @@
       qWrap.innerHTML = `<p style="font-size:0.85rem; color:var(--ink-soft);">No quarterly updates history recorded.</p>`;
     }
 
-    // 8. Documents Directory with Category Headings & PDF Links
-    const docGrid = document.getElementById('docGrid');
-    const uploadedDocs = raw.uploaded_documents || [];
-    const certUrls = Array.isArray(raw.certificate_url) ? raw.certificate_url : (raw.certificate_url ? [raw.certificate_url] : []);
-
-    const docCategories = {
-      'RERA Official Certificates': [],
-      'Statutory Annexures & CA / Engineer / Architect Forms': [],
-      'Legal Title & Sanctioned Plans': [],
-      'Other Uploaded Property Filings': []
-    };
-
-    // Add main RERA certificates
-    certUrls.forEach(url => {
-      docCategories['RERA Official Certificates'].push({
-        heading: 'RERA Registration Certificate',
-        url: url,
-        icon: '📜'
-      });
-    });
-    if (raw.renewed_certificate_url) {
-      docCategories['RERA Official Certificates'].push({
-        heading: 'Renewed RERA Registration Certificate',
-        url: raw.renewed_certificate_url,
-        icon: '📜'
-      });
-    }
-    if (raw.further_extension_order_url) {
-      docCategories['RERA Official Certificates'].push({
-        heading: 'RERA Further Extension Order',
-        url: raw.further_extension_order_url,
-        icon: '📜'
-      });
-    }
-
-    // Process uploaded_documents array
-    uploadedDocs.forEach((d, idx) => {
-      if (!d || typeof d !== 'object') return;
-      let rawUrl = d.file_url || d.url || d.download_url;
-      if (Array.isArray(rawUrl)) rawUrl = rawUrl[0];
-      if (!rawUrl || typeof rawUrl !== 'string' || !rawUrl.startsWith('http')) return;
-
-      const heading = d.financial_year || d.document_name || d.name || d.file || d.document_type || `Document Attachment #${idx + 1}`;
-      let cat = 'Other Uploaded Property Filings';
-      let icon = '📄';
-
-      const hLower = String(heading).toLowerCase();
-      if (hLower.includes('annexure') || hLower.includes('icai') || hLower.includes('licence') || hLower.includes('coa') || hLower.includes('form') || hLower.includes('certificate')) {
-        cat = 'Statutory Annexures & CA / Engineer / Architect Forms';
-        icon = '⚖️';
-      } else if (hLower.includes('title') || hLower.includes('deed') || hLower.includes('plan') || hLower.includes('conversion') || hLower.includes('khatha') || hLower.includes('survey')) {
-        cat = 'Legal Title & Sanctioned Plans';
-        icon = '📐';
-      }
-
-      docCategories[cat].push({
-        heading: heading,
-        url: rawUrl,
-        icon: icon
-      });
-    });
-
-    let totalDocsCount = 0;
-    let categoryHtml = '';
-
-    Object.keys(docCategories).forEach(catName => {
-      const items = docCategories[catName];
-      if (items.length === 0) return;
-      totalDocsCount += items.length;
-
-      categoryHtml += `
-        <div style="grid-column: 1 / -1; margin-top: 0.85rem; margin-bottom: 0.35rem;">
-          <h4 style="font-family:'IBM Plex Serif', serif; font-size:0.95rem; font-weight:600; color:var(--ink); border-bottom:1px solid var(--hairline-strong); padding-bottom:0.35rem; display:flex; align-items:center; justify-content:space-between;">
-            <span>${catName}</span>
-            <span class="mono" style="font-size:0.72rem; color:var(--ink-soft); font-weight:500;">${items.length} Document(s)</span>
-          </h4>
-        </div>
-      `;
-
-      items.forEach(item => {
-        categoryHtml += `
-          <a class="doc-item" href="${item.url}" target="_blank" title="View & Download ${item.heading}">
-            <span style="font-weight:500;">${item.icon} ${item.heading}</span>
-            <span class="mono" style="font-size:0.75rem; font-weight:600; color:var(--clear); flex-shrink:0; margin-left:0.5rem;">PDF ↗</span>
-          </a>
-        `;
-      });
-    });
-
-    document.getElementById('docCountText').textContent = `${totalDocsCount} Files Verified`;
-
-    if (totalDocsCount === 0) {
-      categoryHtml = `<p style="grid-column:1/-1; font-size:0.88rem; color:var(--ink-soft); padding:0.5rem 0;">No downloadable document attachments or public certificate URLs available for this record.</p>`;
-    }
-
-    docGrid.innerHTML = categoryHtml;
+    // 8. Extract & Render Comprehensive Download Documents Vault
+    const allDocs = extractAllProjectDocuments(raw, overview);
+    renderDocumentVault(allDocs);
 
     // 9. 5-Axis Score Breakdown
     const axisContainer = document.getElementById('axisContainer');
