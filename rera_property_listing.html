@@ -601,6 +601,7 @@
           <div id="activeCardGps" style="font-family:'IBM Plex Mono',monospace; font-size:0.65rem; margin-top:0.35rem;"></div>
           <div class="card-actions">
             <button class="btn ghost btn-sm" id="activeCardJumpBtn" style="flex:1;">Focus in List ↓</button>
+            <a class="btn ghost btn-sm" id="activeCardGmapsBtn" style="flex:1; text-decoration:none;" href="#" target="_blank" rel="noopener noreferrer">Google Maps ↗</a>
             <a class="btn ghost btn-sm" id="activeCardRadarBtn" style="flex:1; text-decoration:none;" href="#" target="_blank">Radar ↗</a>
           </div>
         </div>
@@ -1030,6 +1031,15 @@ try {
         <span class="band-tag band-${prop.band.class}" style="margin-left:0.3rem;">${prop.band.label}</span>
       `;
       document.getElementById('activeCardRadarBtn').href = `/radar-chart?a=${encodeURIComponent(prop.name)}`;
+      
+      const gmapsBtn = document.getElementById('activeCardGmapsBtn');
+      if (gmapsBtn) {
+        if (prop.hasRealCoords && prop.lat && prop.lng) {
+          gmapsBtn.href = `https://www.google.com/maps/search/?api=1&query=${prop.lat},${prop.lng}`;
+        } else {
+          gmapsBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(prop.name + ', ' + (prop.area || 'Karnataka'))}`;
+        }
+      }
 
       // GPS availability indicator
       const gpsEl = document.getElementById('activeCardGps');

@@ -1147,6 +1147,17 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
             if sn not in survey_nos:
                 survey_nos.append(sn)
 
+    raw_maps_url = map_iframes[0] if map_iframes else None
+    clean_maps_url = None
+    if lat is not None and lng is not None:
+        clean_maps_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lng}"
+    elif raw_maps_url:
+        m = re.search(r"(?:[?&](?:q|ll)=|@)([-+]?\d+\.\d+),([-+]?\d+\.\d+)", raw_maps_url)
+        if m:
+            clean_maps_url = f"https://www.google.com/maps/search/?api=1&query={m.group(1)},{m.group(2)}"
+        else:
+            clean_maps_url = re.sub(r"[?&]output=embed", "", raw_maps_url).replace("&amp;", "&")
+
     return {
         "district": district or overview.get("District") or p_district,
         "taluk": taluk or overview.get("Taluk") or p_taluk,
@@ -1159,7 +1170,7 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
         "coordinate_source": coordinate_source,
         "boundary_coordinates": boundary_coordinates,
         "geometry": geometry,
-        "google_maps_url": map_iframes[0] if map_iframes else None,
+        "google_maps_url": clean_maps_url,
         "boundaries": {
             "north_schedule": b_north,
             "south_schedule": b_south,

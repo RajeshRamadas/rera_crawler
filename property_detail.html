@@ -113,7 +113,7 @@
   }
   .grid-2col {
     display: grid;
-    grid-template-columns: 2fr 1fr;
+    grid-template-columns: 2.2fr 1.1fr;
     gap: 1.75rem;
     align-items: start;
   }
@@ -123,9 +123,21 @@
     align-self: start;
     z-index: 10;
   }
+  #detailMap {
+    width: 100%;
+    height: clamp(220px, 32vh, 380px);
+    border-radius: 4px;
+    border: 1px solid var(--hairline-strong);
+    background: #e5e3df;
+    transition: height 0.3s ease;
+  }
+  @media (max-width: 1100px) {
+    .grid-2col { grid-template-columns: 1.8fr 1.2fr; }
+  }
   @media (max-width: 960px) {
     .grid-2col { grid-template-columns: 1fr; }
-    .sticky-sidebar { position: static; }
+    .sticky-sidebar { position: static; max-height: none; overflow-y: visible; }
+    #detailMap { height: 280px; }
   }
 
   /* Cards */
@@ -752,6 +764,9 @@
               <span class="mono" style="font-size:0.7rem; color:var(--ink-soft);">100 Point Scale</span>
             </div>
             <div class="axis-list" id="axisContainer"></div>
+            <div style="margin-top:1rem; text-align:center;">
+              <a id="radarBtn" class="btn" style="width:100%; text-decoration:none; display:flex; align-items:center; justify-content:center; box-sizing:border-box;" href="#" target="_blank">Open Interactive Radar ↗</a>
+            </div>
           </div>
 
           <!-- Location Map -->
@@ -762,11 +777,6 @@
             </div>
             <div id="detailMap"></div>
             <div id="gmapsLinkWrap" style="margin-top:0.75rem; text-align:center;"></div>
-          </div>
-
-          <!-- Actions & Radar Link -->
-          <div class="card" style="text-align:center;">
-            <a id="radarBtn" class="btn" style="width:100%; text-decoration:none;" href="#" target="_blank">Open Interactive Radar ↗</a>
           </div>
         </div>
       </div>
@@ -1234,6 +1244,37 @@
     return { class: 'flag', label: 'FLAG', hex: '#AC2C2C' };
   }
 
+  function buildGoogleMapsUrl(rawUrl, lat, lng, projectName, address, district) {
+    if (typeof lat === 'number' && !isNaN(lat) && typeof lng === 'number' && !isNaN(lng) && lat !== 0 && lng !== 0) {
+      return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+    }
+
+    if (rawUrl && typeof rawUrl === 'string' && rawUrl.trim() !== '') {
+      let cleaned = rawUrl.trim();
+      const iframeMatch = cleaned.match(/src=["']([^"']+)["']/i);
+      if (iframeMatch) cleaned = iframeMatch[1];
+      cleaned = cleaned.replace(/&amp;/g, '&');
+
+      const coordMatch = cleaned.match(/(?:[?&](?:q|ll)=|@)([-+]?\d+\.\d+),([-+]?\d+\.\d+)/);
+      if (coordMatch) {
+        return `https://www.google.com/maps/search/?api=1&query=${coordMatch[1]},${coordMatch[2]}`;
+      }
+
+      if (cleaned.includes('google.com/maps')) {
+        let cleanUrl = cleaned.replace(/[?&]output=embed/gi, '');
+        if (cleanUrl.endsWith('?') || cleanUrl.endsWith('&')) cleanUrl = cleanUrl.slice(0, -1);
+        return cleanUrl;
+      }
+    }
+
+    const parts = [projectName, address, district, 'Karnataka'].filter(p => p && String(p).trim() && String(p).trim() !== 'N/A');
+    if (parts.length > 0) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parts.join(', '))}`;
+    }
+
+    return null;
+  }
+
   function fmtDate(dStr) {
     if (!dStr) return 'N/A';
     const clean = String(dStr).replace(/T.*/, '').trim();
@@ -1545,13 +1586,25 @@
     const lng = parseFloat(rawLoc.longitude || overview.coordinates?.longitude);
     const hasRealCoords = !isNaN(lat) && !isNaN(lng);
 
+    const gmapsLink = buildGoogleMapsUrl(
+      rawLoc.google_maps_url,
+      hasRealCoords ? lat : null,
+      hasRealCoords ? lng : null,
+      overview.project_name,
+      rawOverview['Project Address'] || rawLoc['address'],
+      overview.district || rawLoc['district']
+    );
+
     if (hasRealCoords) {
       document.getElementById('gpsCoordsText').textContent = `GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-      if (rawLoc.google_maps_url) {
-        document.getElementById('gmapsLinkWrap').innerHTML = `<a class="btn ghost" href="${rawLoc.google_maps_url}" target="_blank" style="width:100%;">View on Google Maps ↗</a>`;
-      }
     } else {
       document.getElementById('gpsCoordsText').textContent = 'District Centroid';
+    }
+
+    if (gmapsLink) {
+      document.getElementById('gmapsLinkWrap').innerHTML = `<a class="btn ghost" href="${gmapsLink}" target="_blank" rel="noopener noreferrer" style="width:100%; display:flex; align-items:center; justify-content:center; box-sizing:border-box; text-decoration:none;">View on Google Maps ↗</a>`;
+    } else {
+      document.getElementById('gmapsLinkWrap').innerHTML = '';
     }
 
     const mapLat = hasRealCoords ? lat : 12.9716;
@@ -1570,6 +1623,20 @@
         fillColor: band.hex,
         fillOpacity: 0.9
       }).addTo(detailMap).bindPopup(`<b>${overview.project_name || 'Property'}</b><br>${band.label} (${score}/100)`).openPopup();
+
+      setTimeout(() => { if (detailMap) detailMap.invalidateSize(); }, 300);
+
+      window.addEventListener('resize', () => {
+        if (detailMap) detailMap.invalidateSize();
+      });
+
+      if (window.ResizeObserver) {
+        const ro = new ResizeObserver(() => {
+          if (detailMap) detailMap.invalidateSize();
+        });
+        const mapEl = document.getElementById('detailMap');
+        if (mapEl) ro.observe(mapEl);
+      }
     }
   }
 
