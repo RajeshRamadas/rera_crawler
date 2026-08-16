@@ -28,7 +28,10 @@ except ImportError as err:
     print(f"[!] Missing required package: {err}", file=sys.stderr)
     print("[!] Install dependencies with: pip install fastapi uvicorn psycopg2-binary", file=sys.stderr)
 
-from fastapi.responses import FileResponse
+import re
+import ssl
+import urllib.request
+from fastapi.responses import FileResponse, StreamingResponse
 from project_analyzer import search_project, analyze_project_data, analyze_by_name_or_reg
 
 DB_URI = os.getenv("DATABASE_URL", "postgresql://rera_user:rera_password@localhost:5432/rera_db")
@@ -492,6 +495,78 @@ def search_documents(
         }
     finally:
         conn.close()
+
+
+
+@app.get("/api/v1/documents/download", summary="Proxy and download PDF document attachment")
+def download_document_proxy(
+    url: str = Query(..., description="Target document download URL"),
+    filename: Optional[str] = Query(None, description="Custom file name for the downloaded PDF")
+):
+    """
+    Proxies and streams document downloads directly from RERA servers.
+    Forces correct RFC-6266 / RFC-5987 'Content-Disposition: attachment; filename=...; filename*=UTF-8''...' headers
+    to guarantee clean .pdf extension file downloads on Linux, Mac, and Windows desktop browsers.
+    """
+    clean_url = urllib.parse.unquote(url)
+    if not clean_url.startswith("http://") and not clean_url.startswith("https://"):
+        clean_url = url
+        
+    if not clean_url.startswith("http://") and not clean_url.startswith("https://"):
+        raise HTTPException(status_code=400, detail="Invalid URL scheme. Must start with http or https.")
+
+    try:
+        req = urllib.request.Request(
+            clean_url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "application/pdf,application/octet-stream,*/*",
+            }
+        )
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+
+        remote_res = urllib.request.urlopen(req, context=ctx, timeout=30)
+        
+        raw_name = filename or "RERA_Document"
+        ascii_name = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', raw_name)
+        ascii_name = re.sub(r'_+', '_', ascii_name).strip('_')
+        if not ascii_name.lower().endswith('.pdf'):
+            ascii_name += '.pdf'
+
+        utf8_encoded = urllib.parse.quote(raw_name)
+        if not utf8_encoded.lower().endswith('.pdf'):
+            utf8_encoded += '.pdf'
+
+        disposition_val = f'attachment; filename="{ascii_name}"; filename*=UTF-8\'\'{utf8_encoded}'
+
+        def iterfile():
+            try:
+                while True:
+                    chunk = remote_res.read(64 * 1024)
+                    if not chunk:
+                        break
+                    yield chunk
+            finally:
+                try:
+                    remote_res.close()
+                except Exception:
+                    pass
+
+        headers = {
+            "Content-Disposition": disposition_val,
+            "Access-Control-Allow-Origin": "*",
+            "Content-Type": "application/pdf"
+        }
+        
+        content_length = remote_res.headers.get("Content-Length")
+        if content_length:
+            headers["Content-Length"] = content_length
+
+        return StreamingResponse(iterfile(), media_type="application/pdf", headers=headers)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to stream document from RERA server: {str(exc)}")
 
 
 @app.get("/api/v1/promoters", summary="List real estate developers and promoter statistics")
