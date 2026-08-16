@@ -723,6 +723,8 @@
                 <button class="doc-pill" data-cat="statutory">Statutory Annexures (<span id="count-statutory">0</span>)</button>
                 <button class="doc-pill" data-cat="legal">Legal & Plans (<span id="count-legal">0</span>)</button>
                 <button class="doc-pill" data-cat="promoter">Promoter Filings (<span id="count-promoter">0</span>)</button>
+                <button class="doc-pill" data-cat="photos">Construction Photos (<span id="count-photos">0</span>)</button>
+                <button class="doc-pill" data-cat="completion">Completion & Loan (<span id="count-completion">0</span>)</button>
                 <button class="doc-pill" data-cat="other">Other (<span id="count-other">0</span>)</button>
               </div>
             </div>
@@ -985,6 +987,131 @@
       });
     });
 
+    // 6. Survey Land Tables (Annexure-40 Conversion, Annexure-41 Title Deed, Annexure-42 JDA, Annexure-43 RTC, Annexure-44 Mutation, Annexure-45 Khatha, Annexure-46 EC)
+    const projDetails = raw.project_details || {};
+    const surveyTables = projDetails.survey_land_tables || raw.survey_land_tables || [];
+    surveyTables.forEach((st, sIdx) => {
+      if (!st || typeof st !== 'object') return;
+      Object.keys(st).forEach(k => {
+        if (k.endsWith(' URL') || k.endsWith('_url') || k.includes('URL[')) {
+          const val = st[k];
+          const urls = Array.isArray(val) ? val : [val];
+          
+          let cleanTitle = k.replace(/\s*URL.*$/, '').replace(/_url$/, '').trim();
+          let annTag = 'Land Titling';
+          let desc = `Land survey & titling attachment filed under Survey Land Table.`;
+          
+          const labelLower = cleanTitle.toLowerCase();
+          if (labelLower.includes('annexure-40') || labelLower.includes('conversion') || labelLower.includes('alienation')) {
+            cleanTitle = 'Agricultural Land Conversion Order (Annexure-40)';
+            annTag = 'Annexure-40';
+            desc = 'DC Order authorizing agricultural land conversion/alienation for residential/commercial project use.';
+          } else if (labelLower.includes('annexure-41') || labelLower.includes('deed') || labelLower.includes('sale')) {
+            cleanTitle = 'Land Sale / Title Deed (Annexure-41)';
+            annTag = 'Annexure-41';
+            desc = 'Registered primary Land Sale Deed / Title Deed establishing developer title ownership.';
+          } else if (labelLower.includes('annexure-42') || labelLower.includes('jda')) {
+            cleanTitle = 'Joint Development Agreement — JDA (Annexure-42)';
+            annTag = 'Annexure-42';
+            desc = 'Registered Joint Development Agreement (JDA) between landowner and promoter.';
+          } else if (labelLower.includes('annexure-43') || labelLower.includes('rtc')) {
+            cleanTitle = 'RTC / Pahani Land Record (Annexure-43)';
+            annTag = 'Annexure-43';
+            desc = 'Revenue Department Record of Rights, Tenancy & Crops (RTC / Pahani) extract.';
+          } else if (labelLower.includes('annexure-44') || labelLower.includes('mutation')) {
+            cleanTitle = 'Land Mutation Register Extract (Annexure-44)';
+            annTag = 'Annexure-44';
+            desc = 'Revenue Department Mutation Register (MR) entry confirming title entry transfer.';
+          } else if (labelLower.includes('annexure-45') || labelLower.includes('khatha')) {
+            cleanTitle = 'Khatha Certificate & Extract (Annexure-45)';
+            annTag = 'Annexure-45';
+            desc = 'Municipal / Local Authority Khatha Certificate & Extract (BBMP / CMC / Panchayat).';
+          } else if (labelLower.includes('annexure-46') || labelLower.includes('encumbrance')) {
+            cleanTitle = 'Encumbrance Certificate — EC (Annexure-46)';
+            annTag = 'Annexure-46';
+            desc = 'Sub-Registrar Office Nil Encumbrance Certificate (EC) verifying freedom from mortgages.';
+          }
+
+          urls.forEach(u => {
+            if (typeof u === 'string' && u.startsWith('http')) {
+              addDoc({
+                title: cleanTitle,
+                categoryKey: 'legal',
+                categoryName: 'Legal Title Deeds & Sanctioned Plans',
+                categoryIcon: '📐',
+                ref: `Survey Table #${sIdx + 1}`,
+                url: u,
+                annexure: annTag,
+                fileType: 'Legal Document',
+                desc: desc
+              });
+            }
+          });
+        }
+      });
+    });
+
+    // 7. Quarterly Progress Updates & Site Progress Photos
+    const qUpdates = raw.quarterly_updates || [];
+    qUpdates.forEach((qu, qIdx) => {
+      if (!qu || typeof qu !== 'object') return;
+      const cols = qu.columns || [];
+      const colUrls = qu.column_urls || [];
+      
+      colUrls.forEach((urls, colIdx) => {
+        const urlArray = Array.isArray(urls) ? urls : [urls];
+        const label = cols[colIdx] || `Quarterly Attachment ${colIdx + 1}`;
+        urlArray.forEach(u => {
+          if (typeof u === 'string' && u.startsWith('http')) {
+            const isPhoto = label.toLowerCase().includes('photo') || label.toLowerCase().includes('image');
+            addDoc({
+              title: label.replace(/\s*\*/g, '').trim(),
+              categoryKey: isPhoto ? 'photos' : 'other',
+              categoryName: isPhoto ? 'Construction Progress Photographs' : 'Quarterly Progress Reports',
+              categoryIcon: isPhoto ? '📷' : '📊',
+              ref: `Quarterly Update #${qIdx + 1}`,
+              url: u,
+              annexure: isPhoto ? 'Site Photo' : 'Quarterly Filing',
+              fileType: isPhoto ? 'JPEG Image' : 'PDF Report',
+              desc: `Quarterly project progress attachment (${label}). Authenticated snapshot or progress report filed with RERA Karnataka.`
+            });
+          }
+        });
+      });
+    });
+
+    // 8. Completion Details & Bank Loan Filings
+    const compDetails = raw.completion_details || {};
+    Object.keys(compDetails).forEach(sec => {
+      const content = compDetails[sec];
+      if (content && typeof content === 'object') {
+        Object.keys(content).forEach(k => {
+          if (k.endsWith(' URL') || k.endsWith('_url') || k.toLowerCase().includes('photo') || k.includes('URL')) {
+            const label = k.replace(/\s*URL.*$/, '').replace(/_url$/, '').trim();
+            const val = content[k];
+            const urls = Array.isArray(val) ? val : [val];
+            const isPhoto = label.toLowerCase().includes('photo') || label.toLowerCase().includes('image');
+            
+            urls.forEach(u => {
+              if (typeof u === 'string' && u.startsWith('http')) {
+                addDoc({
+                  title: `${sec} — ${label}`,
+                  categoryKey: isPhoto ? 'photos' : 'completion',
+                  categoryName: isPhoto ? 'Construction Progress Photographs' : 'Completion & Loan Filings',
+                  categoryIcon: isPhoto ? '📷' : '🏗️',
+                  ref: sec,
+                  url: u,
+                  annexure: isPhoto ? 'Completion Photo' : 'Completion Doc',
+                  fileType: isPhoto ? 'JPEG Image' : 'PDF Document',
+                  desc: `Project completion, bank loan encumbrance, or inventory alteration filing (${label}) under ${sec}.`
+                });
+              }
+            });
+          }
+        });
+      }
+    });
+
     return docs;
   }
 
@@ -994,7 +1121,7 @@
     if (docCountEl) docCountEl.textContent = `${allDocs.length} Verified Files`;
 
     // Category Counters
-    const counts = { all: allDocs.length, certs: 0, statutory: 0, legal: 0, promoter: 0, other: 0 };
+    const counts = { all: allDocs.length, certs: 0, statutory: 0, legal: 0, promoter: 0, photos: 0, completion: 0, other: 0 };
     allDocs.forEach(d => {
       if (counts[d.categoryKey] !== undefined) counts[d.categoryKey]++;
       else counts.other++;
