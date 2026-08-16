@@ -1002,34 +1002,34 @@
           let desc = `Land survey & titling attachment filed under Survey Land Table.`;
           
           const labelLower = cleanTitle.toLowerCase();
-          if (labelLower.includes('annexure-40') || labelLower.includes('conversion') || labelLower.includes('alienation')) {
-            cleanTitle = 'Agricultural Land Conversion Order (Annexure-40)';
-            annTag = 'Annexure-40';
-            desc = 'DC Order authorizing agricultural land conversion/alienation for residential/commercial project use.';
-          } else if (labelLower.includes('annexure-41') || labelLower.includes('deed') || labelLower.includes('sale')) {
+          if (labelLower.includes('annexure-46') || labelLower.includes('encumbrance')) {
+            cleanTitle = 'Encumbrance Certificate — EC (Annexure-46)';
+            annTag = 'Annexure-46 (EC)';
+            desc = 'Sub-Registrar Office Nil Encumbrance Certificate (EC) verifying freedom from mortgages or legal encumbrances.';
+          } else if (labelLower.includes('annexure-41') || labelLower.includes('title deed') || labelLower.includes('sale deed')) {
             cleanTitle = 'Land Sale / Title Deed (Annexure-41)';
-            annTag = 'Annexure-41';
+            annTag = 'Annexure-41 (Title)';
             desc = 'Registered primary Land Sale Deed / Title Deed establishing developer title ownership.';
           } else if (labelLower.includes('annexure-42') || labelLower.includes('jda')) {
             cleanTitle = 'Joint Development Agreement — JDA (Annexure-42)';
-            annTag = 'Annexure-42';
+            annTag = 'Annexure-42 (JDA)';
             desc = 'Registered Joint Development Agreement (JDA) between landowner and promoter.';
-          } else if (labelLower.includes('annexure-43') || labelLower.includes('rtc')) {
-            cleanTitle = 'RTC / Pahani Land Record (Annexure-43)';
-            annTag = 'Annexure-43';
-            desc = 'Revenue Department Record of Rights, Tenancy & Crops (RTC / Pahani) extract.';
+          } else if (labelLower.includes('annexure-40') || labelLower.includes('conversion') || labelLower.includes('alienation')) {
+            cleanTitle = 'Agricultural Land Conversion Order (Annexure-40)';
+            annTag = 'Annexure-40 (Conversion)';
+            desc = 'DC Order authorizing agricultural land conversion/alienation for residential/commercial project use.';
           } else if (labelLower.includes('annexure-44') || labelLower.includes('mutation')) {
             cleanTitle = 'Land Mutation Register Extract (Annexure-44)';
-            annTag = 'Annexure-44';
+            annTag = 'Annexure-44 (Mutation)';
             desc = 'Revenue Department Mutation Register (MR) entry confirming title entry transfer.';
+          } else if (labelLower.includes('annexure-43') || labelLower.includes('rtc')) {
+            cleanTitle = 'RTC / Pahani Land Record (Annexure-43)';
+            annTag = 'Annexure-43 (RTC)';
+            desc = 'Revenue Department Record of Rights, Tenancy & Crops (RTC / Pahani) extract.';
           } else if (labelLower.includes('annexure-45') || labelLower.includes('khatha')) {
             cleanTitle = 'Khatha Certificate & Extract (Annexure-45)';
-            annTag = 'Annexure-45';
+            annTag = 'Annexure-45 (Khatha)';
             desc = 'Municipal / Local Authority Khatha Certificate & Extract (BBMP / CMC / Panchayat).';
-          } else if (labelLower.includes('annexure-46') || labelLower.includes('encumbrance')) {
-            cleanTitle = 'Encumbrance Certificate — EC (Annexure-46)';
-            annTag = 'Annexure-46';
-            desc = 'Sub-Registrar Office Nil Encumbrance Certificate (EC) verifying freedom from mortgages.';
           }
 
           urls.forEach(u => {
@@ -1181,52 +1181,15 @@
               <span><strong>Ref / File ID:</strong> <span class="mono">${doc.ref}</span></span>
               <span style="color:var(--clear); font-weight:600;">✓ Verified RERA Link</span>
             </div>
-            <button onclick="downloadPDF('${doc.url.replace(/'/g, "\\'")}', '${doc.title.replace(/'/g, "\\'")}', this)" class="doc-download-btn" title="Download ${doc.title} to Machine">
-              <span>📥 Download PDF</span>
-            </button>
+            <a href="/api/v1/documents/download?url=${encodeURIComponent(doc.url)}&filename=${encodeURIComponent(doc.title)}" target="_blank" rel="noopener noreferrer" class="doc-download-btn" title="Download ${doc.title} to Machine">
+              <span>📥 Download PDF</span> ↗
+            </a>
           </div>
         </div>
       `).join('');
     }
 
-  window.downloadPDF = async function downloadPDF(url, title, btnEl) {
-    const originalText = btnEl ? btnEl.innerHTML : '';
-    if (btnEl) {
-      btnEl.style.pointerEvents = 'none';
-      btnEl.style.opacity = '0.7';
-      btnEl.innerHTML = '<span>⏳ Downloading...</span>';
-    }
 
-    try {
-      const proxyUrl = `/api/v1/documents/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(title)}`;
-      const res = await fetch(proxyUrl);
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      const blob = await res.blob();
-      
-      const blobUrl = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
-      let safeName = (title || 'RERA_Document').replace(/[^a-zA-Z0-9_\-\.]/g, '_').replace(/_+/g, '_');
-      if (!safeName.toLowerCase().endsWith('.pdf')) safeName += '.pdf';
-
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = blobUrl;
-      a.download = safeName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-
-      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 3000);
-    } catch (err) {
-      console.error('Proxy download failed, opening direct URL:', err);
-      window.open(url, '_blank');
-    } finally {
-      if (btnEl) {
-        btnEl.style.pointerEvents = 'auto';
-        btnEl.style.opacity = '1';
-        btnEl.innerHTML = originalText;
-      }
-    }
-  }
 
     // Attach Event Listeners
     const searchInput = document.getElementById('docSearchInput');
