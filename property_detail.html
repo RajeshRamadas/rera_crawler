@@ -1181,13 +1181,52 @@
               <span><strong>Ref / File ID:</strong> <span class="mono">${doc.ref}</span></span>
               <span style="color:var(--clear); font-weight:600;">✓ Verified RERA Link</span>
             </div>
-            <a href="${doc.url}" target="_blank" rel="noopener noreferrer" class="doc-download-btn" title="Open ${doc.title} on RERA Portal">
-              <span>Download PDF</span> ↗
-            </a>
+            <button onclick="downloadPDF('${doc.url.replace(/'/g, "\\'")}', '${doc.title.replace(/'/g, "\\'")}', this)" class="doc-download-btn" title="Download ${doc.title} to Machine">
+              <span>📥 Download PDF</span>
+            </button>
           </div>
         </div>
       `).join('');
     }
+
+  window.downloadPDF = async function downloadPDF(url, title, btnEl) {
+    const originalText = btnEl ? btnEl.innerHTML : '';
+    if (btnEl) {
+      btnEl.style.pointerEvents = 'none';
+      btnEl.style.opacity = '0.7';
+      btnEl.innerHTML = '<span>⏳ Downloading...</span>';
+    }
+
+    try {
+      const proxyUrl = `/api/v1/documents/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(title)}`;
+      const res = await fetch(proxyUrl);
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      const blob = await res.blob();
+      
+      const blobUrl = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      let safeName = (title || 'RERA_Document').replace(/[^a-zA-Z0-9_\-\.]/g, '_').replace(/_+/g, '_');
+      if (!safeName.toLowerCase().endsWith('.pdf')) safeName += '.pdf';
+
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = blobUrl;
+      a.download = safeName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 3000);
+    } catch (err) {
+      console.error('Proxy download failed, opening direct URL:', err);
+      window.open(url, '_blank');
+    } finally {
+      if (btnEl) {
+        btnEl.style.pointerEvents = 'auto';
+        btnEl.style.opacity = '1';
+        btnEl.innerHTML = originalText;
+      }
+    }
+  }
 
     // Attach Event Listeners
     const searchInput = document.getElementById('docSearchInput');
