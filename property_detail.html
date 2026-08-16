@@ -164,6 +164,38 @@
     color: var(--ink);
   }
 
+  /* Collapsible Cards */
+  .card.collapsible .card-head {
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s ease;
+  }
+  .card.collapsible .card-head:hover .card-head-title {
+    color: var(--clear);
+  }
+  .card.collapsible.collapsed {
+    padding-bottom: 1rem;
+  }
+  .card.collapsible.collapsed .card-head {
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-bottom: 0;
+  }
+  .card.collapsible .collapse-icon {
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    transition: transform 0.2s ease;
+    margin-left: 0.75rem;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .card.collapsible.collapsed .collapse-icon {
+    transform: rotate(-90deg);
+  }
+  .card.collapsible.collapsed .card-body {
+    display: none;
+  }
+
   /* Hero Section Header */
   .hero-card {
     border-top: 5px solid var(--ink);
@@ -651,106 +683,139 @@
         <div>
 
           <!-- 1. RERA Technical & Financial Overview -->
-          <div class="card">
+          <div class="card collapsible">
             <div class="card-head">
-              <span class="card-head-title">RERA Project Overview & Financial Details</span>
-              <span class="mono" style="font-size:0.7rem; color:var(--ink-soft);" id="crawledAt">Database Verified</span>
+              <div>
+                <span class="card-head-title">RERA Project Overview & Financial Details</span>
+                <span class="mono" style="font-size:0.7rem; color:var(--ink-soft); margin-left:0.5rem;" id="crawledAt">Database Verified</span>
+              </div>
+              <span class="collapse-icon">▼</span>
             </div>
-            <div class="audit-grid" id="overviewGrid">
-              <!-- Dynamically populated from raw_data.project_overview_details -->
+            <div class="card-body">
+              <div class="audit-grid" id="overviewGrid">
+                <!-- Dynamically populated from raw_data.project_overview_details -->
+              </div>
             </div>
           </div>
 
           <!-- 2. Land, Survey & Title Deed Details -->
-          <div class="card">
+          <div class="card collapsible">
             <div class="card-head">
-              <span class="card-head-title">Land, Survey & Khatha Records</span>
-              <span class="mono" style="font-size:0.7rem; color:var(--ink-soft);">Annexure & Title Data</span>
+              <div>
+                <span class="card-head-title">Land, Survey & Khatha Records</span>
+                <span class="mono" style="font-size:0.7rem; color:var(--ink-soft); margin-left:0.5rem;">Annexure & Title Data</span>
+              </div>
+              <span class="collapse-icon">▼</span>
             </div>
-            <div id="surveyDetailsWrap"></div>
+            <div class="card-body">
+              <div id="surveyDetailsWrap"></div>
+            </div>
           </div>
 
           <!-- 3. Directional Schedules & Boundaries -->
-          <div class="card">
+          <div class="card collapsible">
             <div class="card-head">
               <span class="card-head-title">Property Boundaries & Schedules</span>
+              <span class="collapse-icon">▼</span>
             </div>
-            <div class="audit-grid" id="schedulesGrid"></div>
+            <div class="card-body">
+              <div class="audit-grid" id="schedulesGrid"></div>
+            </div>
           </div>
 
           <!-- 4. Promoter & Partner Profile -->
-          <div class="card">
+          <div class="card collapsible">
             <div class="card-head">
               <span class="card-head-title">Promoter & Developer Profile</span>
+              <span class="collapse-icon">▼</span>
             </div>
-            <div class="audit-grid" id="promoterGrid"></div>
+            <div class="card-body">
+              <div class="audit-grid" id="promoterGrid"></div>
+            </div>
           </div>
 
           <!-- 5. Positives (+) vs Negatives (-) Regulatory Evaluation -->
-          <div class="card">
+          <div class="card collapsible">
             <div class="card-head">
-              <span class="card-head-title">Regulatory Risk Evaluation</span>
-              <span class="mono" style="font-size:0.7rem; color:var(--ink-soft);">Positives (+) vs Negatives (-)</span>
-            </div>
-            <div class="eval-grid">
-              <div class="eval-box positives">
-                <div class="eval-box-title">Compliance Positives (+)</div>
-                <ul class="eval-list" id="positivesList"></ul>
+              <div>
+                <span class="card-head-title">Regulatory Risk Evaluation</span>
+                <span class="mono" style="font-size:0.7rem; color:var(--ink-soft); margin-left:0.5rem;">Positives (+) vs Negatives (-)</span>
               </div>
-              <div class="eval-box negatives">
-                <div class="eval-box-title">Risk Negatives (-)</div>
-                <ul class="eval-list" id="negativesList"></ul>
+              <span class="collapse-icon">▼</span>
+            </div>
+            <div class="card-body">
+              <div class="eval-grid">
+                <div class="eval-box positives">
+                  <div class="eval-box-title">Compliance Positives (+)</div>
+                  <ul class="eval-list" id="positivesList"></ul>
+                </div>
+                <div class="eval-box negatives">
+                  <div class="eval-box-title">Risk Negatives (-)</div>
+                  <ul class="eval-list" id="negativesList"></ul>
+                </div>
               </div>
             </div>
           </div>
 
           <!-- 6. Complaints & Dispute Audit -->
-          <div class="card">
+          <div class="card collapsible">
             <div class="card-head">
-              <span class="card-head-title">RERA Complaints & Legal Dispute Audit</span>
-              <span class="mono" style="font-size:0.7rem; color:var(--ink-soft);" id="complaintCountText">0 Complaints</span>
+              <div>
+                <span class="card-head-title">RERA Complaints & Legal Dispute Audit</span>
+                <span class="mono" style="font-size:0.7rem; color:var(--ink-soft); margin-left:0.5rem;" id="complaintCountText">0 Complaints</span>
+              </div>
+              <span class="collapse-icon">▼</span>
             </div>
-            <div id="complaintsWrap"></div>
+            <div class="card-body">
+              <div id="complaintsWrap"></div>
+            </div>
           </div>
 
           <!-- 7. Quarterly Progress Update History -->
-          <div class="card">
+          <div class="card collapsible">
             <div class="card-head">
               <span class="card-head-title">Quarterly Progress Filings History</span>
+              <span class="collapse-icon">▼</span>
             </div>
-            <div id="quarterlyWrap"></div>
+            <div class="card-body">
+              <div id="quarterlyWrap"></div>
+            </div>
           </div>
 
           <!-- 8. RERA Official Certificates & Uploaded Document Vault -->
-          <div class="card" id="docVaultCard">
+          <div class="card collapsible" id="docVaultCard">
             <div class="card-head" style="margin-bottom: 0.5rem;">
-              <div>
-                <span class="card-head-title">RERA Official Certificates & Uploaded Document Vault</span>
+              <div style="flex:1; padding-right:0.75rem;">
+                <div style="display:flex; align-items:center; justify-content:space-between;">
+                  <span class="card-head-title">RERA Official Certificates & Uploaded Document Vault</span>
+                  <span class="mono" style="font-size:0.75rem; font-weight:600; color:var(--clear);" id="docCountText">0 Verified Files</span>
+                </div>
                 <div class="doc-vault-desc">Full repository of verified download documents including RERA certificates, legal title deeds, CA/Architect/Engineer annexures, sanctioned plans, and promoter filings.</div>
               </div>
-              <span class="mono" style="font-size:0.75rem; font-weight:600; color:var(--clear);" id="docCountText">0 Verified Files</span>
+              <span class="collapse-icon">▼</span>
             </div>
+            <div class="card-body">
+              <!-- Controls: Search Input & Category Filter Pills -->
+              <div class="doc-controls">
+                <div class="doc-search-box">
+                  <span class="doc-search-icon">🔍</span>
+                  <input type="text" id="docSearchInput" class="doc-search-input" placeholder="Search documents by name, annexure, or reference ID..." />
+                </div>
+                <div class="doc-filter-pills" id="docFilterPills">
+                  <button class="doc-pill active" data-cat="all">All (<span id="count-all">0</span>)</button>
+                  <button class="doc-pill" data-cat="certs">Certificates (<span id="count-certs">0</span>)</button>
+                  <button class="doc-pill" data-cat="statutory">Statutory Annexures (<span id="count-statutory">0</span>)</button>
+                  <button class="doc-pill" data-cat="legal">Legal & Plans (<span id="count-legal">0</span>)</button>
+                  <button class="doc-pill" data-cat="promoter">Promoter Filings (<span id="count-promoter">0</span>)</button>
+                  <button class="doc-pill" data-cat="photos">Construction Photos (<span id="count-photos">0</span>)</button>
+                  <button class="doc-pill" data-cat="completion">Completion & Loan (<span id="count-completion">0</span>)</button>
+                  <button class="doc-pill" data-cat="other">Other (<span id="count-other">0</span>)</button>
+                </div>
+              </div>
 
-            <!-- Controls: Search Input & Category Filter Pills -->
-            <div class="doc-controls">
-              <div class="doc-search-box">
-                <span class="doc-search-icon">🔍</span>
-                <input type="text" id="docSearchInput" class="doc-search-input" placeholder="Search documents by name, annexure, or reference ID..." />
-              </div>
-              <div class="doc-filter-pills" id="docFilterPills">
-                <button class="doc-pill active" data-cat="all">All (<span id="count-all">0</span>)</button>
-                <button class="doc-pill" data-cat="certs">Certificates (<span id="count-certs">0</span>)</button>
-                <button class="doc-pill" data-cat="statutory">Statutory Annexures (<span id="count-statutory">0</span>)</button>
-                <button class="doc-pill" data-cat="legal">Legal & Plans (<span id="count-legal">0</span>)</button>
-                <button class="doc-pill" data-cat="promoter">Promoter Filings (<span id="count-promoter">0</span>)</button>
-                <button class="doc-pill" data-cat="photos">Construction Photos (<span id="count-photos">0</span>)</button>
-                <button class="doc-pill" data-cat="completion">Completion & Loan (<span id="count-completion">0</span>)</button>
-                <button class="doc-pill" data-cat="other">Other (<span id="count-other">0</span>)</button>
-              </div>
+              <!-- Container for Document Cards -->
+              <div class="doc-vault-grid" id="docVaultContainer"></div>
             </div>
-
-            <!-- Container for Document Cards -->
-            <div class="doc-vault-grid" id="docVaultContainer"></div>
           </div>
 
         </div>
@@ -1644,7 +1709,22 @@
     document.getElementById('loadingState').innerHTML = `<h3 class="serif" style="color:var(--flag);">${msg}</h3><br><a href="/register" class="btn ghost">Back to Register</a>`;
   }
 
-  window.addEventListener('DOMContentLoaded', loadPropertyDetails);
+  function setupCollapsibleCards() {
+    document.querySelectorAll('.card.collapsible .card-head').forEach(head => {
+      head.addEventListener('click', (e) => {
+        if (e.target.closest('input, button, a')) return;
+        const card = head.closest('.card.collapsible');
+        if (card) {
+          card.classList.toggle('collapsed');
+        }
+      });
+    });
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    setupCollapsibleCards();
+    loadPropertyDetails();
+  });
 </script>
 </body>
 </html>
