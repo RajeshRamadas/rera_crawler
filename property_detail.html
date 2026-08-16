@@ -1706,10 +1706,24 @@
 
     // 4. Promoter Details
     const promoterGrid = document.getElementById('promoterGrid');
-    const pastProjs = rawProm['List of Projects Launched in Past 5 Years ( As per Promoter )'] || [];
+    const pastProjs = rawProm['List of Projects Launched in Past 5 Years ( As per Promoter )'];
+    let pastCount = 0;
+    if (Array.isArray(pastProjs)) {
+      pastCount = pastProjs.length;
+    } else if (pastProjs && typeof pastProjs === 'object') {
+      if (pastProjs['Project Name'] || pastProjs['Project Address'] || pastProjs['Current Status']) {
+        pastCount = 1;
+      } else {
+        pastCount = Object.keys(pastProjs).length;
+      }
+    } else if (typeof pastProjs === 'number') {
+      pastCount = pastProjs;
+    }
+
+    const pastProjName = (pastProjs && typeof pastProjs === 'object' && !Array.isArray(pastProjs)) ? (pastProjs['Project Name'] || '') : '';
     promoterGrid.innerHTML = `
       <div class="audit-item"><span class="audit-label">Promoter Name</span><span class="audit-val">${overview.developer_name || 'N/A'}</span></div>
-      <div class="audit-item"><span class="audit-label">Past 5 Years Projects</span><span class="audit-val mono">${pastProjs.length} Projects Launched</span></div>
+      <div class="audit-item"><span class="audit-label">Past 5 Years Projects</span><span class="audit-val mono">${pastCount} Project${pastCount !== 1 ? 's' : ''} Launched ${pastProjName ? '(' + pastProjName + ')' : ''}</span></div>
     `;
 
     // 5. Property Risk & Compliance Report with 8-Axis Profile Breakdown
