@@ -261,7 +261,6 @@
     gap: 0.35rem;
     padding-top: 0.2rem;
   }
-  .shortlist-check { width: 16px; height: 16px; accent-color: var(--ink); cursor: pointer; }
   .rank { font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; color: var(--ink-soft); font-weight: 600; }
 
   .prop-main-info {
@@ -471,7 +470,7 @@
       <a href="/radar-chart" style="margin-left: auto; color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink); font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; text-transform: uppercase;">Compare Radar ↗</a>
     </div>
     <h1>Property Risk & Compliance Register</h1>
-    <p class="sub">All tracked developments in one list, ranked by weighted composite score. Search, shortlist, and export the ones worth marketing.</p>
+    <p class="sub">All tracked developments in one list, ranked by weighted composite score.</p>
   </header>
 
   <div class="banner" id="errorBanner"></div>
@@ -556,8 +555,6 @@
         <option value="2024">Completion 2024</option>
         <option value="2023">Completion 2023</option>
       </select>
-      <button class="btn ghost" id="clearShortlistBtn">Clear shortlist</button>
-      <button class="btn" id="exportBtn" disabled>Export shortlist (0)</button>
     </div>
     <div class="toolbar-row">
       <div class="filters" id="filterChips"></div>
@@ -632,7 +629,7 @@
   </div>
 
   <div class="note">
-    Sample data for layout review only — not sourced from the live RERA registry. Composite score uses the same weighted average as the comparison report. Map tiles © OpenStreetMap contributors. Shortlist selections are saved to this browser and are private to you.
+    Sample data for layout review only — not sourced from the live RERA registry. Composite score uses the same weighted average as the comparison report. Map tiles © OpenStreetMap contributors.
   </div>
 </div>
 
@@ -849,24 +846,6 @@ try {
   let activeFilter = 'all';
   let activeSort = 'score-desc';
   let searchTerm = '';
-  let shortlist = [];
-
-  const STORAGE_KEY = 'rera_register_shortlist_v1';
-  const storageAvailable = !!(window.storage && window.storage.get && window.storage.set);
-
-  async function loadShortlist() {
-    if (!storageAvailable) return;
-    try {
-      const result = await window.storage.get(STORAGE_KEY, false);
-      if (result && result.value) shortlist = JSON.parse(result.value);
-    } catch (e) { shortlist = []; }
-  }
-
-  async function saveShortlist() {
-    if (!storageAvailable) return;
-    try { await window.storage.set(STORAGE_KEY, JSON.stringify(shortlist), false); }
-    catch (e) { console.warn('Could not persist shortlist:', e.message); }
-  }
 
   function showToast(msg) {
     const t = document.getElementById('toast');
@@ -886,14 +865,13 @@ try {
       <div class="summary-cell clear"><div class="num">${clear}</div><div class="lbl">Clear band (Page)</div></div>
       <div class="summary-cell watch"><div class="num">${watch}</div><div class="lbl">Watch band (Page)</div></div>
       <div class="summary-cell flag"><div class="num">${flag}</div><div class="lbl">Flag / gate failed</div></div>
-      <div class="summary-cell gold"><div class="num">${shortlist.length}</div><div class="lbl">Shortlisted</div></div>
     `;
   }
 
   function renderFilters() {
     const chips = [
       { key: 'all', label: 'All' }, { key: 'clear', label: 'Clear' }, { key: 'watch', label: 'Watch' },
-      { key: 'flag', label: 'Flag' }, { key: 'shortlisted', label: 'Shortlisted' },
+      { key: 'flag', label: 'Flag' }
     ];
     const el = document.getElementById('filterChips');
     el.innerHTML = chips.map(c => `<button class="filter-chip ${activeFilter === c.key ? 'active' : ''}" data-key="${c.key}">${c.label}</button>`).join('');
@@ -1103,12 +1081,10 @@ try {
       }).join('');
 
       const unitTags = p.units.map(u => `<span class="unit-tag">${u}</span>`).join('');
-      const isChecked = shortlist.includes(p.id);
 
       row.innerHTML = `
         <div class="prop-head" data-toggle>
           <div class="prop-left-col">
-            <input type="checkbox" class="shortlist-check" data-shortlist="${p.id}" ${isChecked ? 'checked' : ''} title="Add to shortlist" />
             <span class="rank mono">${String(displayRank).padStart(2, '0')}</span>
           </div>
 
@@ -1192,7 +1168,7 @@ try {
       `;
 
       row.querySelector('[data-toggle]').addEventListener('click', (e) => {
-        if (e.target.closest('.shortlist-check') || e.target.closest('.btn')) return;
+        if (e.target.closest('.btn')) return;
         const willOpen = !row.classList.contains('open');
         document.querySelectorAll('.prop-row.open').forEach(r => r.classList.remove('open'));
         if (willOpen) {
@@ -1220,48 +1196,10 @@ try {
         }
       });
 
-      const checkbox = row.querySelector('.shortlist-check');
-      checkbox.addEventListener('click', (e) => e.stopPropagation());
-      checkbox.addEventListener('change', async (e) => {
-        const id = e.target.dataset.shortlist;
-        if (e.target.checked) { if (!shortlist.includes(id)) shortlist.push(id); }
-        else { shortlist = shortlist.filter(sid => sid !== id); }
-        await saveShortlist();
-        renderSummary();
-        updateExportButton();
-      });
-
       container.appendChild(row);
     });
 
     updateMapMarkers();
-  }
-
-  function updateExportButton() {
-    const btn = document.getElementById('exportBtn');
-    btn.textContent = `Export shortlist (${shortlist.length})`;
-    btn.disabled = shortlist.length === 0;
-  }
-
-  function exportShortlistCSV() {
-    const rows = PROPERTIES.filter(p => shortlist.includes(p.id));
-    if (!rows.length) return;
-    const header = ['Name', 'Developer', 'Area', 'Price Range (Cr)', 'Unit Types', 'Composite Score', 'Band', 'Gate Status'];
-    const lines = [header.join(',')];
-    rows.forEach(p => {
-      const cells = [
-        p.name, p.developer, p.area, `${p.priceMin.toFixed(2)}-${p.priceMax.toFixed(2)}`,
-        p.units.join(' / '), p.composite, p.band.label, p.gateOK ? 'Cleared' : 'Gate failed'
-      ].map(v => `"${String(v).replace(/"/g, '""')}"`);
-      lines.push(cells.join(','));
-    });
-    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'property_shortlist.csv';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showToast(`Exported ${rows.length} propert${rows.length === 1 ? 'y' : 'ies'}`);
   }
 
   /**
@@ -1326,7 +1264,7 @@ try {
 
   async function fetchLiveProperties(page = 1) {
     const isFilteredByChip = activeFilter !== 'all';
-    // If filtering by chip (Clear/Watch/Flag/Shortlisted), fetch a larger set (100) to filter locally accurately
+    // If filtering by chip (Clear/Watch/Flag), fetch a larger set (100) to filter locally accurately
     const fetchLimit = isFilteredByChip ? 100 : PAGE_SIZE;
     const offset = isFilteredByChip ? 0 : (page - 1) * PAGE_SIZE;
 
@@ -1419,7 +1357,7 @@ try {
       rawList = [...SAMPLE_PROPERTIES];
     }
 
-    // Apply Filter Chips (Clear, Watch, Flag, Shortlisted)
+    // Apply Filter Chips (Clear, Watch, Flag)
     let filteredList = rawList;
     if (activeFilter === 'clear') {
       filteredList = rawList.filter(p => p.band.class === 'clear' && p.gateOK);
@@ -1427,8 +1365,6 @@ try {
       filteredList = rawList.filter(p => p.band.class === 'watch' && p.gateOK);
     } else if (activeFilter === 'flag') {
       filteredList = rawList.filter(p => p.band.class === 'flag' || !p.gateOK);
-    } else if (activeFilter === 'shortlisted') {
-      filteredList = rawList.filter(p => shortlist.includes(p.id));
     }
 
     if (activeFilter !== 'all' || !isLive) {
@@ -1451,7 +1387,6 @@ try {
 
     renderSummary();
     renderPagination();
-    updateExportButton();
     renderList();
   }
 
@@ -1513,17 +1448,6 @@ try {
     if (currentPage < totalPagesCount) { currentPage = totalPagesCount; loadAndRender(); }
   });
 
-  document.getElementById('exportBtn').addEventListener('click', exportShortlistCSV);
-  document.getElementById('clearShortlistBtn').addEventListener('click', async () => {
-    if (!shortlist.length) return;
-    shortlist = [];
-    await saveShortlist();
-    renderSummary();
-    updateExportButton();
-    renderList();
-    showToast('Shortlist cleared');
-  });
-
   document.getElementById('mapFitBtn').addEventListener('click', (e) => {
     e.stopPropagation();
     fitAllMapMarkers();
@@ -1545,13 +1469,7 @@ try {
     }
   });
 
-  document.getElementById('mapFitBtn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    fitAllMapMarkers();
-  });
-
   (async function init() {
-    try { await loadShortlist(); } catch (e) {}
     await populateDistrictDropdown();
     await populatePropertyTypeDropdown();
     renderFilters();
