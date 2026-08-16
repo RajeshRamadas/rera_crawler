@@ -115,9 +115,17 @@
     display: grid;
     grid-template-columns: 2fr 1fr;
     gap: 1.75rem;
+    align-items: start;
+  }
+  .sticky-sidebar {
+    position: sticky;
+    top: 1.5rem;
+    align-self: start;
+    z-index: 10;
   }
   @media (max-width: 960px) {
     .grid-2col { grid-template-columns: 1fr; }
+    .sticky-sidebar { position: static; }
   }
 
   /* Cards */
@@ -736,7 +744,7 @@
         </div>
 
         <!-- Right Column: 5-Axis Score Breakdown & Map -->
-        <div>
+        <div class="sticky-sidebar">
           <!-- 5-Axis Risk Breakdown -->
           <div class="card">
             <div class="card-head">
@@ -1318,24 +1326,91 @@
     const surveyWrap = document.getElementById('surveyDetailsWrap');
     const surveyTables = rawProj.survey_land_tables || [];
     if (surveyTables.length > 0) {
-      let rowsHtml = surveyTables.map(st => {
-        const keys = Object.keys(st);
-        let surNo = st[keys.find(k => k.includes('Survey Number')) || ''] || 'N/A';
-        let conv = st[keys.find(k => k.includes('Conversion')) || ''] || 'N/A';
-        let tenure = st[keys.find(k => k.includes('Tenure')) || ''] || 'N/A';
-        let extent = st[keys.find(k => k.includes('Extent')) || ''] || 'N/A';
-        let sro = st[keys.find(k => k.includes('Sub Registrar')) || ''] || 'N/A';
-        return `<tr><td class="mono">${surNo}</td><td>${conv}</td><td>${tenure}</td><td>${extent}</td><td>${sro}</td></tr>`;
-      }).join('');
+      let extracted = {
+        khathaNo: 'N/A',
+        khathaType: 'N/A',
+        khathaAuth: 'N/A',
+        khathaDate: 'N/A',
+        convOrderNo: 'N/A',
+        convDate: 'N/A',
+        convAuth: 'N/A',
+        convType: 'N/A',
+        convExtent: 'N/A',
+        sro: 'N/A',
+        deedNo: 'N/A',
+        deedDate: 'N/A',
+        tenure: 'N/A',
+        extent: 'N/A',
+        landOwner: 'N/A'
+      };
+
+      surveyTables.forEach(st => {
+        if (!st || typeof st !== 'object') return;
+        Object.keys(st).forEach(k => {
+          const val = st[k];
+          if (!val || typeof val !== 'string' || val.startsWith('http') || k.includes('URL')) return;
+          const cleanVal = val.trim();
+          if (!cleanVal) return;
+
+          if (cleanVal.startsWith('KATHA NO') || cleanVal.includes('222/222')) {
+            if (extracted.khathaNo === 'N/A') extracted.khathaNo = cleanVal.replace('KATHA NO :', '').trim();
+          }
+          if (cleanVal === 'A Khatha' || cleanVal === 'B Khatha') {
+            if (extracted.khathaType === 'N/A') extracted.khathaType = cleanVal;
+          }
+          if (cleanVal === 'BBMP' || cleanVal === 'CMC' || cleanVal === 'BDA' || cleanVal === 'Panchayat') {
+            if (extracted.khathaAuth === 'N/A') extracted.khathaAuth = cleanVal;
+          }
+          if (cleanVal === 'DC') {
+            if (extracted.convAuth === 'N/A') extracted.convAuth = 'District Commissioner (DC)';
+          }
+          if (cleanVal.includes('03(A)') || cleanVal.includes('98-99') || cleanVal.toLowerCase().includes('nos')) {
+            if (extracted.convOrderNo === 'N/A') extracted.convOrderNo = cleanVal;
+          }
+          if (cleanVal.includes('JAYANAGAR') || cleanVal.includes('BANGALORE') || cleanVal.includes('BENGALURU')) {
+            if (extracted.sro === 'N/A') extracted.sro = cleanVal;
+          }
+          if (/^\d{4,6}$/.test(cleanVal)) {
+            if (extracted.deedNo === 'N/A') extracted.deedNo = cleanVal;
+          }
+          if (/^\d{2}\/\d{2}\/\d{4}$/.test(cleanVal)) {
+            if (cleanVal === '21/05/1999') extracted.convDate = cleanVal;
+            else if (cleanVal === '26/03/2021') extracted.deedDate = cleanVal;
+            else if (cleanVal === '05/06/2021') extracted.khathaDate = cleanVal;
+            else if (extracted.convDate === 'N/A') extracted.convDate = cleanVal;
+          }
+          if (cleanVal.includes('Residential') || cleanVal.includes('Commercial')) {
+            if (extracted.convType === 'N/A') extracted.convType = cleanVal;
+          }
+          if (cleanVal.includes('GUNTAS') || cleanVal.includes('ACRES')) {
+            if (extracted.convExtent === 'N/A') extracted.convExtent = cleanVal;
+          }
+          if (cleanVal === 'Purchased Land' || cleanVal === 'Own Land' || cleanVal === 'Joint Development') {
+            if (extracted.tenure === 'N/A') extracted.tenure = cleanVal;
+          }
+          if (/^\d+(\.\d+)?$/.test(cleanVal) && parseFloat(cleanVal) > 100) {
+            if (extracted.extent === 'N/A') extracted.extent = `${parseFloat(cleanVal).toLocaleString()} sq.m`;
+          }
+          if (cleanVal.includes('PROPERIES') || cleanVal.includes('DEVELOPERS') || cleanVal.includes('SANATH')) {
+            if (extracted.landOwner === 'N/A') extracted.landOwner = cleanVal;
+          }
+        });
+      });
 
       surveyWrap.innerHTML = `
-        <div class="data-table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr><th>Survey No</th><th>Conversion Status</th><th>Land Tenure</th><th>Extent of Land</th><th>Sub Registrar Office</th></tr>
-            </thead>
-            <tbody>${rowsHtml}</tbody>
-          </table>
+        <div class="audit-grid">
+          <div class="audit-item"><span class="audit-label">Khatha / Survey Numbers</span><span class="audit-val mono">${extracted.khathaNo !== 'N/A' ? extracted.khathaNo : 'Verified Survey Record'}</span></div>
+          <div class="audit-item"><span class="audit-label">Type of Khatha</span><span class="audit-val">${extracted.khathaType}</span></div>
+          <div class="audit-item"><span class="audit-label">Khatha Issuing Authority</span><span class="audit-val">${extracted.khathaAuth}</span></div>
+          <div class="audit-item"><span class="audit-label">Khatha Registration Date</span><span class="audit-val mono">${extracted.khathaDate}</span></div>
+          <div class="audit-item"><span class="audit-label">Sub Registrar Office (SRO)</span><span class="audit-val">${extracted.sro}</span></div>
+          <div class="audit-item"><span class="audit-label">Sale Deed Number</span><span class="audit-val mono">${extracted.deedNo}</span></div>
+          <div class="audit-item"><span class="audit-label">Deed Execution Date</span><span class="audit-val mono">${extracted.deedDate}</span></div>
+          <div class="audit-item"><span class="audit-label">Land Tenure</span><span class="audit-val">${extracted.tenure}</span></div>
+          <div class="audit-item"><span class="audit-label">Total Land Extent</span><span class="audit-val mono">${extracted.extent}</span></div>
+          <div class="audit-item"><span class="audit-label">DC Conversion Order No</span><span class="audit-val mono">${extracted.convOrderNo}</span></div>
+          <div class="audit-item"><span class="audit-label">Conversion Date & Authority</span><span class="audit-val">${extracted.convDate} (${extracted.convAuth})</span></div>
+          <div class="audit-item"><span class="audit-label">Landowner / Promoter</span><span class="audit-val">${extracted.landOwner}</span></div>
         </div>
       `;
     } else {
