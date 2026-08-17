@@ -123,6 +123,51 @@ def healthcheck():
         }
 
 
+from collections import defaultdict
+
+def extract_configurations(uploaded_docs):
+    if not uploaded_docs:
+        return []
+    rows_by_id = defaultdict(dict)
+    for item in uploaded_docs:
+        header = item.get('financial_year', '').strip()
+        row_id = item.get('document_type', '')
+        val = item.get('file', '').strip()
+        rows_by_id[row_id][header] = val
+        
+    configurations = set()
+    for row_id, rdata in rows_by_id.items():
+        config_name = None
+        for key in ['Unit Type', 'Type of Inventory', 'Plot Type (Site Dimension in Mtr)', 'Plot Size', 'Plot Type']:
+            if key in rdata and rdata[key]:
+                val = rdata[key].upper()
+                if val not in ['TOTAL', 'RESIDENTIAL', 'ODD', 'EVEN', 'ODD SITE', 'ODD SITES', 'OTHER-ROOMS', 'OTHERS-ROOMS', 'EWS', '0.00']:
+                    try:
+                        float(val)
+                    except ValueError:
+                        config_name = rdata[key]
+                        break
+                        
+        if config_name:
+            dimension = None
+            for key in ['Carpet Area (Sq Mtr)', 'Carpet Area', 'Total Area (in Sq.Mtr)', 'Plot Area', 'Area (Sq Mt)']:
+                if key in rdata and rdata[key]:
+                    try:
+                        val_float = float(rdata[key])
+                        if val_float > 0:
+                            dimension = rdata[key]
+                            break
+                    except ValueError:
+                        pass
+            
+            if dimension:
+                configurations.add(f"{config_name} ({dimension} SqM)")
+            else:
+                configurations.add(config_name)
+                
+    return sorted(list(configurations))[:5]
+
+
 @app.get("/api/v1/projects", summary="List and filter RERA projects")
 def list_projects(
     district: Optional[str] = Query(None, description="Filter by district (e.g. Bengaluru Urban)"),
@@ -202,13 +247,19 @@ def list_projects(
                     data->'project_location'->>'longitude' as longitude,
                     data->'project_location'->>'coordinate_source' as coordinate_source,
                     (data->'data_quality'->>'quality_score')::int as quality_score,
-                    (data->'data_quality'->>'is_complete')::boolean as is_complete
+                    (data->'data_quality'->>'is_complete')::boolean as is_complete,
+                    data->'uploaded_documents' as uploaded_documents
                 FROM rera_projects
                 WHERE {where_str}
                 ORDER BY crawled_at DESC LIMIT %s OFFSET %s;
             """
             cur.execute(data_query, params + [limit, offset])
             rows = cur.fetchall()
+
+            for r in rows:
+                r['property_configurations'] = extract_configurations(r.get('uploaded_documents', []))
+                # Remove bulky documents array before returning the list view
+                r.pop('uploaded_documents', None)
 
             count_query = f"SELECT COUNT(*) as total FROM rera_projects WHERE {where_str};"
             cur.execute(count_query, params)
@@ -286,6 +337,7 @@ def analyze_project(
     result = analyze_by_name_or_reg(query_str)
     if result.get("error"):
         raise HTTPException(status_code=404, detail=result.get("message"))
+    result["property_configurations"] = extract_configurations(result.get("raw_data", {}).get("uploaded_documents", []))
     return result
 
 
@@ -298,6 +350,7 @@ def analyze_project_by_path(query: str):
     result = analyze_by_name_or_reg(decoded_q)
     if result.get("error"):
         raise HTTPException(status_code=404, detail=result.get("message"))
+    result["property_configurations"] = extract_configurations(result.get("raw_data", {}).get("uploaded_documents", []))
     return result
 
 

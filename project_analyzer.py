@@ -79,12 +79,16 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
     raw_data = project_row.get("data") or {}
 
     # Core attributes
-    status = (raw_data.get("status") or "UNKNOWN").upper()
-    district = raw_data.get("district") or raw_data.get("project_location", {}).get("district") or "N/A"
-    taluk = raw_data.get("taluk") or raw_data.get("project_location", {}).get("taluk") or "N/A"
-    project_type = raw_data.get("project_type") or "N/A"
+    proj_details = raw_data.get("project_details", {}).get("Project Details", {})
+    if not proj_details and isinstance(raw_data.get("project_details"), dict):
+        proj_details = raw_data.get("project_details", {})
+        
+    status = (raw_data.get("status") or proj_details.get("Project Status") or "UNKNOWN").upper()
+    district = raw_data.get("district") or raw_data.get("project_location", {}).get("district") or proj_details.get("District") or "N/A"
+    taluk = raw_data.get("taluk") or raw_data.get("project_location", {}).get("taluk") or proj_details.get("Taluk") or "N/A"
+    project_type = raw_data.get("project_type") or proj_details.get("Project Type") or "N/A"
     approved_on = raw_data.get("approved_on") or "N/A"
-    proposed_comp_date = raw_data.get("proposed_completion_date") or "N/A"
+    proposed_comp_date = raw_data.get("proposed_completion_date") or proj_details.get("Proposed Project Completion Date") or proj_details.get("Proposed Completion Date") or "N/A"
     orig_comp_date = raw_data.get("proposed_completion_date_at_registration") or proposed_comp_date
     
     # Location
@@ -104,7 +108,9 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
 
     # Documents
     uploaded_docs = raw_data.get("uploaded_documents") or []
+    overview_docs = [v for k, v in raw_data.get("project_overview_details", {}).items() if ("URL" in k or "url" in k.lower()) and v and (isinstance(v, list) or isinstance(v, str))]
     enquired_docs = raw_data.get("enquired_documents") or []
+    total_doc_count = len(uploaded_docs) + len(overview_docs)
     doc_types = [str(d.get("financial_year", "")).lower() for d in uploaded_docs if isinstance(d, dict)]
     doc_raw_names = " ".join(doc_types)
 
@@ -253,10 +259,10 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
     has_plan = "plan" in doc_raw_names or "layout" in doc_raw_names or "sanction" in doc_raw_names
 
     found_doc_highlights = []
-    if len(uploaded_docs) > 0:
+    if total_doc_count > 0:
         positives.append({
             "category": "Documentation",
-            "title": f"{len(uploaded_docs)} Document Record(s) Uploaded",
+            "title": f"{total_doc_count} Document Record(s) Uploaded",
             "description": "Promoter has uploaded property layout, inventory details, or legal filings."
         })
     else:
@@ -347,11 +353,11 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
     else:
         title_reasons.append(f"✓ Sub-Registrar Office jurisdiction identified: {', '.join(map(str, sros[:2]))}.")
 
-    if len(uploaded_docs) == 0:
+    if total_doc_count == 0:
         title_score -= 20
         title_reasons.append("❌ DEDUCTION -20 pts: No legal attachments or title documents uploaded.")
     else:
-        title_reasons.append(f"✓ {len(uploaded_docs)} document record(s) uploaded.")
+        title_reasons.append(f"✓ {total_doc_count} document record(s) uploaded.")
 
     # 5. Location & Connectivity (P-22 to P-29)
     location_reasons = []
@@ -371,11 +377,11 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
     # 6. Layout & Amenities (P-30 to P-33)
     layout_reasons = []
     layout_score = 100
-    if len(uploaded_docs) == 0:
+    if total_doc_count == 0:
         layout_score -= 30
         layout_reasons.append("❌ DEDUCTION -30 pts: Missing layout plan and unit inventory filings.")
     else:
-        layout_reasons.append(f"✓ Layout filings and inventory records uploaded ({len(uploaded_docs)} attachments).")
+        layout_reasons.append(f"✓ Layout filings and inventory records uploaded ({total_doc_count} attachments).")
 
     if project_type == "N/A":
         layout_score -= 20

@@ -1539,10 +1539,14 @@
 
     const overview = data.project_summary || {};
     const raw = data.raw_data || {};
-    const rawOverview = raw.project_overview_details || {};
     const rawLoc = raw.project_location || {};
     const rawProj = raw.project_details || {};
     const rawProm = raw.promoter_details || {};
+    
+    const rawOverviewBase = raw.project_overview_details || {};
+    const rawProjInner = (rawProj && rawProj['Project Details']) ? rawProj['Project Details'] : rawProj;
+    const devDetails = rawProj['Development Details'] || {};
+    const rawOverview = Object.assign({}, rawProjInner, devDetails, rawOverviewBase);
 
     // Hero Top
     document.getElementById('propTitle').textContent = overview.project_name || 'Property Audit';
@@ -1571,21 +1575,22 @@
       <div class="audit-item"><span class="audit-label">Ack Number</span><span class="audit-val mono">${raw.acknowledgement_no || 'N/A'}</span></div>
       <div class="audit-item"><span class="audit-label">Approved On</span><span class="audit-val">${fmtDate(raw.approved_on)}</span></div>
       <div class="audit-item"><span class="audit-label">Project Start Date</span><span class="audit-val">${fmtDate(rawOverview['Project Start Date'] || overview.project_start_date)}</span></div>
-      <div class="audit-item"><span class="audit-label">Proposed Completion</span><span class="audit-val">${fmtDate(rawOverview['Proposed Completion Date'] || overview.proposed_completion_date)}</span></div>
+      <div class="audit-item"><span class="audit-label">Proposed Completion</span><span class="audit-val">${fmtDate(rawOverview['Proposed Completion Date'] || rawOverview['Proposed Project Completion Date'] || overview.proposed_completion_date)}</span></div>
       <div class="audit-item"><span class="audit-label">Completion at Reg</span><span class="audit-val">${fmtDate(raw.proposed_completion_date_at_registration)}</span></div>
-      <div class="audit-item"><span class="audit-label">Project Sub-Type</span><span class="audit-val">${rawOverview['Project Sub Type'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Project Sub-Type</span><span class="audit-val">${rawOverview['Project Sub Type'] || rawOverview['Project Type'] || 'N/A'}</span></div>
+      <div class="audit-item" style="grid-column: span 2;"><span class="audit-label">Property Configurations</span><span class="audit-val">${(data.property_configurations && data.property_configurations.length > 0) ? data.property_configurations.join(', ') : 'N/A'}</span></div>
       <div class="audit-item"><span class="audit-label">Approved Plan No</span><span class="audit-val mono">${rawOverview['Approved Plan Number'] || 'N/A'}</span></div>
       <div class="audit-item"><span class="audit-label">Plan Approval Date</span><span class="audit-val">${fmtDate(rawOverview['Plan Approval Date'])}</span></div>
       <div class="audit-item"><span class="audit-label">Approving Authority</span><span class="audit-val">${rawOverview['Approving Authority'] || 'N/A'}</span></div>
       <div class="audit-item"><span class="audit-label">Local Authority</span><span class="audit-val">${rawOverview['Local Authority'] || 'N/A'}</span></div>
-      <div class="audit-item"><span class="audit-label">Total Land Area</span><span class="audit-val mono">${rawOverview['Total Area Of Land (Sq Mtr) (A1+A2)'] || 'N/A'} SqM</span></div>
+      <div class="audit-item"><span class="audit-label">Total Land Area</span><span class="audit-val mono">${rawOverview['Total Area Of Land (Sq Mtr) (A1+A2)'] || rawOverview['Total Area Of Land (Sq Mtr)'] || 'N/A'} SqM</span></div>
       <div class="audit-item"><span class="audit-label">Total Plinth Area</span><span class="audit-val mono">${rawOverview['Total Plinth Area (Sq Mtr)'] || 'N/A'} SqM</span></div>
-      <div class="audit-item"><span class="audit-label">Total Carpet Area</span><span class="audit-val mono">${rawOverview['Total Carpet Area of all the Floors (Sq Mtr)'] || 'N/A'} SqM</span></div>
+      <div class="audit-item"><span class="audit-label">Total Carpet Area</span><span class="audit-val mono">${rawOverview['Total Carpet Area of all the Floors (Sq Mtr)'] || rawOverview['Total Built-up Area (Sq Mtr)'] || rawOverview['Total Coverd Area (Sq Mtr)'] || rawOverview['Carpet Area (Sq Mtr)'] || 'N/A'} SqM</span></div>
       <div class="audit-item"><span class="audit-label">FAR Sanctioned</span><span class="audit-val mono">${rawOverview['FAR Sanctioned'] || 'N/A'}</span></div>
-      <div class="audit-item"><span class="audit-label">Total Project Cost</span><span class="audit-val mono">₹${rawOverview['Total Project Cost (INR) (C1+C2)'] || 'N/A'}</span></div>
-      <div class="audit-item"><span class="audit-label">Land Cost</span><span class="audit-val mono">₹${rawOverview['Cost of Land (INR) (C1) ( As Certified by CA in Form 1 )'] || 'N/A'}</span></div>
-      <div class="audit-item"><span class="audit-label">Development Cost</span><span class="audit-val mono">₹${rawOverview['Cost of Layout Development (INR) (C2) ( As Certified by CA in Form 1 )'] || 'N/A'}</span></div>
-      <div class="audit-item"><span class="audit-label">Total Inventories / Units</span><span class="audit-val mono">${rawOverview['Total Number of Inventories/Flats/Villas'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Total Project Cost</span><span class="audit-val mono">₹${rawOverview['Total Project Cost (INR) (C1+C2)'] || rawOverview['Total Project Cost (INR)'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Land Cost</span><span class="audit-val mono">₹${rawOverview['Cost of Land (INR) (C1) ( As Certified by CA in Form 1 )'] || rawOverview['Cost of Land (INR)'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Development Cost</span><span class="audit-val mono">₹${rawOverview['Cost of Layout Development (INR) (C2) ( As Certified by CA in Form 1 )'] || rawOverview['Estimated Cost of Construction (INR)'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Total Inventories / Units</span><span class="audit-val mono">${rawOverview['Total Number of Inventories/Flats/Villas'] || rawOverview['No of Inventory'] || rawOverview['No of Garage for Sale'] || 'N/A'}</span></div>
       <div class="audit-item"><span class="audit-label">Number of Towers</span><span class="audit-val mono">${rawOverview['Number of Towers'] || 'N/A'}</span></div>
       <div class="audit-item"><span class="audit-label">Covered Parking</span><span class="audit-val mono">${rawOverview['No. of Covered Parking'] || 'N/A'}</span></div>
       <div class="audit-item"><span class="audit-label">Open Parking</span><span class="audit-val mono">${rawOverview['No. of Open Parking'] || 'N/A'}</span></div>

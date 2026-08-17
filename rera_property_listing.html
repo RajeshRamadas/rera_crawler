@@ -1333,7 +1333,7 @@ try {
                 gateOK: isApproved,
                 priceMin: 0.8 + (idx % 5) * 0.3,
                 priceMax: 1.5 + (idx % 5) * 0.5,
-                units: pType.toLowerCase().includes('plot') ? ['Plots'] : ['2BHK', '3BHK'],
+                units: (p.property_configurations && p.property_configurations.length > 0) ? p.property_configurations : (pType.toLowerCase().includes('plot') ? ['Plots'] : ['2BHK', '3BHK']),
                 scores: scores,
                 composite: composite,
                 band: getBand(composite),
