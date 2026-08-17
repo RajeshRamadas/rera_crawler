@@ -176,6 +176,7 @@ def list_projects(
     project_type: Optional[str] = Query(None, description="Filter by project / property type (e.g. Residential/Group Housing)"),
     approval_year: Optional[str] = Query(None, description="Filter by RERA approval year (e.g. 2024)"),
     completion_year: Optional[str] = Query(None, description="Filter by proposed completion year (e.g. 2028)"),
+    property_config: Optional[str] = Query(None, description="Filter by property configuration (e.g. 3 BHK, Plots)"),
     q: Optional[str] = Query(None, description="Search term matching project name, promoter, or reg no"),
     min_quality_score: Optional[int] = Query(None, ge=0, le=100, description="Filter by minimum data quality score (0-100)"),
     limit: int = Query(20, ge=1, le=100, description="Page limit (default: 20, max: 100)"),
@@ -207,6 +208,19 @@ def list_projects(
             if completion_year:
                 where_clauses.append("(data->>'proposed_completion_date' LIKE %s OR data->>'proposed_completion_date' LIKE %s OR data->>'proposed_completion_date_at_registration' LIKE %s)")
                 params.extend([f"%/{completion_year}", f"%-{completion_year}", f"%-{completion_year}"])
+
+            if property_config:
+                val = property_config.lower()
+                doc_text = "LOWER((data->'uploaded_documents')::text)"
+                det_text = "LOWER((data->'project_details')::text)"
+                
+                if val == 'plots':
+                    where_clauses.append(f"({doc_text} LIKE '%plot size%' OR {det_text} LIKE '%plot size%' OR {doc_text} LIKE '%site dimension%' OR {det_text} LIKE '%site dimension%' OR {doc_text} LIKE '%odd site%' OR {det_text} LIKE '%odd site%' OR {doc_text} LIKE '%odd%' OR {det_text} LIKE '%odd%')")
+                elif val == '4 bhk+':
+                    where_clauses.append(f"({doc_text} LIKE '%4 bhk%' OR {det_text} LIKE '%4 bhk%' OR {doc_text} LIKE '%5 bhk%' OR {det_text} LIKE '%5 bhk%' OR {doc_text} LIKE '%6 bhk%' OR {det_text} LIKE '%6 bhk%')")
+                else:
+                    where_clauses.append(f"({doc_text} LIKE %s OR {det_text} LIKE %s)")
+                    params.extend([f"%{val}%", f"%{val}%"])
 
             if promoter:
                 where_clauses.append("LOWER(firm_name) LIKE %s")

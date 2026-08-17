@@ -524,6 +524,15 @@
         <option value="Mixed Development">Mixed Development</option>
         <option value="Commercial">Commercial</option>
       </select>
+      <select id="propertyConfigFilter" class="filter-select">
+        <option value="">All Configurations</option>
+        <option value="1 BHK">1 BHK</option>
+        <option value="2 BHK">2 BHK</option>
+        <option value="3 BHK">3 BHK</option>
+        <option value="4 BHK">4 BHK+</option>
+        <option value="Plots">Plots</option>
+        <option value="Villa">Villas</option>
+      </select>
       <select id="statusFilter" class="filter-select">
         <option value="">All Statuses</option>
         <option value="APPROVED">Approved</option>
@@ -1278,8 +1287,9 @@ try {
     if (searchTerm) queryParams.append('q', searchTerm);
     if (selectedDistrict) queryParams.append('district', selectedDistrict);
     if (selectedStatus) queryParams.append('status', selectedStatus);
-    if (selectedPropertyType) queryParams.append('project_type', selectedPropertyType);
-    if (selectedApprovalYear) queryParams.append('approval_year', selectedApprovalYear);
+    if (document.getElementById('propertyTypeFilter').value) queryParams.append('project_type', document.getElementById('propertyTypeFilter').value);
+    if (document.getElementById('propertyConfigFilter').value) queryParams.append('property_config', document.getElementById('propertyConfigFilter').value);
+    if (document.getElementById('approvalYearFilter').value) queryParams.append('approval_year', document.getElementById('approvalYearFilter').value);
     if (selectedCompletionYear) queryParams.append('completion_year', selectedCompletionYear);
 
     const urls = [
@@ -1412,11 +1422,8 @@ try {
     loadAndRender();
   });
 
-  document.getElementById('propertyTypeFilter').addEventListener('change', (e) => {
-    selectedPropertyType = e.target.value;
-    currentPage = 1;
-    loadAndRender();
-  });
+  document.getElementById('propertyTypeFilter').addEventListener('change', () => { currentPage = 1; loadAndRender(); });
+  document.getElementById('propertyConfigFilter').addEventListener('change', () => { currentPage = 1; loadAndRender(); });
 
   document.getElementById('statusFilter').addEventListener('change', (e) => {
     selectedStatus = e.target.value;
@@ -1424,11 +1431,7 @@ try {
     loadAndRender();
   });
 
-  document.getElementById('approvalYearFilter').addEventListener('change', (e) => {
-    selectedApprovalYear = e.target.value;
-    currentPage = 1;
-    loadAndRender();
-  });
+  document.getElementById('approvalYearFilter').addEventListener('change', () => { currentPage = 1; loadAndRender(); });
 
   document.getElementById('completionYearFilter').addEventListener('change', (e) => {
     selectedCompletionYear = e.target.value;
