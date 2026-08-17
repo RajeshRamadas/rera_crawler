@@ -912,6 +912,7 @@
     function addDoc(item) {
       if (!item.url || typeof item.url !== 'string' || !item.url.startsWith('http')) return;
       const cleanUrl = item.url.trim();
+      if (cleanUrl.endsWith('DOC_ID=')) return;
       if (seenUrls.has(cleanUrl)) return;
       seenUrls.add(cleanUrl);
       docs.push(item);

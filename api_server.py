@@ -561,10 +561,7 @@ def download_document_proxy(
     Forces correct RFC-6266 / RFC-5987 'Content-Disposition: attachment; filename=...; filename*=UTF-8''...' headers
     to guarantee clean .pdf extension file downloads on Linux, Mac, and Windows desktop browsers.
     """
-    clean_url = urllib.parse.unquote(url)
-    if not clean_url.startswith("http://") and not clean_url.startswith("https://"):
-        clean_url = url
-        
+    clean_url = url
     if not clean_url.startswith("http://") and not clean_url.startswith("https://"):
         raise HTTPException(status_code=400, detail="Invalid URL scheme. Must start with http or https.")
 
