@@ -1,22 +1,60 @@
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
 
-*.pyc
-*.pyc
-*.pyc
-*.pyc
-location_intelligence/intelligence/__pycache__/scoring.cpython-312.pyc
-*.pyc
-location_intelligence/api/__pycache__/location.cpython-312.pyc
-location_intelligence/intelligence/__pycache__/scoring.cpython-312.pyc
-location_intelligence/maps/__pycache__/static_map.cpython-312.pyc
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node
+node_modules/
+package-lock.json
+
+# Build and Distribution
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Testing and Coverage
+.coverage
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Databases
+*.sqlite3
+
+# Logs and Data
+*.log
+scratch/
+.tempmediaStorage/
 location_intelligence/project_33_labeled_map.png
-location_intelligence/tests/__pycache__/test_osm_ingestion.cpython-312-pytest-9.1.1.pyc
-*.pyc
-location_intelligence/api/__pycache__/location.cpython-312.pyc
-location_intelligence/intelligence/__pycache__/scoring.cpython-312.pyc
-location_intelligence/maps/__pycache__/static_map.cpython-312.pyc
-location_intelligence/tests/__pycache__/test_osm_ingestion.cpython-312-pytest-9.1.1.pyc
-location_intelligence/api/__pycache__/location.cpython-312.pyc
-location_intelligence/intelligence/__pycache__/scoring.cpython-312.pyc
-location_intelligence/maps/__pycache__/static_map.cpython-312.pyc
-location_intelligence/tests/__pycache__/test_osm_ingestion.cpython-312-pytest-9.1.1.pyc
-*.pyc

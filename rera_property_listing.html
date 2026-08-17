@@ -246,11 +246,11 @@
 
   .prop-head {
     display: grid;
-    grid-template-columns: auto 1fr auto;
-    gap: 1.1rem;
-    padding: 1.1rem 1.25rem;
+    grid-template-columns: 32px 1fr auto;
+    gap: 1.25rem;
+    padding: 1.15rem 1.35rem;
     cursor: pointer;
-    align-items: start;
+    align-items: center;
   }
   .prop-head:hover { background: rgba(27,30,36,0.015); }
 
@@ -258,25 +258,31 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.35rem;
-    padding-top: 0.2rem;
+    justify-content: center;
   }
-  .rank { font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; color: var(--ink-soft); font-weight: 600; }
+  .rank { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--ink-soft); font-weight: 600; }
 
   .prop-main-info {
     display: flex;
     flex-direction: column;
-    gap: 0.45rem;
+    gap: 0.5rem;
     min-width: 0;
   }
 
   .prop-header-line {
     display: flex;
     align-items: center;
-    gap: 0.55rem;
+    gap: 0.6rem;
     flex-wrap: wrap;
   }
-  .prop-name { font-family: 'IBM Plex Serif', serif; font-weight: 600; font-size: 1.1rem; color: var(--ink); line-height: 1.25; }
+  .prop-name {
+    font-family: 'IBM Plex Serif', serif;
+    font-weight: 600;
+    font-size: 1.15rem;
+    color: var(--ink);
+    line-height: 1.25;
+    margin: 0;
+  }
   .prop-type-badge {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.65rem;
@@ -304,81 +310,75 @@
   .prop-status-badge.status-approved { background: var(--clear-tint); color: var(--clear); border: 1px solid var(--clear); }
   .prop-status-badge.status-lapsed { background: var(--flag-tint); color: var(--flag); border: 1px solid var(--flag); }
 
-  .prop-meta-line {
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-    flex-wrap: wrap;
-    font-size: 0.8rem;
-    color: var(--ink-soft);
-  }
-  .prop-dev { font-weight: 500; color: var(--ink); display: inline-flex; align-items: center; gap: 0.3rem; }
-  .prop-reg-no {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.68rem;
-    color: var(--ink-soft);
-    background: rgba(0,0,0,0.035);
-    padding: 0.1rem 0.45rem;
-    border-radius: 3px;
-    border: 1px solid var(--hairline);
-  }
-  .prop-location { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--ink-soft); }
-
-  .prop-timeline-strip {
+  .prop-meta-row {
     display: flex;
     align-items: center;
     gap: 0.75rem;
     flex-wrap: wrap;
-    margin-top: 0.15rem;
-    padding: 0.4rem 0.75rem;
-    background: #F0EDE4;
-    border: 1px solid var(--hairline-strong);
-    border-radius: 4px;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
   }
-  .timeline-item { display: flex; align-items: center; gap: 0.35rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; color: var(--ink); }
-  .timeline-label { font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); font-weight: 500; }
-  .timeline-val { font-weight: 600; color: var(--ink); }
-  .timeline-val.cc-available { color: var(--clear); font-weight: 600; }
-  .timeline-val.cc-pending { color: var(--watch); font-weight: 500; }
-  .timeline-val.cc-overdue { color: var(--flag); font-weight: 600; }
-  .timeline-divider { color: var(--hairline-strong); font-size: 0.7rem; }
-  .timeline-badge {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.66rem;
+  .prop-meta-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 420px;
+  }
+  .prop-meta-cell.dev-cell {
+    color: var(--ink-soft);
+  }
+  .prop-meta-cell strong {
+    color: var(--ink);
     font-weight: 600;
-    padding: 0.1rem 0.45rem;
-    border-radius: 3px;
-    margin-left: auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  .timeline-badge.normal { background: #E2DDD0; color: #434854; }
-  .timeline-badge.completed { background: var(--clear-tint); color: var(--clear); border: 1px solid var(--clear); }
-  .timeline-badge.overdue { background: var(--flag-tint); color: var(--flag); border: 1px solid var(--flag); }
 
-  .prop-price-line { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.05rem; }
-  .price-val { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; font-weight: 600; color: var(--ink); }
+  .prop-bottom-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding-top: 0.25rem;
+    border-top: 1px dashed var(--hairline);
+  }
+  .prop-price-units {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+  }
+  .price-val { font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; font-weight: 600; color: var(--ink); }
   .unit-tag {
     display: inline-block;
     border: 1px solid var(--hairline-strong);
     background: var(--paper-raised);
     color: var(--ink);
-    padding: 0.08rem 0.4rem;
-    border-radius: 2px;
+    padding: 0.08rem 0.45rem;
+    border-radius: 3px;
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.68rem;
     font-weight: 500;
-    margin-right: 0.2rem;
+  }
+
+  .prop-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
   }
 
   .prop-right-col {
     display: flex;
     align-items: center;
-    gap: 0.85rem;
+    gap: 0.9rem;
     flex-wrap: nowrap;
-    align-self: flex-start;
-    padding-top: 0.15rem;
+    align-self: center;
   }
-  .prop-actions { display: flex; align-items: center; gap: 0.35rem; }
-
   .seal {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.64rem;
@@ -1095,25 +1095,27 @@ try {
               <span class="prop-status-badge status-${statusText.toLowerCase()}">${statusText}</span>
             </div>
 
-            <div class="prop-meta-line">
-              <span class="prop-dev">Developer: <strong>${p.developer}</strong></span>
-              <span class="timeline-divider">•</span>
-              <span class="prop-location">Location: ${p.area}</span>
+            <div class="prop-meta-row">
+              <span class="prop-meta-cell dev-cell" title="Developer: ${p.developer}">Developer: <strong>${p.developer}</strong></span>
+              <span style="color:var(--hairline-strong);">•</span>
+              <span class="prop-meta-cell">Location: ${p.area}</span>
             </div>
 
-            <div class="prop-price-line">
-              <span class="price-val">${fmtPrice(p)}</span>
-              <span class="timeline-divider">•</span>
-              <div class="unit-tags">${unitTags}</div>
+            <div class="prop-bottom-bar">
+              <div class="prop-price-units">
+                <span class="price-val">${fmtPrice(p)}</span>
+                <span class="unit-tags" style="display:inline-flex; align-items:center; gap:0.25rem;">${unitTags}</span>
+              </div>
+
+              <div class="prop-actions">
+                <button class="btn ghost btn-sm btn-map-pin" data-id="${p.id}" title="Focus on Floating Map">Map</button>
+                <a class="btn ghost btn-sm" style="text-decoration:none;" href="/property-detail?q=${encodeURIComponent(p.name)}" onclick="event.stopPropagation();" target="_blank" title="View Detailed Property Audit Page">Full Audit ↗</a>
+                <a class="btn ghost btn-sm" style="text-decoration:none;" href="/radar-chart?a=${encodeURIComponent(p.name)}" onclick="event.stopPropagation();" title="Analyze in Radar Dashboard">Radar ↗</a>
+              </div>
             </div>
           </div>
 
           <div class="prop-right-col">
-            <div class="prop-actions">
-              <button class="btn ghost btn-sm btn-map-pin" data-id="${p.id}" title="Focus on Floating Map">Map</button>
-              <a class="btn ghost btn-sm" style="text-decoration:none;" href="/property-detail?q=${encodeURIComponent(p.name)}" onclick="event.stopPropagation();" target="_blank" title="View Detailed Property Audit Page">Full Audit ↗</a>
-              <a class="btn ghost btn-sm" style="text-decoration:none;" href="/radar-chart?a=${encodeURIComponent(p.name)}" onclick="event.stopPropagation();" title="Analyze in Radar Dashboard">Radar ↗</a>
-            </div>
             <span class="seal ${p.gateOK ? 'pass' : 'fail'}">${p.gateOK ? 'Gate Cleared' : 'Gate Failed'}</span>
             <div class="score-block">
               <div class="score-num ${p.band.class}">${p.composite}<span class="score-of"> /100</span></div>
