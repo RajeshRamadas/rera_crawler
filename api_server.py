@@ -358,10 +358,9 @@ def get_districts():
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT DISTINCT COALESCE(NULLIF(TRIM(data->'project_location'->>'district'), ''), NULLIF(TRIM(data->>'district'), '')) as district
+                SELECT DISTINCT INITCAP(district) as district
                 FROM rera_projects
-                WHERE COALESCE(data->'project_location'->>'district', data->>'district') IS NOT NULL
-                  AND COALESCE(data->'project_location'->>'district', data->>'district') != ''
+                WHERE district IS NOT NULL AND district != ''
                 ORDER BY district;
             """)
             rows = cur.fetchall()
@@ -380,10 +379,9 @@ def get_property_types():
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT DISTINCT TRIM(data->>'project_type') as p_type
+                SELECT DISTINCT project_type as p_type
                 FROM rera_projects
-                WHERE data->>'project_type' IS NOT NULL
-                  AND TRIM(data->>'project_type') != ''
+                WHERE project_type IS NOT NULL AND project_type != ''
                 ORDER BY p_type;
             """)
             rows = cur.fetchall()
