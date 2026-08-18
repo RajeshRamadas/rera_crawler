@@ -318,9 +318,9 @@ def list_projects(
                     ) as completion_certificate_available,
                     COALESCE(district, 'Karnataka') as district,
                     COALESCE(data->'project_location'->>'taluk', data->>'taluk', '') as taluk,
-                    data->'project_location'->>'latitude' as latitude,
-                    data->'project_location'->>'longitude' as longitude,
-                    data->'project_location'->>'coordinate_source' as coordinate_source,
+                    latitude as latitude,
+                    longitude as longitude,
+                    COALESCE(coordinate_source, CASE WHEN latitude IS NOT NULL THEN 'rera_website' ELSE 'district_centroid' END) as coordinate_source,
                     COALESCE((data->'data_quality'->>'quality_score')::int, 85) as quality_score,
                     COALESCE((data->'data_quality'->>'is_complete')::boolean, true) as is_complete,
                     COALESCE(property_configs, '{{}}') as property_configurations
@@ -449,7 +449,7 @@ def export_geojson(
                     COALESCE(district, 'Karnataka') as district,
                     latitude,
                     longitude,
-                    data->'project_location'->>'coordinate_source' as coordinate_source,
+                    COALESCE(coordinate_source, 'rera_website') as coordinate_source,
                     data->'project_location'->'geometry'->'bbox_polygon' as bbox_polygon,
                     COALESCE((data->'data_quality'->>'quality_score')::int, 85) as quality_score
                 FROM rera_projects
@@ -460,7 +460,7 @@ def export_geojson(
                 query += " AND LOWER(district) LIKE %s"
                 params.append(f"%{district.lower()}%")
             if coordinate_source:
-                query += " AND data->'project_location'->>'coordinate_source' = %s"
+                query += " AND coordinate_source = %s"
                 params.append(coordinate_source)
 
             cur.execute(query, params)

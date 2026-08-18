@@ -943,12 +943,17 @@ try {
     for (const k in markerById) delete markerById[k];
 
     const plottable = PROPERTIES.filter(p => p.lat !== null && p.lng !== null);
-    const exactCount = PROPERTIES.filter(p => p.hasRealCoords).length;
-    const approxCount = plottable.length - exactCount;
+    const reraCount = PROPERTIES.filter(p => p.coordinateSource === 'rera_website').length;
+    const osmCount = PROPERTIES.filter(p => p.coordinateSource === 'osm_nominatim').length;
+    const approxCount = PROPERTIES.length - reraCount - osmCount;
 
     const badge = document.getElementById('mapBadge');
     if (badge) {
-      badge.textContent = `${exactCount} RERA GPS · ${approxCount} Approx`;
+      const parts = [];
+      if (reraCount > 0) parts.push(`${reraCount} RERA Official`);
+      if (osmCount > 0) parts.push(`${osmCount} OpenStreetMap`);
+      if (approxCount > 0) parts.push(`${approxCount} District Approx`);
+      badge.textContent = parts.join(' · ');
     }
 
     if (!plottable.length) {
@@ -959,16 +964,16 @@ try {
     const bounds = [];
     plottable.forEach(p => {
       const isSelected = p.id === activePropertyId;
+      // Requirement: Display on the map must be identical/uniform
       const marker = L.circleMarker([p.lat, p.lng], {
         radius: isSelected ? 10 : 7,
         color: '#1B1E24',
-        weight: isSelected ? 2.5 : (p.hasRealCoords ? 1 : 0.8),
-        dashArray: p.hasRealCoords ? null : '3, 3',
+        weight: isSelected ? 2.5 : 1,
         fillColor: p.band.hex,
-        fillOpacity: p.hasRealCoords ? 0.85 : 0.5
+        fillOpacity: 0.85
       }).addTo(leafletMap);
 
-      const gpsTag = p.hasRealCoords ? `RERA GPS · ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}` : `District Centroid (Estimated)`;
+      const gpsTag = `Source: ${p.coordinateSourceLabel} · ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
       marker.bindPopup(
         `<div class="popup-title">${p.name}</div>` +
         `<div class="popup-score">${p.composite}/100 &middot; ${p.band.label}</div>` +
@@ -1174,9 +1179,9 @@ try {
               </span>
             </div>
             <div class="meta-item">
-              <span class="meta-item-label">GPS Coordinate Status</span>
-              <span class="meta-item-val" style="color: ${p.hasRealCoords ? 'var(--clear)' : 'var(--watch)'}">
-                ${p.hasRealCoords ? `Verified (${p.lat.toFixed(4)}, ${p.lng.toFixed(4)})` : 'Not Available (District Centroid)'}
+              <span class="meta-item-label">Coordinate Source</span>
+              <span class="meta-item-val" style="color: ${p.coordinateSource === 'rera_website' ? 'var(--clear)' : (p.coordinateSource === 'osm_nominatim' ? '#38bdf8' : 'var(--watch)')}">
+                ${p.coordinateSourceLabel} (${p.lat ? p.lat.toFixed(4) : 'N/A'}, ${p.lng ? p.lng.toFixed(4) : 'N/A'})
               </span>
             </div>
           </div>
@@ -1385,6 +1390,11 @@ try {
               const compDate = p.proposed_completion_date || '';
               const hasCC = !!p.completion_certificate_available;
               const pType = p.project_type || 'Residential/Group Housing';
+              const rawSource = p.coordinate_source || (coords ? (coords.isExact ? 'rera_website' : 'district_centroid') : 'district_centroid');
+              let sourceLabel = 'District Centroid (Estimated)';
+              if (rawSource === 'rera_website') sourceLabel = 'RERA Official Website';
+              else if (rawSource === 'osm_nominatim') sourceLabel = 'OpenStreetMap (Nominatim)';
+
               return {
                 id: (p.registration_no || `prop-${idx}`).replace(/[^a-zA-Z0-9-]/g, '_'),
                 name: p.project_name || 'RERA Project',
@@ -1409,7 +1419,9 @@ try {
                 composite: composite,
                 band: getBand(composite),
                 hasRealCoords: hasRealCoords,
-                note: `RERA Reg: ${p.registration_no || 'N/A'}. Ack: ${p.acknowledgement_no || 'N/A'}. Status: ${p.status || 'N/A'}.${startDate ? ' Start: ' + startDate + '.' : ''}${compDate ? ' Completion: ' + compDate + '.' : ''} CC: ${hasCC ? 'Available' : 'Not Uploaded'}. Quality score: ${qual}/100.${hasRealCoords ? ' GPS: RERA verified.' : ' GPS: Not available.'}`,
+                coordinateSource: rawSource,
+                coordinateSourceLabel: sourceLabel,
+                note: `RERA Reg: ${p.registration_no || 'N/A'}. Ack: ${p.acknowledgement_no || 'N/A'}. Status: ${p.status || 'N/A'}.${startDate ? ' Start: ' + startDate + '.' : ''}${compDate ? ' Completion: ' + compDate + '.' : ''} CC: ${hasCC ? 'Available' : 'Not Uploaded'}. Quality score: ${qual}/100. Location Source: ${sourceLabel}.`,
                 lat: coords ? coords.lat : null,
                 lng: coords ? coords.lng : null
               };
