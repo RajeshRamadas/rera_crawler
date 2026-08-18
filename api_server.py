@@ -125,47 +125,96 @@ def healthcheck():
 
 from collections import defaultdict
 
-def extract_configurations(uploaded_docs):
+# Canonical label set used both for extraction and filtering
+_PLOT_KEYS = {'Plot Type (Site Dimension in Mtr)', 'Plot Size', 'Plot Type'}
+_CONFIG_KEYS = ['Unit Type', 'Type of Inventory', 'Plot Type (Site Dimension in Mtr)', 'Plot Size', 'Plot Type']
+_SKIP_VALS = {'TOTAL', 'RESIDENTIAL', 'ODD', 'EVEN', 'ODD SITE', 'ODD SITES',
+              'OTHER-ROOMS', 'OTHERS-ROOMS', 'EWS', '0.00', 'NA', 'N/A', ''}
+
+def _normalize_config_label(raw: str, is_plot_key: bool = False) -> str:
+    """
+    Normalise a raw inventory label into one of the canonical filter values:
+      '1 BHK' | '2 BHK' | '3 BHK' | '4 BHK+' | 'Plots' | 'Villa'
+    Returns None if the label is not recognisable as a unit configuration.
+    """
+    s = raw.strip()
+    upper = s.upper()
+
+    # Plot / site types
+    if is_plot_key or any(k in upper for k in ['PLOT SIZE', 'SITE DIMENSION', 'PLOTTED']):
+        return 'Plots'
+
+    # Villa
+    if 'VILLA' in upper:
+        return 'Villa'
+
+    # BHK patterns — search anywhere in the string (handles "TYPE-H - 3BHK+3T", etc.)
+    import re as _re
+    # Match "3 BHK", "3BHK", "3.5BHK", "3.5 BHK", "3 BEDROOM", "3 BED" etc.
+    m = _re.search(r'(\d+(?:\.\d+)?)\s*(?:BHK|BED(?:ROOM)?)', upper)
+    if m:
+        try:
+            n = float(m.group(1))
+        except ValueError:
+            n = 0
+        if n < 1:
+            return None
+        n_int = int(n)  # 3.5BHK -> 3 BHK (closest canonical)
+        if n_int >= 4:
+            return '4 BHK+'
+        if n_int == 0:
+            return None
+        return f'{n_int} BHK'
+
+    # Shop / commercial unit inside a mixed project — skip
+    if any(k in upper for k in ['SHOP', 'COMMERCIAL', 'OFFICE', 'CONVENTION', 'MULTIPLEX',
+                                 'FOOD COURT', 'AMENITY', 'STORE ROOM']):
+        return None
+
+    # Return cleaned raw value for everything else
+    return s or None
+
+
+def extract_configurations(uploaded_docs, project_type: str = ''):
+    """Return canonical configuration labels for display on property cards."""
     if not uploaded_docs:
+        if project_type and 'plot' in project_type.lower():
+            return ['Plots']
         return []
+
     rows_by_id = defaultdict(dict)
     for item in uploaded_docs:
         header = item.get('financial_year', '').strip()
         row_id = item.get('document_type', '')
         val = item.get('file', '').strip()
         rows_by_id[row_id][header] = val
-        
-    configurations = set()
+
+    configs = set()
     for row_id, rdata in rows_by_id.items():
-        config_name = None
-        for key in ['Unit Type', 'Type of Inventory', 'Plot Type (Site Dimension in Mtr)', 'Plot Size', 'Plot Type']:
-            if key in rdata and rdata[key]:
-                val = rdata[key].upper()
-                if val not in ['TOTAL', 'RESIDENTIAL', 'ODD', 'EVEN', 'ODD SITE', 'ODD SITES', 'OTHER-ROOMS', 'OTHERS-ROOMS', 'EWS', '0.00']:
-                    try:
-                        float(val)
-                    except ValueError:
-                        config_name = rdata[key]
-                        break
-                        
-        if config_name:
-            dimension = None
-            for key in ['Carpet Area (Sq Mtr)', 'Carpet Area', 'Total Area (in Sq.Mtr)', 'Plot Area', 'Area (Sq Mt)']:
-                if key in rdata and rdata[key]:
-                    try:
-                        val_float = float(rdata[key])
-                        if val_float > 0:
-                            dimension = rdata[key]
-                            break
-                    except ValueError:
-                        pass
-            
-            if dimension:
-                configurations.add(f"{config_name} ({dimension} SqM)")
-            else:
-                configurations.add(config_name)
-                
-    return sorted(list(configurations))[:5]
+        for key in _CONFIG_KEYS:
+            raw = rdata.get(key, '').strip()
+            if not raw:
+                continue
+            upper = raw.upper()
+            if upper in _SKIP_VALS:
+                continue
+            try:
+                float(upper)
+                continue  # pure number — skip
+            except ValueError:
+                pass
+            is_plot = key in _PLOT_KEYS
+            label = _normalize_config_label(raw, is_plot_key=is_plot)
+            if label:
+                configs.add(label)
+            break  # found config key for this row — move on
+
+    if not configs and project_type and 'plot' in project_type.lower():
+        configs.add('Plots')
+
+    # Canonical sort order
+    order = {'1 BHK': 0, '2 BHK': 1, '3 BHK': 2, '4 BHK+': 3, 'Plots': 4, 'Villa': 5}
+    return sorted(list(configs), key=lambda x: order.get(x, 99))
 
 
 @app.get("/api/v1/projects", summary="List and filter RERA projects")
@@ -210,17 +259,33 @@ def list_projects(
                 params.extend([f"%/{completion_year}", f"%-{completion_year}", f"%-{completion_year}"])
 
             if property_config:
-                val = property_config.lower()
-                doc_text = "LOWER((data->'uploaded_documents')::text)"
-                det_text = "LOWER((data->'project_details')::text)"
-                
-                if val == 'plots':
-                    where_clauses.append(f"({doc_text} LIKE '%plot size%' OR {det_text} LIKE '%plot size%' OR {doc_text} LIKE '%site dimension%' OR {det_text} LIKE '%site dimension%' OR {doc_text} LIKE '%odd site%' OR {det_text} LIKE '%odd site%' OR {doc_text} LIKE '%odd%' OR {det_text} LIKE '%odd%')")
-                elif val == '4 bhk+':
-                    where_clauses.append(f"({doc_text} LIKE '%4 bhk%' OR {det_text} LIKE '%4 bhk%' OR {doc_text} LIKE '%5 bhk%' OR {det_text} LIKE '%5 bhk%' OR {doc_text} LIKE '%6 bhk%' OR {det_text} LIKE '%6 bhk%')")
+                # Use the pre-computed GIN-indexed property_configs[] column for fast lookups.
+                # Normalise the incoming value to match stored canonical labels.
+                import re as _re
+                pval = property_config.strip()
+                pupper = pval.upper()
+                # Map '4 BHK' / '4 BHK+' both to canonical '4 BHK+'
+                m_bhk = _re.match(r'^(\d+)\s*BHK', pupper)
+                if m_bhk:
+                    n = int(m_bhk.group(1))
+                    canonical = '4 BHK+' if n >= 4 else f'{n} BHK'
+                elif pupper in ('PLOTS', 'PLOT'):
+                    canonical = 'Plots'
+                elif pupper in ('VILLA', 'VILLAS'):
+                    canonical = 'Villa'
                 else:
-                    where_clauses.append(f"({doc_text} LIKE %s OR {det_text} LIKE %s)")
-                    params.extend([f"%{val}%", f"%{val}%"])
+                    canonical = pval  # pass-through for any other value
+
+                # Use fast GIN array lookup when column is available; fall back to
+                # project_type for Plots when configs column may not yet be populated.
+                if canonical == 'Plots':
+                    where_clauses.append(
+                        "(%s = ANY(property_configs) OR LOWER(COALESCE(data->>'project_type','')) LIKE '%%plotted%%')"
+                    )
+                    params.append(canonical)
+                else:
+                    where_clauses.append("%s = ANY(property_configs)")
+                    params.append(canonical)
 
             if promoter:
                 where_clauses.append("LOWER(firm_name) LIKE %s")
@@ -262,6 +327,7 @@ def list_projects(
                     data->'project_location'->>'coordinate_source' as coordinate_source,
                     (data->'data_quality'->>'quality_score')::int as quality_score,
                     (data->'data_quality'->>'is_complete')::boolean as is_complete,
+                    property_configs,
                     data->'uploaded_documents' as uploaded_documents
                 FROM rera_projects
                 WHERE {where_str}
@@ -270,10 +336,20 @@ def list_projects(
             cur.execute(data_query, params + [limit, offset])
             rows = cur.fetchall()
 
+            ptype_map = {}
             for r in rows:
-                r['property_configurations'] = extract_configurations(r.get('uploaded_documents', []))
-                # Remove bulky documents array before returning the list view
+                # Prefer the pre-computed column; fall back to live extraction only if missing
+                stored = r.get('property_configs')
+                if stored:
+                    r['property_configurations'] = stored
+                else:
+                    r['property_configurations'] = extract_configurations(
+                        r.get('uploaded_documents', []),
+                        project_type=r.get('project_type', '')
+                    )
+                # Remove bulky fields before returning the list view
                 r.pop('uploaded_documents', None)
+                r.pop('property_configs', None)
 
             count_query = f"SELECT COUNT(*) as total FROM rera_projects WHERE {where_str};"
             cur.execute(count_query, params)
@@ -351,7 +427,10 @@ def analyze_project(
     result = analyze_by_name_or_reg(query_str)
     if result.get("error"):
         raise HTTPException(status_code=404, detail=result.get("message"))
-    result["property_configurations"] = extract_configurations(result.get("raw_data", {}).get("uploaded_documents", []))
+    result["property_configurations"] = extract_configurations(
+        result.get("raw_data", {}).get("uploaded_documents", []),
+        project_type=result.get("raw_data", {}).get("project_type", "")
+    )
     return result
 
 
@@ -364,7 +443,10 @@ def analyze_project_by_path(query: str):
     result = analyze_by_name_or_reg(decoded_q)
     if result.get("error"):
         raise HTTPException(status_code=404, detail=result.get("message"))
-    result["property_configurations"] = extract_configurations(result.get("raw_data", {}).get("uploaded_documents", []))
+    result["property_configurations"] = extract_configurations(
+        result.get("raw_data", {}).get("uploaded_documents", []),
+        project_type=result.get("raw_data", {}).get("project_type", "")
+    )
     return result
 
 
