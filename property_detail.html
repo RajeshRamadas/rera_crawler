@@ -739,7 +739,21 @@
             </div>
           </div>
 
-          <!-- 4. Promoter & Partner Profile -->
+          <!-- 4. Location Highlights & USPs -->
+          <div class="card collapsible" id="locationUspsCard">
+            <div class="card-head">
+              <div>
+                <span class="card-head-title">Location Highlights & USPs</span>
+                <span class="mono" style="font-size:0.7rem; color:var(--primary); margin-left:0.5rem;" id="locationUspsBadge">Key Location & Connectivity Advantages</span>
+              </div>
+              <span class="collapse-icon">▼</span>
+            </div>
+            <div class="card-body">
+              <div id="locationUspsContainer" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:0.75rem;"></div>
+            </div>
+          </div>
+
+          <!-- 5. Promoter & Partner Profile -->
           <div class="card collapsible">
             <div class="card-head">
               <span class="card-head-title">Promoter & Developer Profile</span>
@@ -2088,6 +2102,27 @@
       document.getElementById('gmapsLinkWrap').innerHTML = `<a class="btn ghost" href="${gmapsLink}" target="_blank" rel="noopener noreferrer" style="width:100%; display:flex; align-items:center; justify-content:center; box-sizing:border-box; text-decoration:none;">View on Google Maps ↗</a>`;
     } else {
       document.getElementById('gmapsLinkWrap').innerHTML = '';
+    }
+
+    // Render Location USPs
+    const uspsContainer = document.getElementById('locationUspsContainer');
+    const uspsList = overview.location_usps || [];
+    if (uspsContainer) {
+      if (uspsList.length > 0) {
+        uspsContainer.innerHTML = uspsList.map(u => `
+          <div style="background:var(--paper); border:1px solid var(--hairline-strong); padding:0.85rem; border-radius:6px;">
+            <div style="font-size:0.82rem; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:0.4rem; margin-bottom:0.35rem;">
+              <span>${u.category === 'transport' ? '🚗' : (u.category === 'employment' ? '🏢' : (u.category === 'education' ? '🎓' : (u.category === 'healthcare' ? '🏥' : (u.category === 'lifestyle' ? '🌿' : '📍'))))}</span>
+              ${u.title}
+            </div>
+            <div style="font-size:0.75rem; color:var(--ink-soft); line-height:1.45;">
+              ${u.description}
+            </div>
+          </div>
+        `).join('');
+      } else {
+        uspsContainer.innerHTML = `<div style="font-size:0.75rem; color:var(--ink-soft); padding:0.5rem 0;">Verified spatial location in ${overview.district || 'Karnataka'}.</div>`;
+      }
     }
 
     const mapLat = hasRealCoords ? lat : 12.9716;

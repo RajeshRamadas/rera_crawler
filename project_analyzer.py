@@ -360,9 +360,11 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
     else:
         title_reasons.append(f"✓ {total_doc_count} document record(s) uploaded.")
 
-    # 5. Location & Connectivity (P-22 to P-29)
+    # 5. Location & Connectivity (P-22 to P-29) & Location USPs
     location_reasons = []
     location_score = 100
+    location_usps = []
+
     if not (lat and lon):
         location_score -= 35
         location_reasons.append("❌ DEDUCTION -35 pts: Exact geographic coordinates (Lat/Lon) unverified.")
@@ -374,6 +376,79 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
         location_reasons.append("❌ DEDUCTION -25 pts: District jurisdiction not declared.")
     else:
         location_reasons.append(f"✓ District identified: {district}.")
+
+    # Synthesize Location USPs based on geographic metadata & area specs
+    proj_address = loc_info.get("address") or proj_details.get("Project Address") or ""
+    addr_lower = (proj_address + " " + (taluk or "") + " " + (district or "")).lower()
+
+    if "sarjapur" in addr_lower or "chikkanayakanahalli" in addr_lower or "chikkakanahalli" in addr_lower or "varthur" in addr_lower:
+        location_usps.append({
+            "category": "transport",
+            "title": "Prime Sarjapur Road Tech Corridor",
+            "description": "Situated off Sarjapur Road in Chikkanayakanahalli with direct arterial access to Outer Ring Road (ORR), Bellandur, Marathahalli & Whitefield IT belts."
+        })
+        location_usps.append({
+            "category": "employment",
+            "title": "Minutes from Major IT Hubs",
+            "description": "5–15 min drive to Wipro SEZ, RMZ Ecoworld, Embassy TechVillage, RGA Tech Park, and Prestige Tech Park."
+        })
+        location_usps.append({
+            "category": "education",
+            "title": "Premier International School Hub",
+            "description": "Close proximity to Greenwood High, Oakridge International, TISB, and Harvest International School."
+        })
+        location_usps.append({
+            "category": "healthcare",
+            "title": "Multispecialty Healthcare Access",
+            "description": "Quick emergency & outpatient access to Motherhood Hospital, Manipal Hospital Sarjapur Road, and Sakra World Hospital."
+        })
+    elif "panathur" in addr_lower or "kadubeesanahalli" in addr_lower or "balagere" in addr_lower:
+        location_usps.append({
+            "category": "transport",
+            "title": "Outer Ring Road (ORR) Connectivity Hub",
+            "description": "Located right in the Marathahalli-Sarjapur ORR growth corridor with fast access to Bellandur & Kadubeesanahalli metro stations."
+        })
+        location_usps.append({
+            "category": "employment",
+            "title": "Short Drive to ORR Work Hubs",
+            "description": "Direct connectivity to Ecoworld, Prestige Tech Park, JP Morgan, and Cessna Business Park."
+        })
+    elif "thanisandra" in addr_lower or "hebbal" in addr_lower or "yelahanka" in addr_lower:
+        location_usps.append({
+            "category": "transport",
+            "title": "North Bengaluru Airport Corridor",
+            "description": "Direct arterial connectivity to Bellary Road (NH 44), KIADB Aerospace Park, and Kempegowda International Airport."
+        })
+    else:
+        location_usps.append({
+            "category": "transport",
+            "title": f"Established {district.title()} Connectivity",
+            "description": f"Located in {taluk or district} with direct access to primary arterial roads and civic amenities."
+        })
+
+    # Open Space Ratio USP
+    try:
+        total_area_val = float(proj_overview.get('Total Area Of Land (Sq Mtr) (A1+A2)') or 0)
+        open_area_val = float(proj_overview.get('Total Open Area (Sq Mtr) (A1)') or 0)
+        if total_area_val > 0 and open_area_val > 0:
+            open_pct = round((open_area_val / total_area_val) * 100, 1)
+            if open_pct >= 50:
+                acres = round(open_area_val / 4046.86, 1)
+                location_usps.append({
+                    "category": "lifestyle",
+                    "title": f"High Open Space Ratio ({open_pct}% Open Greenery)",
+                    "description": f"Expansive {acres} Acres ({open_pct}%) dedicated exclusively to open green spaces, parks, and outdoor sports amenities."
+                })
+    except Exception:
+        pass
+
+    # Verified Spatial GIS Pin USP
+    if lat and lon:
+        location_usps.append({
+            "category": "civic",
+            "title": "Verified Spatial GIS Geolocation",
+            "description": f"Exact physical project site coordinates verified at Latitude {round(lat, 6)}, Longitude {round(lon, 6)}."
+        })
 
     # 6. Layout & Amenities (P-30 to P-33)
     layout_reasons = []
@@ -521,7 +596,8 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
             "survey_numbers": survey_nos,
             "sub_registrar_offices": sros,
             "promoter_portfolio": promoter_portfolio,
-            "promoter_portfolio_count": len(promoter_portfolio)
+            "promoter_portfolio_count": len(promoter_portfolio),
+            "location_usps": location_usps
         },
         "overall_evaluation": {
             "health_score": overall_health_score,
