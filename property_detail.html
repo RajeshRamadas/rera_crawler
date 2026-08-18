@@ -1713,24 +1713,179 @@
     // 4. Promoter Details
     const promoterGrid = document.getElementById('promoterGrid');
     const pastProjs = rawProm['List of Projects Launched in Past 5 Years ( As per Promoter )'];
-    let pastCount = 0;
+    let rawPastCount = 0;
     if (Array.isArray(pastProjs)) {
-      pastCount = pastProjs.length;
+      rawPastCount = pastProjs.length;
     } else if (pastProjs && typeof pastProjs === 'object') {
       if (pastProjs['Project Name'] || pastProjs['Project Address'] || pastProjs['Current Status']) {
-        pastCount = 1;
+        rawPastCount = 1;
       } else {
-        pastCount = Object.keys(pastProjs).length;
+        rawPastCount = Object.keys(pastProjs).length;
       }
     } else if (typeof pastProjs === 'number') {
-      pastCount = pastProjs;
+      rawPastCount = pastProjs;
     }
 
-    const pastProjName = (pastProjs && typeof pastProjs === 'object' && !Array.isArray(pastProjs)) ? (pastProjs['Project Name'] || '') : '';
+    const portfolioList = overview.promoter_portfolio || [];
+    const totalRegisteredCount = overview.promoter_portfolio_count || portfolioList.length || rawPastCount;
+
+    const approvedCount = portfolioList.filter(p => (p.status || '').toUpperCase().includes('APPROVED')).length;
+    const withdrawnCount = portfolioList.filter(p => (p.status || '').toUpperCase().includes('WITHDRAWN') || (p.status || '').toUpperCase().includes('EXPIRED') || (p.status || '').toUpperCase().includes('REVOKED')).length;
+
+    // Distil top districts
+    const distCounts = {};
+    portfolioList.forEach(p => {
+      const d = (p.district || 'Karnataka').trim();
+      distCounts[d] = (distCounts[d] || 0) + 1;
+    });
+    const topDistricts = Object.keys(distCounts).sort((a, b) => distCounts[b] - a)[0] || 'Karnataka';
+
     promoterGrid.innerHTML = `
-      <div class="audit-item"><span class="audit-label">Promoter Name</span><span class="audit-val">${overview.developer_name || 'N/A'}</span></div>
-      <div class="audit-item"><span class="audit-label">Past 5 Years Projects</span><span class="audit-val mono">${pastCount} Project${pastCount !== 1 ? 's' : ''} Launched ${pastProjName ? '(' + pastProjName + ')' : ''}</span></div>
+      <div style="grid-column: span 2; background: #FAF9F6; border: 1px solid var(--hairline-strong); padding: 1.25rem; border-radius: 6px; margin-bottom: 1rem;">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.75rem; margin-bottom: 1rem;">
+          <div>
+            <span style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-soft); font-weight:700;">Promoter Entity Name</span>
+            <h3 style="font-size:1.15rem; font-weight:700; color:var(--ink); margin-top:0.15rem;">${overview.developer_name || 'N/A'}</h3>
+          </div>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <span style="background:var(--paper); border:1px solid var(--hairline-strong); padding:0.35rem 0.65rem; border-radius:4px; font-size:0.72rem; color:var(--ink);">
+              <strong style="color:var(--primary);">${totalRegisteredCount}</strong> Total RERA Filings
+            </span>
+            <span style="background:rgba(47,110,79,0.08); border:1px solid rgba(47,110,79,0.2); padding:0.35rem 0.65rem; border-radius:4px; font-size:0.72rem; color:#2F6E4F; font-weight:600;">
+              ✓ ${approvedCount} Approved
+            </span>
+            ${withdrawnCount > 0 ? `
+              <span style="background:rgba(172,44,44,0.08); border:1px solid rgba(172,44,44,0.2); padding:0.35rem 0.65rem; border-radius:4px; font-size:0.72rem; color:#AC2C2C; font-weight:600;">
+                ⚠️ ${withdrawnCount} Withdrawn / Expired
+              </span>
+            ` : ''}
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:0.75rem; font-size:0.78rem;">
+          <div class="audit-item" style="background:#fff;"><span class="audit-label">RERA Database Index</span><span class="audit-val mono" style="color:var(--primary); font-weight:700;">${totalRegisteredCount} Projects Found</span></div>
+          <div class="audit-item" style="background:#fff;"><span class="audit-label">Primary District Hub</span><span class="audit-val" style="text-transform:capitalize;">${topDistricts}</span></div>
+          <div class="audit-item" style="background:#fff;"><span class="audit-label">Filing Form Self-Reported</span><span class="audit-val mono">${rawPastCount} Projects Declared</span></div>
+        </div>
+      </div>
+
+      ${portfolioList.length > 0 ? `
+        <div style="grid-column: span 2; margin-top:0.25rem;">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.75rem; margin-bottom:0.75rem;">
+            <h4 style="font-size:0.9rem; font-weight:700; color:var(--ink); margin:0;">
+              Developer Portfolio Catalog (${portfolioList.length} RERA Projects):
+            </h4>
+            <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+              <input type="text" id="promoterSearchInput" placeholder="Filter developer projects..." style="padding:0.35rem 0.65rem; font-size:0.75rem; border:1px solid var(--hairline-strong); border-radius:4px; width:220px;" />
+              <div id="promoterFilterPills" style="display:flex; gap:0.25rem;">
+                <button class="doc-pill active" data-filter="all" style="padding:0.25rem 0.5rem; font-size:0.7rem;">All (${portfolioList.length})</button>
+                <button class="doc-pill" data-filter="approved" style="padding:0.25rem 0.5rem; font-size:0.7rem;">Approved (${approvedCount})</button>
+                ${withdrawnCount > 0 ? `<button class="doc-pill" data-filter="withdrawn" style="padding:0.25rem 0.5rem; font-size:0.7rem;">Withdrawn (${withdrawnCount})</button>` : ''}
+              </div>
+            </div>
+          </div>
+
+          <div class="data-table-wrap" style="max-height:360px; overflow-y:auto; border:1px solid var(--hairline-strong); border-radius:6px;">
+            <table class="data-table" id="promoterPortfolioTable">
+              <thead>
+                <tr>
+                  <th style="width:26%;">Registration No</th>
+                  <th>Project Title</th>
+                  <th style="width:20%;">RERA Status</th>
+                  <th style="width:16%;">District</th>
+                </tr>
+              </thead>
+              <tbody id="promoterTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      ` : ''}
     `;
+
+    if (portfolioList.length > 0) {
+      let activeFilter = 'all';
+      let searchQuery = '';
+
+      function drawPromoterTable() {
+        const tbody = document.getElementById('promoterTableBody');
+        if (!tbody) return;
+
+        const filtered = portfolioList.filter(p => {
+          const st = (p.status || '').toUpperCase();
+          const matchesFilter = activeFilter === 'all' || 
+            (activeFilter === 'approved' && st.includes('APPROVED')) ||
+            (activeFilter === 'withdrawn' && (st.includes('WITHDRAWN') || st.includes('EXPIRED') || st.includes('REVOKED')));
+
+          const q = searchQuery.toLowerCase().trim();
+          const matchesSearch = !q || 
+            (p.project_name || '').toLowerCase().includes(q) ||
+            (p.registration_no || '').toLowerCase().includes(q) ||
+            (p.district || '').toLowerCase().includes(q) ||
+            (p.status || '').toLowerCase().includes(q);
+
+          return matchesFilter && matchesSearch;
+        });
+
+        if (filtered.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:var(--ink-soft);">No projects found matching filter.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = filtered.map(p => {
+          const st = (p.status || 'APPROVED').toUpperCase();
+          let statusBadgeClass = 'clear';
+          let statusLabel = st;
+          
+          if (st.includes('WITHDRAWN')) {
+            statusBadgeClass = 'flag';
+            statusLabel = 'WITHDRAWN';
+          } else if (st.includes('EXPIRED') || st.includes('SUSPENDED') || st.includes('REVOKED')) {
+            statusBadgeClass = 'flag';
+          } else if (st.includes('NEW') || st.includes('PENDING')) {
+            statusBadgeClass = 'watch';
+          }
+
+          return `
+            <tr>
+              <td class="mono" style="font-size:0.74rem; font-weight:600;">${p.registration_no}</td>
+              <td>
+                <a href="/property-detail?q=${encodeURIComponent(p.project_name)}" target="_blank" style="color:var(--primary); font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:0.25rem;">
+                  ${p.project_name} <span style="font-size:0.7rem; opacity:0.7;">↗</span>
+                </a>
+              </td>
+              <td>
+                <span class="doc-ref-badge" style="font-size:0.65rem; background:${statusBadgeClass === 'clear' ? 'rgba(47,110,79,0.12)' : (statusBadgeClass === 'flag' ? 'rgba(172,44,44,0.12)' : 'rgba(151,112,26,0.12)')}; color:${statusBadgeClass === 'clear' ? '#2F6E4F' : (statusBadgeClass === 'flag' ? '#AC2C2C' : '#97701A')}; font-weight:700;">
+                  ${statusLabel}
+                </span>
+              </td>
+              <td style="font-size:0.76rem; text-transform:capitalize; color:var(--ink);">${p.district}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      const pInput = document.getElementById('promoterSearchInput');
+      if (pInput) {
+        pInput.oninput = (e) => {
+          searchQuery = e.target.value;
+          drawPromoterTable();
+        };
+      }
+
+      const pPills = document.getElementById('promoterFilterPills');
+      if (pPills) {
+        pPills.onclick = (e) => {
+          const btn = e.target.closest('.doc-pill');
+          if (!btn) return;
+          pPills.querySelectorAll('.doc-pill').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          activeFilter = btn.dataset.filter;
+          drawPromoterTable();
+        };
+      }
+
+      drawPromoterTable();
+    }
 
     // 5. Property Risk & Compliance Report with 8-Axis Profile Breakdown
     const radar = data.radar_profile || {};

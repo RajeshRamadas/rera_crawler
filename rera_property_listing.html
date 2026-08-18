@@ -1393,7 +1393,8 @@ try {
               const rawSource = p.coordinate_source || (coords ? (coords.isExact ? 'rera_website' : 'district_centroid') : 'district_centroid');
               let sourceLabel = 'District Centroid (Estimated)';
               if (rawSource === 'rera_website') sourceLabel = 'RERA Official Website';
-              else if (rawSource === 'osm_nominatim') sourceLabel = 'OpenStreetMap (Nominatim)';
+              else if (rawSource === 'osm_nominatim') sourceLabel = 'OpenStreetMap (Exact Property Match)';
+              else if (rawSource === 'osm_village') sourceLabel = 'OpenStreetMap (Village/Locality Match)';
 
               return {
                 id: (p.registration_no || `prop-${idx}`).replace(/[^a-zA-Z0-9-]/g, '_'),

@@ -9,6 +9,7 @@ complaint history, and computes structured Positive (+) and Negative (-) evaluat
 import sys
 import os
 import json
+import re
 import urllib.parse
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
@@ -451,6 +452,60 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
         risk_level = "CRITICAL_RISK"
         verdict = "Critical warning! Multiple red flags including status alerts, heavy complaints, and unverified data."
 
+    # Fetch Promoter Registered Portfolio from Database with strict matching
+    promoter_portfolio = []
+    if firm_name and firm_name != "Unknown Developer" and len(firm_name.strip()) > 2:
+        try:
+            conn = get_db_connection()
+            with conn.cursor() as cur:
+                clean_promoter = re.sub(r'^(m/s\.?|m/s\s*)', '', firm_name, flags=re.IGNORECASE).strip()
+                
+                # 1. Exact match variations
+                cur.execute("""
+                    SELECT registration_no, project_name, COALESCE(status, 'APPROVED') as status, COALESCE(district, 'Karnataka') as district, firm_name
+                    FROM rera_projects
+                    WHERE LOWER(firm_name) = LOWER(%s)
+                       OR LOWER(firm_name) = LOWER(%s)
+                       OR LOWER(firm_name) = LOWER(%s)
+                       OR LOWER(firm_name) = LOWER(%s)
+                       OR LOWER(firm_name) = LOWER(%s)
+                    ORDER BY project_name;
+                """, (firm_name, clean_promoter, f"M/s. {clean_promoter}", f"M/s.{clean_promoter}", f"M/S {clean_promoter}"))
+                exact_rows = cur.fetchall()
+
+                # 2. Distinctive Brand Prefix Expansion (e.g. SOBHA, SSVR, PRESTIGE, BRIGADE, PURAVANKARA)
+                first_word = clean_promoter.split()[0].upper() if clean_promoter.split() else ''
+                GENERIC_PREFIXES = {'THE', 'NEW', 'SRI', 'SHREE', 'SHRI', 'M/S', 'PVT', 'LTD', '3', 'NO', 'N/A', 'UNKNOWN'}
+                
+                if len(first_word) >= 3 and first_word not in GENERIC_PREFIXES:
+                    cur.execute("""
+                        SELECT registration_no, project_name, COALESCE(status, 'APPROVED') as status, COALESCE(district, 'Karnataka') as district, firm_name
+                        FROM rera_projects
+                        WHERE firm_name ILIKE %s OR firm_name ILIKE %s OR firm_name ILIKE %s
+                        ORDER BY project_name;
+                    """, (f'{first_word} %', f'M/s. {first_word} %', f'M/s.{first_word} %'))
+                    brand_rows = cur.fetchall()
+                else:
+                    brand_rows = []
+
+                seen_regs = set()
+                for r in list(exact_rows) + list(brand_rows):
+                    fn = (r['firm_name'] or '').upper()
+                    # Filtering rules for specific brands to avoid false positives (e.g., SOBHA RANI for SOBHA LIMITED)
+                    if first_word == 'SOBHA' and ('SOBHA RANI' in fn or 'SOBHA DEVI' in fn):
+                        continue
+                    if r['registration_no'] not in seen_regs:
+                        seen_regs.add(r['registration_no'])
+                        promoter_portfolio.append({
+                            "registration_no": r["registration_no"],
+                            "project_name": r["project_name"] or "RERA Project",
+                            "status": r["status"],
+                            "district": r["district"]
+                        })
+            conn.close()
+        except Exception as e:
+            print(f"Error fetching promoter portfolio: {e}")
+
     return {
         "project_summary": {
             "registration_no": reg_no,
@@ -464,7 +519,9 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
             "proposed_completion_date": proposed_comp_date,
             "coordinates": {"latitude": lat, "longitude": lon} if lat and lon else None,
             "survey_numbers": survey_nos,
-            "sub_registrar_offices": sros
+            "sub_registrar_offices": sros,
+            "promoter_portfolio": promoter_portfolio,
+            "promoter_portfolio_count": len(promoter_portfolio)
         },
         "overall_evaluation": {
             "health_score": overall_health_score,
