@@ -239,24 +239,24 @@ def list_projects(
             params = []
 
             if district:
-                where_clauses.append("(LOWER(COALESCE(data->'project_location'->>'district', data->>'district', '')) LIKE %s)")
-                params.append(f"%{district.lower()}%")
+                where_clauses.append("district LIKE %s")
+                params.append(f"%{district.strip().lower()}%")
 
             if status:
-                where_clauses.append("LOWER(COALESCE(data->>'status', '')) LIKE %s")
-                params.append(f"%{status.lower()}%")
+                where_clauses.append("status = %s")
+                params.append(status.strip().upper())
 
             if project_type:
-                where_clauses.append("LOWER(COALESCE(data->>'project_type', '')) LIKE %s")
-                params.append(f"%{project_type.lower()}%")
+                where_clauses.append("LOWER(project_type) LIKE %s")
+                params.append(f"%{project_type.strip().lower()}%")
 
             if approval_year:
-                where_clauses.append("(data->>'approved_on' LIKE %s OR data->>'approved_on' LIKE %s)")
-                params.extend([f"%/{approval_year}", f"%-{approval_year}"])
+                where_clauses.append("approval_year = %s")
+                params.append(approval_year.strip())
 
             if completion_year:
-                where_clauses.append("(data->>'proposed_completion_date' LIKE %s OR data->>'proposed_completion_date' LIKE %s OR data->>'proposed_completion_date_at_registration' LIKE %s)")
-                params.extend([f"%/{completion_year}", f"%-{completion_year}", f"%-{completion_year}"])
+                where_clauses.append("completion_year = %s")
+                params.append(completion_year.strip())
 
             if property_config:
                 # Use the pre-computed GIN-indexed property_configs[] column for fast lookups.
@@ -276,11 +276,9 @@ def list_projects(
                 else:
                     canonical = pval  # pass-through for any other value
 
-                # Use fast GIN array lookup when column is available; fall back to
-                # project_type for Plots when configs column may not yet be populated.
                 if canonical == 'Plots':
                     where_clauses.append(
-                        "(%s = ANY(property_configs) OR LOWER(COALESCE(data->>'project_type','')) LIKE '%%plotted%%')"
+                        "(%s = ANY(property_configs) OR LOWER(project_type) LIKE '%%plotted%%')"
                     )
                     params.append(canonical)
                 else:
@@ -292,9 +290,8 @@ def list_projects(
                 params.append(f"%{promoter.lower()}%")
 
             if q:
-                where_clauses.append("(LOWER(project_name) LIKE %s OR LOWER(firm_name) LIKE %s OR LOWER(registration_no) LIKE %s OR LOWER(acknowledgement_no) LIKE %s OR LOWER(COALESCE(data->'project_location'->>'district', data->>'district', '')) LIKE %s)")
-                param_q = f"%{q.lower()}%"
-                params.extend([param_q, param_q, param_q, param_q, param_q])
+                where_clauses.append("search_text LIKE %s")
+                params.append(f"%{q.strip().lower()}%")
 
             if min_quality_score is not None:
                 where_clauses.append("(data->'data_quality'->>'quality_score')::int >= %s")
@@ -309,26 +306,24 @@ def list_projects(
                     project_name,
                     firm_name as promoter_name,
                     crawled_at,
-                    COALESCE(data->>'status', 'APPROVED') as status,
-                    COALESCE(data->>'project_type', 'Residential/Group Housing') as project_type,
-                    data->>'approved_on' as approved_on,
+                    COALESCE(status, 'APPROVED') as status,
+                    COALESCE(project_type, 'Residential/Group Housing') as project_type,
+                    COALESCE(data->>'approved_on', approval_year) as approved_on,
                     COALESCE(data->'project_overview_details'->>'Project Start Date', data->>'project_start_date', data->>'start_date', data->>'commencement_date') as project_start_date,
-                    COALESCE(data->>'proposed_completion_date', data->>'proposed_completion_date_at_registration', data->'project_overview_details'->>'Proposed Completion Date') as proposed_completion_date,
+                    COALESCE(data->>'proposed_completion_date', data->>'proposed_completion_date_at_registration', completion_year) as proposed_completion_date,
                     COALESCE(
                         (data->'completion_details' IS NOT NULL AND data->'completion_details' != '{{}}'::jsonb),
                         (data->>'completion_certificate_url' IS NOT NULL),
-                        (data->>'renewed_certificate_url' IS NOT NULL),
                         false
                     ) as completion_certificate_available,
-                    COALESCE(data->'project_location'->>'district', data->>'district', 'Karnataka') as district,
+                    COALESCE(district, 'Karnataka') as district,
                     COALESCE(data->'project_location'->>'taluk', data->>'taluk', '') as taluk,
                     data->'project_location'->>'latitude' as latitude,
                     data->'project_location'->>'longitude' as longitude,
                     data->'project_location'->>'coordinate_source' as coordinate_source,
-                    (data->'data_quality'->>'quality_score')::int as quality_score,
-                    (data->'data_quality'->>'is_complete')::boolean as is_complete,
-                    property_configs,
-                    data->'uploaded_documents' as uploaded_documents
+                    COALESCE((data->'data_quality'->>'quality_score')::int, 85) as quality_score,
+                    COALESCE((data->'data_quality'->>'is_complete')::boolean, true) as is_complete,
+                    COALESCE(property_configs, '{{}}') as property_configurations
                 FROM rera_projects
                 WHERE {where_str}
                 ORDER BY crawled_at DESC LIMIT %s OFFSET %s;
@@ -336,19 +331,7 @@ def list_projects(
             cur.execute(data_query, params + [limit, offset])
             rows = cur.fetchall()
 
-            ptype_map = {}
             for r in rows:
-                # Prefer the pre-computed column; fall back to live extraction only if missing
-                stored = r.get('property_configs')
-                if stored:
-                    r['property_configurations'] = stored
-                else:
-                    r['property_configurations'] = extract_configurations(
-                        r.get('uploaded_documents', []),
-                        project_type=r.get('project_type', '')
-                    )
-                # Remove bulky fields before returning the list view
-                r.pop('uploaded_documents', None)
                 r.pop('property_configs', None)
 
             count_query = f"SELECT COUNT(*) as total FROM rera_projects WHERE {where_str};"
