@@ -381,7 +381,7 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
     proj_address = loc_info.get("address") or proj_details.get("Project Address") or ""
     addr_lower = (proj_address + " " + (taluk or "") + " " + (district or "")).lower()
 
-    if "sarjapur" in addr_lower or "chikkanayakanahalli" in addr_lower or "chikkakanahalli" in addr_lower or "varthur" in addr_lower:
+    if any(k in addr_lower for k in ["sarjapur", "chikkanayakanahalli", "chikkakanahalli", "varthur", "dommasandra"]):
         location_usps.append({
             "category": "transport",
             "title": "Prime Sarjapur Road Tech Corridor",
@@ -402,7 +402,34 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
             "title": "Multispecialty Healthcare Access",
             "description": "Quick emergency & outpatient access to Motherhood Hospital, Manipal Hospital Sarjapur Road, and Sakra World Hospital."
         })
-    elif "panathur" in addr_lower or "kadubeesanahalli" in addr_lower or "balagere" in addr_lower:
+    elif any(k in addr_lower for k in ["whitefield", "itpl", "hoodi", "epip", "kadugodi"]):
+        location_usps.append({
+            "category": "transport",
+            "title": "Whitefield Metro & Railway Corridor",
+            "description": "Direct access to Namma Metro Purple Line (Whitefield/Kadugodi Stations) and Whitefield Main Road arterial network."
+        })
+        location_usps.append({
+            "category": "employment",
+            "title": "Core ITPL & EPIP Tech Belt",
+            "description": "Within minutes from International Tech Park Bangalore (ITPL), SAP Labs, Mindtree, and EPIP Industrial Zone."
+        })
+        location_usps.append({
+            "category": "shopping",
+            "title": "Retail & Entertainment Capital",
+            "description": "Proximity to Phoenix Marketcity, VR Bengaluru, and Nexus Forum Value Mall."
+        })
+    elif any(k in addr_lower for k in ["electronic city", "hosur road", "bommasandra", "attibele", "chandapura"]):
+        location_usps.append({
+            "category": "transport",
+            "title": "Electronic City Elevated Expressway",
+            "description": "Seamless high-speed commute to Silk Board, Koramangala & Hosur Road via 4-lane Elevated Expressway and Yellow Line Metro."
+        })
+        location_usps.append({
+            "category": "employment",
+            "title": "India's Largest Tech Campus Hub",
+            "description": "Close to Infosys Main Campus, Wipro Technologies, Tech Mahindra, and Biocon Park."
+        })
+    elif any(k in addr_lower for k in ["panathur", "kadubeesanahalli", "balagere", "marathahalli", "bellandur"]):
         location_usps.append({
             "category": "transport",
             "title": "Outer Ring Road (ORR) Connectivity Hub",
@@ -413,32 +440,69 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
             "title": "Short Drive to ORR Work Hubs",
             "description": "Direct connectivity to Ecoworld, Prestige Tech Park, JP Morgan, and Cessna Business Park."
         })
-    elif "thanisandra" in addr_lower or "hebbal" in addr_lower or "yelahanka" in addr_lower:
+    elif any(k in addr_lower for k in ["thanisandra", "hebbal", "yelahanka", "devanahalli", "kogilu", "jakkur", "hennur"]):
         location_usps.append({
             "category": "transport",
             "title": "North Bengaluru Airport Corridor",
             "description": "Direct arterial connectivity to Bellary Road (NH 44), KIADB Aerospace Park, and Kempegowda International Airport."
         })
-    else:
+        location_usps.append({
+            "category": "employment",
+            "title": "Aerospace & High-Tech Hardware Hub",
+            "description": "Near Shell Technology Centre, KIADB IT Hardware Park, and Manyata Tech Park."
+        })
+    elif any(k in addr_lower for k in ["kanakapura", "jp nagar", "bannerghatta", "jayanagar", "banashankari"]):
         location_usps.append({
             "category": "transport",
-            "title": f"Established {district.title()} Connectivity",
-            "description": f"Located in {taluk or district} with direct access to primary arterial roads and civic amenities."
+            "title": "South Bengaluru Green Line Metro Corridor",
+            "description": "Direct arterial connection to Kanakapura Road, Peripheral Ring Road, and Green Line Metro."
+        })
+        location_usps.append({
+            "category": "education",
+            "title": "Established Educational Belt",
+            "description": "Surrounded by top institutions including IIM Bangalore, Delhi Public School, and Kumaran Systems."
+        })
+    else:
+        dist_name = (district or "Karnataka").title()
+        taluk_name = (taluk or dist_name).title()
+        location_usps.append({
+            "category": "transport",
+            "title": f"Established {taluk_name} Arterial Connectivity",
+            "description": f"Strategically located in {taluk_name}, {dist_name} with direct access to primary state highways, transit nodes, and civic infrastructure."
+        })
+        location_usps.append({
+            "category": "civic",
+            "title": f"{dist_name} Urban Hub Access",
+            "description": f"Convenient proximity to municipal markets, district hospitals, and key civic administrative centers."
         })
 
-    # Open Space Ratio USP
+    # Open Space & Greenery Ratio USP
     try:
         total_area_val = float(proj_overview.get('Total Area Of Land (Sq Mtr) (A1+A2)') or 0)
         open_area_val = float(proj_overview.get('Total Open Area (Sq Mtr) (A1)') or 0)
         if total_area_val > 0 and open_area_val > 0:
             open_pct = round((open_area_val / total_area_val) * 100, 1)
-            if open_pct >= 50:
+            if open_pct >= 40:
                 acres = round(open_area_val / 4046.86, 1)
                 location_usps.append({
                     "category": "lifestyle",
                     "title": f"High Open Space Ratio ({open_pct}% Open Greenery)",
                     "description": f"Expansive {acres} Acres ({open_pct}%) dedicated exclusively to open green spaces, parks, and outdoor sports amenities."
                 })
+    except Exception:
+        pass
+
+    # High Parking Ratio USP
+    try:
+        tot_flats = float(proj_overview.get('Total Number of Inventories/Flats/Villas') or 0)
+        cov_park = float(proj_overview.get('No. of Covered Parking') or 0) + float(proj_overview.get('No. of Open Parking') or 0)
+        if tot_flats > 0 and cov_park >= tot_flats:
+            ratio = round(cov_park / tot_flats, 2)
+            location_usps.append({
+                "category": "lifestyle",
+                "title": f"Ample Parking Provision ({ratio} Bays / Unit)",
+                "description": f"Generous parking allocation with {int(cov_park)} dedicated bays across project towers."
+            })
     except Exception:
         pass
 
