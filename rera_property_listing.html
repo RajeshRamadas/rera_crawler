@@ -104,6 +104,16 @@
   .filter-chip:hover { border-color: var(--ink); color: var(--ink); }
   .filter-chip.active { background: var(--ink); border-color: var(--ink); color: var(--paper); }
 
+  .reset-btn {
+    height: 36px; box-sizing: border-box; border-radius: 4px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; font-weight: 600;
+    letter-spacing: 0.03em; text-transform: uppercase;
+    color: #991B1B; background: #FEF2F2; border: 1px solid #FCA5A5;
+    padding: 0 0.85rem; cursor: pointer; transition: all 0.15s ease;
+    display: inline-flex; align-items: center; gap: 0.35rem; white-space: nowrap;
+  }
+  .reset-btn:hover { background: #FEE2E2; border-color: #EF4444; color: #7F1D1D; }
+
   .sort-group { display: flex; align-items: center; gap: 0.5rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); }
   select#sortBy, select.filter-select {
     height: 36px; box-sizing: border-box; border-radius: 4px;
@@ -564,6 +574,7 @@
         <option value="2024">Completion 2024</option>
         <option value="2023">Completion 2023</option>
       </select>
+      <button id="resetFiltersBtn" class="reset-btn" title="Reset search text and all dropdown filters">↺ Reset Filters</button>
     </div>
     <div class="toolbar-row">
       <div class="filters" id="filterChips"></div>
@@ -1437,6 +1448,27 @@ try {
     selectedCompletionYear = e.target.value;
     currentPage = 1;
     loadAndRender();
+  });
+
+  document.getElementById('resetFiltersBtn').addEventListener('click', () => {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('districtFilter').value = '';
+    document.getElementById('propertyTypeFilter').value = '';
+    document.getElementById('propertyConfigFilter').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('approvalYearFilter').value = '';
+    document.getElementById('completionYearFilter').value = '';
+
+    searchTerm = '';
+    selectedDistrict = '';
+    selectedStatus = '';
+    selectedCompletionYear = '';
+    activeFilter = 'all';
+    currentPage = 1;
+
+    renderFilters();
+    loadAndRender();
+    showToast('All filters reset');
   });
 
   document.getElementById('sortBy').addEventListener('change', (e) => {
