@@ -293,47 +293,66 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
         compliance_reasons.append(f"❌ HARD GATE FAIL: Project status '{status}' — registration is not active. Score forced to 0.")
 
     # 2. Litigation Risk (P-05 to P-11) — INVERTED (100 = safe, 0 = heavy litigation)
+    # Evaluates project-specific complaints primarily, with a portfolio-scaled promoter adjustment
     litigation_reasons = []
-    if tot_complaints == 0:
+    if tot_proj_complaints == 0:
         litigation_score = 100
-        litigation_reasons.append("✓ 0 RERA complaints registered against project or promoter.")
+        litigation_reasons.append("✓ 0 RERA complaints registered on this specific project.")
+    elif tot_proj_complaints == 1:
+        litigation_score = 80
+        litigation_reasons.append("⚠ 1 RERA complaint registered on this project (-20 pts).")
+    elif tot_proj_complaints <= 3:
+        litigation_score = 65
+        litigation_reasons.append(f"❌ DEDUCTION -35 pts: {tot_proj_complaints} RERA complaints registered on project.")
+    elif tot_proj_complaints <= 10:
+        litigation_score = 45
+        litigation_reasons.append(f"❌ DEDUCTION -55 pts: {tot_proj_complaints} RERA complaints registered on project.")
     else:
-        if tot_complaints <= 2:
-            base_lit_ded = 20
-        elif tot_complaints <= 5:
-            base_lit_ded = 35
-        elif tot_complaints <= 15:
-            base_lit_ded = 55
-        elif tot_complaints <= 30:
-            base_lit_ded = 70
-        else:
-            base_lit_ded = 85
+        litigation_score = 25
+        litigation_reasons.append(f"❌ DEDUCTION -75 pts: High complaint volume ({tot_proj_complaints}) on project.")
 
-        litigation_score = max(0, 100 - base_lit_ded)
-        litigation_reasons.append(f"❌ DEDUCTION -{base_lit_ded} pts: Recorded {tot_complaints} total RERA complaints ({tot_proj_complaints} on project, {tot_prom_complaints} on promoter).")
+    if len(under_enquiry_complaints) > 0:
+        litigation_score = max(0, litigation_score - 15)
+        litigation_reasons.append(f"❌ DEDUCTION -15 pts: {len(under_enquiry_complaints)} complaint(s) actively under enquiry.")
 
-        if len(under_enquiry_complaints) > 0:
-            litigation_score -= 15
-            litigation_reasons.append(f"❌ DEDUCTION -15 pts: {len(under_enquiry_complaints)} complaint(s) actively under enquiry.")
-
-        # Fix #7: Single final clamp — safe against any future additional deductions
-        litigation_score = max(0, litigation_score)
+    if tot_prom_complaints > 0:
+        prom_adj = min(15, tot_prom_complaints // 5)
+        if prom_adj > 0:
+            litigation_score = max(0, litigation_score - prom_adj)
+            litigation_reasons.append(f"⚠ Minor promoter portfolio adjustment (-{prom_adj} pts for {tot_prom_complaints} developer-level filings).")
 
     # 3. Timeline Adherence (P-12 to P-16)
     timeline_reasons = []
+    has_covid_cert = bool(raw_data.get("covid_certificate_url"))
+    has_oc = "completion" in doc_raw_names or "occupancy" in doc_raw_names or "oc" in doc_raw_names or "cc" in doc_raw_names
+
     if status == "COMPLETED":
         timeline_score = 100
         timeline_reasons.append("✓ Project has achieved official completion status.")
     elif proposed_comp_date != "N/A":
-        timeline_score = 90
         try:
             comp_dt = datetime.strptime(proposed_comp_date, "%d/%m/%Y" if "/" in proposed_comp_date else "%Y-%m-%d")
-            if comp_dt < datetime.now(tz=timezone.utc).replace(tzinfo=None) and "COMPLETED" not in status:
-                timeline_score = 35
-                timeline_reasons.append(f"❌ DEDUCTION -55 pts: Declared target date {proposed_comp_date} has expired without completion certificate.")
+            now_dt = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+            if comp_dt < now_dt:
+                delay_years = (now_dt - comp_dt).days / 365.25
+                if delay_years < 1.0:
+                    timeline_score = 75
+                    timeline_reasons.append(f"⚠ Declared target date {proposed_comp_date} passed (< 1 yr ago).")
+                elif delay_years < 3.0:
+                    timeline_score = 60
+                    timeline_reasons.append(f"❌ DEDUCTION -40 pts: Declared target date {proposed_comp_date} passed ({round(delay_years, 1)} yrs ago).")
+                else:
+                    timeline_score = 45
+                    timeline_reasons.append(f"❌ DEDUCTION -55 pts: Declared target date {proposed_comp_date} passed over 3 years ago.")
+
+                if has_covid_cert or has_oc:
+                    timeline_score = min(90, timeline_score + 15)
+                    timeline_reasons.append("✓ COVID extension or completion document filings detected (+15 pts buffer).")
             else:
-                timeline_reasons.append(f"✓ Project schedule declared with target completion date {proposed_comp_date}.")
+                timeline_score = 90
+                timeline_reasons.append(f"✓ Project schedule active with target completion date {proposed_comp_date}.")
         except Exception:
+            timeline_score = 70
             timeline_reasons.append(f"⚠ Declared completion date: {proposed_comp_date}.")
     else:
         timeline_score = 50
@@ -342,15 +361,24 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
     # 4. Land & Title Clarity (P-17 to P-21)
     title_reasons = []
     title_score = 100
+    
+    # Check survey numbers in overview / address text if list is empty
+    proj_address = loc_info.get("address") or proj_details.get("Project Address") or ""
+    overview_text = str(raw_data.get("project_overview_details") or {}) + " " + proj_address
     if not survey_nos:
-        title_score -= 20
-        title_reasons.append("❌ DEDUCTION -20 pts: Land survey numbers missing or unverified.")
+        sy_matches = re.findall(r'(?:sy|survey|sy\.?\s*no\.?)\s*[:#-]?\s*([\d\/\,\s\-]+)', overview_text, re.IGNORECASE)
+        if sy_matches:
+            survey_nos = [m.strip() for m in sy_matches[:3]]
+
+    if not survey_nos:
+        title_score -= 15
+        title_reasons.append("❌ DEDUCTION -15 pts: Land survey numbers missing or unverified.")
     else:
         title_reasons.append(f"✓ Associated survey numbers verified: {', '.join(map(str, survey_nos[:3]))}.")
 
     if not sros:
-        title_score -= 20
-        title_reasons.append("❌ DEDUCTION -20 pts: Sub-Registrar Office jurisdiction missing.")
+        title_score -= 10
+        title_reasons.append("❌ DEDUCTION -10 pts: Sub-Registrar Office jurisdiction missing.")
     else:
         title_reasons.append(f"✓ Sub-Registrar Office jurisdiction identified: {', '.join(map(str, sros[:2]))}.")
 
@@ -366,16 +394,43 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
     location_usps = []
 
     if not (lat and lon):
-        location_score -= 35
-        location_reasons.append("❌ DEDUCTION -35 pts: Exact geographic coordinates (Lat/Lon) unverified.")
+        location_score -= 25
+        location_reasons.append("⚠ Exact geographic coordinates (Lat/Lon) unverified (-25 pts).")
     else:
         location_reasons.append(f"✓ Geographic coordinates verified ({lat}, {lon}).")
 
     if not district or district == "N/A":
-        location_score -= 25
-        location_reasons.append("❌ DEDUCTION -25 pts: District jurisdiction not declared.")
+        location_score -= 15
+        location_reasons.append("❌ DEDUCTION -15 pts: District jurisdiction not declared.")
     else:
         location_reasons.append(f"✓ District identified: {district}.")
+
+    # 7. Promoter Reputation (P-34 to P-35)
+    # Evaluates complaints per project across promoter portfolio
+    promoter_reasons = []
+    brand_word = firm_name.split()[0].upper() if firm_name else ""
+    est_portfolio = 30 if brand_word in ["PRESTIGE", "BRIGADE", "SOBHA", "GODREJ", "PURAVANKARA", "MAHINDRA"] else 5
+    comp_per_proj = tot_prom_complaints / max(1, est_portfolio)
+
+    if tot_prom_complaints == 0:
+        promoter_score = 100
+        promoter_reasons.append(f"✓ Zero RERA complaints registered against promoter '{firm_name}'.")
+    else:
+        promoter_ded = min(75, round(comp_per_proj * 15))
+        promoter_score = max(25, 100 - promoter_ded)
+        promoter_reasons.append(f"⚠ Recorded {tot_prom_complaints} complaint(s) across promoter portfolio ({round(comp_per_proj, 1)} per project avg, -{promoter_ded} pts).")
+
+    # 8. Data Transparency (P-36 to P-37)
+    transparency_reasons = []
+    doc_bonus = 15 if total_doc_count > 50 else (10 if total_doc_count > 20 else (5 if total_doc_count > 5 else 0))
+    transparency_score = min(100, quality_score + doc_bonus)
+
+    if transparency_score >= 90:
+        transparency_reasons.append(f"✓ High filing transparency ({transparency_score}/100 score, {total_doc_count} attachments).")
+    elif transparency_score >= 70:
+        transparency_reasons.append(f"⚠ Satisfactory filing transparency ({transparency_score}/100 score).")
+    else:
+        transparency_reasons.append(f"❌ DEDUCTION: Data filing quality score is low ({transparency_score}/100). Key disclosures missing.")
 
     # Synthesize Location USPs based on geographic metadata & area specs
     proj_address = loc_info.get("address") or proj_details.get("Project Address") or ""
