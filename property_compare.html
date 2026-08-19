@@ -466,6 +466,55 @@
     margin-top: 0.2rem;
   }
 
+  .cell-win {
+    background: rgba(47, 110, 79, 0.08) !important;
+    border-left: 3.5px solid #2F6E4F !important;
+  }
+  .cell-loss {
+    background: rgba(172, 44, 44, 0.06) !important;
+    border-left: 3.5px solid #AC2C2C !important;
+  }
+  .loss-pill {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: #FEE2E2;
+    color: #991B1B;
+    border: 1px solid #FCA5A5;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    display: inline-block;
+    margin-top: 0.2rem;
+  }
+  .winner-summary-card {
+    background: linear-gradient(135deg, #111827 0%, #1F2937 100%);
+    color: #fff;
+    border: 1px solid #374151;
+    border-radius: 8px;
+    padding: 1.35rem 1.5rem;
+    margin-bottom: 1.75rem;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+  }
+  .digest-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 9999px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .digest-badge.gold {
+    background: #F59E0B;
+    color: #000;
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+  }
+
   /* Positives vs Negatives side-by-side cards */
   .pos-neg-list {
     list-style: none;
@@ -587,11 +636,35 @@
       </div>
     </div>
 
+    <!-- Executive Verdict & Winner Digest Banner -->
+    <div class="winner-summary-card" id="winnerDigestCard" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; border-bottom: 1px solid rgba(255,255,255,0.12); padding-bottom: 0.9rem; margin-bottom: 1.15rem;">
+        <div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.1em; color:#34D399; font-weight:700; margin-bottom:0.2rem;">
+            ⚡ Executive Winner & Head-to-Head Digest
+          </div>
+          <h2 style="font-family:'IBM Plex Serif',serif; font-weight:600; font-size:1.35rem; color:#fff;" id="digestTitle">
+            Property Comparison Verdict
+          </h2>
+        </div>
+        <div id="winnerHeroPill"></div>
+      </div>
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;" id="digestGrid"></div>
+    </div>
+
     <!-- Visual Profiles: 8-Axis Radar Chart + GIS Location Map -->
     <div class="card">
       <div class="card-head">
-        <span class="card-head-title">Risk Radar & GIS Geolocation Profiles</span>
-        <span class="mono" style="font-size:0.72rem; color:var(--ink-soft);">Multi-Property Overlay</span>
+        <div>
+          <span class="card-head-title">Risk Radar & GIS Geolocation Profiles</span>
+          <div class="mono" style="font-size:0.72rem; color:var(--ink-soft); margin-top:2px;">Multi-Property Overlay & Interactive Focus</div>
+        </div>
+        <div style="display:flex; gap:0.35rem;" id="radarFocusGroup">
+          <button class="btn btn-sm" id="btnRadarAll" onclick="highlightRadarDataset(-1)">All Overlay</button>
+          <button class="btn ghost btn-sm" id="btnRadar0" onclick="highlightRadarDataset(0)">Prop 1</button>
+          <button class="btn ghost btn-sm" id="btnRadar1" onclick="highlightRadarDataset(1)">Prop 2</button>
+          <button class="btn ghost btn-sm" id="btnRadar2" onclick="highlightRadarDataset(2)">Prop 3</button>
+        </div>
       </div>
       <div class="radar-map-grid">
         <!-- Radar Chart -->
@@ -613,7 +686,19 @@
       </div>
     </div>
 
-    <!-- Side-by-Side Detailed Comparison Matrix -->
+    <!-- Matrix Filter Bar & Side-by-Side Table -->
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 1rem; flex-wrap:wrap; gap:0.75rem;">
+      <div>
+        <h2 style="font-family:'IBM Plex Serif',serif; font-size:1.25rem; font-weight:600; color:var(--ink);">Side-by-Side Audit Comparison Matrix</h2>
+        <div style="font-size:0.78rem; color:var(--ink-soft);">Compare full legal disclosures, unit specs, area metrics, and complaint records</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.4rem; background:var(--paper-raised); border:1px solid var(--hairline-strong); padding:4px 8px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+        <span style="font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--ink-soft); font-weight:600; margin-right:4px;">View:</span>
+        <button class="btn btn-sm" id="btnFilterAll" onclick="setMatrixFilter('all')">Show All Rows</button>
+        <button class="btn ghost btn-sm" id="btnFilterDiff" onclick="setMatrixFilter('diff')">⚡ Show Differences Only</button>
+      </div>
+    </div>
+
     <div class="matrix-table-wrap">
       <table class="matrix-table" id="matrixTable">
         <thead id="matrixHead"></thead>
@@ -857,14 +942,136 @@ function updateUrlParams() {
   }
 }
 
+let currentMatrixFilter = 'all';
+
 // ---------------------------------------------------------------------------
 // Main Render Pipeline
 // ---------------------------------------------------------------------------
 function renderAll() {
   renderSlotHeaders();
+  renderWinnerDigestCard();
   renderRadarChart();
   renderMapMarkers();
   renderMatrixTable();
+}
+
+function renderWinnerDigestCard() {
+  const card = document.getElementById('winnerDigestCard');
+  if (!card) return;
+
+  const validProps = currentProjects.filter(Boolean);
+  if (validProps.length < 2) {
+    card.style.display = 'none';
+    return;
+  }
+
+  card.style.display = 'block';
+
+  // 1. Calculate overall health winner
+  let topProp = validProps[0];
+  validProps.forEach(p => {
+    if (p.overall_evaluation.health_score > topProp.overall_evaluation.health_score) {
+      topProp = p;
+    }
+  });
+
+  const topScore = topProp.overall_evaluation.health_score;
+  const lowestScore = Math.min(...validProps.map(p => p.overall_evaluation.health_score));
+  const scoreDiff = topScore - lowestScore;
+
+  // 2. Category Winners
+  // Legal / Complaint Winner
+  let minComplaints = 999;
+  let litWinner = validProps[0];
+  validProps.forEach(p => {
+    const c = (p.complaints_summary && p.complaints_summary.total_complaints) || 0;
+    if (c < minComplaints) { minComplaints = c; litWinner = p; }
+  });
+
+  // Scale Winner (Land Area)
+  let maxArea = -1;
+  let areaWinner = validProps[0];
+  validProps.forEach(p => {
+    const spec = p.project_summary.specifications || {};
+    const area = Number(spec.land_area_sqm) || 0;
+    if (area > maxArea) { maxArea = area; areaWinner = p; }
+  });
+
+  document.getElementById('digestTitle').innerText = `Executive Verdict: ${topProp.project_summary.project_name} is the Recommended Choice`;
+  document.getElementById('winnerHeroPill').innerHTML = `
+    <span class="digest-badge gold">
+      🏆 TOP CHOICE (${topScore}/100)
+    </span>
+  `;
+
+  document.getElementById('digestGrid').innerHTML = `
+    <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); padding: 1rem; border-radius: 6px;">
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:0.68rem; color:#34D399; text-transform:uppercase; font-weight:700;">🏆 Overall Winner</div>
+      <div style="font-family:'IBM Plex Serif',serif; font-weight:600; font-size:1.05rem; margin-top:0.25rem;">${escapeHtml(topProp.project_summary.project_name)}</div>
+      <div style="font-size:0.78rem; color:#9CA3AF; margin-top:0.2rem;">
+        Leads by <strong>+${scoreDiff} pts</strong> with health score of <strong>${topScore}/100</strong>. ${escapeHtml(topProp.overall_evaluation.verdict)}
+      </div>
+    </div>
+
+    <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); padding: 1rem; border-radius: 6px;">
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:0.68rem; color:#60A5FA; text-transform:uppercase; font-weight:700;">🛡️ Cleanest Legal Record</div>
+      <div style="font-family:'IBM Plex Serif',serif; font-weight:600; font-size:1.05rem; margin-top:0.25rem;">${escapeHtml(litWinner.project_summary.project_name)}</div>
+      <div style="font-size:0.78rem; color:#9CA3AF; margin-top:0.2rem;">
+        Recorded <strong>${minComplaints} RERA complaints</strong> (${litWinner.complaints_summary?.project_complaints_count || 0} on project).
+      </div>
+    </div>
+
+    <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); padding: 1rem; border-radius: 6px;">
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:0.68rem; color:#F59E0B; text-transform:uppercase; font-weight:700;">📐 Largest Land & Inventory Scale</div>
+      <div style="font-family:'IBM Plex Serif',serif; font-weight:600; font-size:1.05rem; margin-top:0.25rem;">${escapeHtml(areaWinner.project_summary.project_name)}</div>
+      <div style="font-size:0.78rem; color:#9CA3AF; margin-top:0.2rem;">
+        Spans <strong>${maxArea > 0 ? maxArea.toLocaleString('en-IN') + ' SqM' : 'Masterplan'}</strong> (${areaWinner.project_summary.specifications?.total_units || 'N/A'} units across ${areaWinner.project_summary.specifications?.number_of_towers || 'N/A'} towers).
+      </div>
+    </div>
+  `;
+}
+
+function setMatrixFilter(filter) {
+  currentMatrixFilter = filter;
+  document.getElementById('btnFilterAll').className = filter === 'all' ? 'btn btn-sm' : 'btn ghost btn-sm';
+  document.getElementById('btnFilterDiff').className = filter === 'diff' ? 'btn btn-sm' : 'btn ghost btn-sm';
+
+  const rows = document.querySelectorAll('#matrixBody tr');
+  rows.forEach(r => {
+    if (r.classList.contains('section-header')) return;
+    const isIdentical = r.getAttribute('data-identical') === 'true';
+    if (filter === 'diff' && isIdentical) {
+      r.style.display = 'none';
+    } else {
+      r.style.display = '';
+    }
+  });
+
+  showToast(filter === 'diff' ? 'Filter: Showing differences only' : 'Filter: Showing all parameters');
+}
+
+function highlightRadarDataset(targetIdx) {
+  if (!radarChart) return;
+
+  [0, 1, 2].forEach(i => {
+    const btn = document.getElementById(`btnRadar${i}`);
+    if (btn) btn.className = (i === targetIdx) ? 'btn btn-sm' : 'btn ghost btn-sm';
+  });
+  const btnAll = document.getElementById('btnRadarAll');
+  if (btnAll) btnAll.className = (targetIdx === -1) ? 'btn btn-sm' : 'btn ghost btn-sm';
+
+  radarChart.data.datasets.forEach((ds, idx) => {
+    if (targetIdx === -1 || targetIdx === idx) {
+      ds.borderWidth = 3;
+      ds.backgroundColor = COLORS[idx].bg;
+      ds.borderColor = COLORS[idx].border;
+    } else {
+      ds.borderWidth = 1;
+      ds.backgroundColor = 'rgba(200, 200, 200, 0.05)';
+      ds.borderColor = 'rgba(180, 180, 180, 0.3)';
+    }
+  });
+  radarChart.update();
 }
 
 function getHighestScoreIndex() {
@@ -1072,19 +1279,25 @@ function renderMatrixTable() {
   // --- SECTION 1: EXECUTIVE & COMPOSITE OVERVIEW ---
   html += `<tr class="section-header"><td class="col-label">1. Executive & Risk Assessment</td><td colspan="3">Overall Health & Risk Index</td></tr>`;
 
+  const validScores = currentProjects.filter(Boolean).map(x => x.overall_evaluation.health_score);
+  const highestHealth = Math.max(...validScores);
+  const lowestHealth = Math.min(...validScores);
+  const isHealthDiff = validScores.length > 1 && highestHealth !== lowestHealth;
+
   html += `
-    <tr>
+    <tr data-identical="${!isHealthDiff}">
       <td class="col-label">Overall Health Score</td>
       ${activeProjects.map(ap => {
         if (!ap.p) return `<td>—</td>`;
         const score = ap.p.overall_evaluation.health_score;
-        const highest = Math.max(...currentProjects.filter(Boolean).map(x => x.overall_evaluation.health_score));
-        const isWin = score === highest && currentProjects.filter(Boolean).length > 1;
+        const isWin = isHealthDiff && score === highestHealth;
+        const isLoss = isHealthDiff && score === lowestHealth;
         return `
-          <td>
+          <td class="${isWin ? 'cell-win' : (isLoss ? 'cell-loss' : '')}">
             <div class="cell-score-wrap">
               <span class="cell-score-num" style="color:${COLORS[ap.idx].main}; font-size:1.3rem;">${score} <span style="font-size:0.7rem; color:var(--ink-soft)">/ 100</span></span>
-              ${isWin ? '<span class="winner-pill">★ HIGHEST SCORE</span>' : ''}
+              ${isWin ? '<span class="winner-pill">🏆 WINNER</span>' : ''}
+              ${isLoss ? '<span class="loss-pill">⚠️ HIGHER RISK</span>' : ''}
             </div>
             <div class="cell-score-bar"><div class="cell-score-fill ${COLORS[ap.idx].class}" style="width:${score}%"></div></div>
             <div style="font-size:0.75rem; color:var(--ink-soft); margin-top:4px;">${escapeHtml(ap.p.overall_evaluation.verdict)}</div>
@@ -1092,7 +1305,7 @@ function renderMatrixTable() {
         `;
       }).join('')}
     </tr>
-    <tr>
+    <tr data-identical="true">
       <td class="col-label">RERA Status & Regulatory Gate</td>
       ${activeProjects.map(ap => {
         if (!ap.p) return `<td>—</td>`;
@@ -1115,22 +1328,27 @@ function renderMatrixTable() {
 
   AXES.forEach(axis => {
     const scores = currentProjects.map(p => p ? (p.radar_profile.scores[axis.key] || 0) : -1);
-    const maxScore = Math.max(...scores);
+    const validAxisScores = scores.filter(s => s >= 0);
+    const maxScore = Math.max(...validAxisScores);
+    const minScore = Math.min(...validAxisScores);
+    const isDiff = validAxisScores.length > 1 && maxScore !== minScore;
 
     html += `
-      <tr>
+      <tr data-identical="${!isDiff}">
         <td class="col-label">${axis.name}</td>
         ${activeProjects.map(ap => {
           if (!ap.p) return `<td>—</td>`;
           const score = ap.p.radar_profile.scores[axis.key] || 0;
-          const isWin = score === maxScore && score > 0 && currentProjects.filter(Boolean).length > 1;
+          const isWin = isDiff && score === maxScore;
+          const isLoss = isDiff && score === minScore;
           const reasons = (ap.p.radar_profile.reasons[axis.key] || []).slice(0, 2);
 
           return `
-            <td>
+            <td class="${isWin ? 'cell-win' : (isLoss ? 'cell-loss' : '')}">
               <div class="cell-score-wrap">
                 <span class="cell-score-num">${score} <span style="font-size:0.68rem; color:var(--ink-soft)">/ 100</span></span>
-                ${isWin ? '<span class="winner-pill">Winner</span>' : ''}
+                ${isWin ? '<span class="winner-pill">🏆 Winner</span>' : ''}
+                ${isLoss ? '<span class="loss-pill">⚠️ Lagging</span>' : ''}
               </div>
               <div class="cell-score-bar"><div class="cell-score-fill ${COLORS[ap.idx].class}" style="width:${score}%"></div></div>
               <div style="font-size:0.72rem; color:var(--ink-soft); margin-top:3px; line-height:1.35;">
@@ -1155,8 +1373,16 @@ function renderMatrixTable() {
     return `₹${num.toLocaleString('en-IN')}`;
   }
 
+  const landAreas = currentProjects.map(p => p ? (Number(p.project_summary.specifications?.land_area_sqm) || 0) : 0);
+  const maxLand = Math.max(...landAreas);
+  const minLand = Math.min(...landAreas.filter(a => a > 0));
+  const isLandDiff = landAreas.filter(a => a > 0).length > 1 && maxLand !== minLand;
+
+  const waters = currentProjects.filter(Boolean).map(p => (p.project_summary.specifications?.source_of_water || '').trim());
+  const isWaterIdentical = waters.length > 1 && waters.every(w => w === waters[0]);
+
   html += `
-    <tr>
+    <tr data-identical="false">
       <td class="col-label">Approving Authority</td>
       ${activeProjects.map(ap => {
         if (!ap.p) return `<td>—</td>`;
@@ -1164,7 +1390,7 @@ function renderMatrixTable() {
         return `<td><strong>${escapeHtml(spec.approving_authority || 'N/A')}</strong></td>`;
       }).join('')}
     </tr>
-    <tr>
+    <tr data-identical="false">
       <td class="col-label">Local Authority</td>
       ${activeProjects.map(ap => {
         if (!ap.p) return `<td>—</td>`;
@@ -1172,16 +1398,23 @@ function renderMatrixTable() {
         return `<td>${escapeHtml(spec.local_authority || 'N/A')}</td>`;
       }).join('')}
     </tr>
-    <tr>
+    <tr data-identical="${!isLandDiff}">
       <td class="col-label">Total Land Area</td>
       ${activeProjects.map(ap => {
         if (!ap.p) return `<td>—</td>`;
         const spec = (ap.p.project_summary && ap.p.project_summary.specifications) || {};
-        const area = spec.land_area_sqm;
-        return `<td><span class="mono">${area && area !== 'N/A' ? Number(area).toLocaleString('en-IN') + ' SqM' : 'N/A'}</span></td>`;
+        const area = Number(spec.land_area_sqm) || 0;
+        const isWin = isLandDiff && area === maxLand;
+        const isLoss = isLandDiff && area === minLand;
+        return `
+          <td class="${isWin ? 'cell-win' : (isLoss ? 'cell-loss' : '')}">
+            <span class="mono">${area > 0 ? area.toLocaleString('en-IN') + ' SqM' : 'N/A'}</span>
+            ${isWin ? '<br><span class="winner-pill">🏆 Largest Scale</span>' : ''}
+          </td>
+        `;
       }).join('')}
     </tr>
-    <tr>
+    <tr data-identical="false">
       <td class="col-label">Total Plinth Area</td>
       ${activeProjects.map(ap => {
         if (!ap.p) return `<td>—</td>`;
@@ -1190,7 +1423,7 @@ function renderMatrixTable() {
         return `<td><span class="mono">${area && area !== 'N/A' ? Number(area).toLocaleString('en-IN') + ' SqM' : 'N/A'}</span></td>`;
       }).join('')}
     </tr>
-    <tr>
+    <tr data-identical="false">
       <td class="col-label">Total Carpet Area</td>
       ${activeProjects.map(ap => {
         if (!ap.p) return `<td>—</td>`;
@@ -1199,7 +1432,7 @@ function renderMatrixTable() {
         return `<td><span class="mono">${area && area !== 'N/A' ? Number(area).toLocaleString('en-IN') + ' SqM' : 'N/A'}</span></td>`;
       }).join('')}
     </tr>
-    <tr>
+    <tr data-identical="false">
       <td class="col-label">Total Inventories / Units & Towers</td>
       ${activeProjects.map(ap => {
         if (!ap.p) return `<td>—</td>`;
@@ -1209,7 +1442,7 @@ function renderMatrixTable() {
         return `<td><strong>${units}</strong> ${towers ? `<span style="font-size:0.78rem; color:var(--ink-soft);">(${towers})</span>` : ''}</td>`;
       }).join('')}
     </tr>
-    <tr>
+    <tr data-identical="false">
       <td class="col-label">Covered & Open Parking</td>
       ${activeProjects.map(ap => {
         if (!ap.p) return `<td>—</td>`;
@@ -1219,7 +1452,7 @@ function renderMatrixTable() {
         return `<td><div><strong>Covered:</strong> ${cov}</div><div style="margin-top:2px; font-size:0.78rem; color:var(--ink-soft)"><strong>Open:</strong> ${op}</div></td>`;
       }).join('')}
     </tr>
-    <tr>
+    <tr data-identical="${isWaterIdentical}">
       <td class="col-label">Source of Water</td>
       ${activeProjects.map(ap => {
         if (!ap.p) return `<td>—</td>`;
@@ -1227,7 +1460,7 @@ function renderMatrixTable() {
         return `<td>${escapeHtml(spec.source_of_water || 'Local Authority')}</td>`;
       }).join('')}
     </tr>
-    <tr>
+    <tr data-identical="false">
       <td class="col-label">Total Project Cost & Breakdown</td>
       ${activeProjects.map(ap => {
         if (!ap.p) return `<td>—</td>`;
@@ -1243,7 +1476,7 @@ function renderMatrixTable() {
         `;
       }).join('')}
     </tr>
-    <tr>
+    <tr data-identical="false">
       <td class="col-label">Approved Plan No & Approval Date</td>
       ${activeProjects.map(ap => {
         if (!ap.p) return `<td>—</td>`;
@@ -1256,7 +1489,7 @@ function renderMatrixTable() {
         `;
       }).join('')}
     </tr>
-    <tr>
+    <tr data-identical="false">
       <td class="col-label">Property Type & District</td>
       ${activeProjects.map(ap => {
         if (!ap.p) return `<td>—</td>`;
@@ -1269,7 +1502,7 @@ function renderMatrixTable() {
         `;
       }).join('')}
     </tr>
-    <tr>
+    <tr data-identical="false">
       <td class="col-label">Property Configurations</td>
       ${activeProjects.map(ap => {
         if (!ap.p) return `<td>—</td>`;
@@ -1281,7 +1514,7 @@ function renderMatrixTable() {
         `;
       }).join('')}
     </tr>
-    <tr>
+    <tr data-identical="false">
       <td class="col-label">Proposed Schedule</td>
       ${activeProjects.map(ap => {
         if (!ap.p) return `<td>—</td>`;
@@ -1300,7 +1533,7 @@ function renderMatrixTable() {
   html += `<tr class="section-header"><td class="col-label">4. Land & Title Clarity</td><td colspan="3">Survey Numbers, SRO Jurisdiction & Layout Specs</td></tr>`;
 
   html += `
-    <tr>
+    <tr data-identical="false">
       <td class="col-label">Survey Numbers</td>
       ${activeProjects.map(ap => {
         if (!ap.p) return `<td>—</td>`;
@@ -1312,7 +1545,7 @@ function renderMatrixTable() {
         `;
       }).join('')}
     </tr>
-    <tr>
+    <tr data-identical="false">
       <td class="col-label">Sub-Registrar Office (SRO)</td>
       ${activeProjects.map(ap => {
         if (!ap.p) return `<td>—</td>`;
@@ -1329,8 +1562,13 @@ function renderMatrixTable() {
   // --- SECTION 5: COMPLAINTS & LITIGATION HISTORY ---
   html += `<tr class="section-header"><td class="col-label">5. Legal Disputes & Complaints</td><td colspan="3">RERA Buyer Complaints & Enquiry Status</td></tr>`;
 
+  const complaintCounts = currentProjects.map(p => p ? (p.complaints_summary?.total_complaints || 0) : 999);
+  const minComp = Math.min(...complaintCounts);
+  const maxComp = Math.max(...complaintCounts);
+  const isCompDiff = complaintCounts.length > 1 && minComp !== maxComp;
+
   html += `
-    <tr>
+    <tr data-identical="${!isCompDiff}">
       <td class="col-label">RERA Complaint Summary</td>
       ${activeProjects.map(ap => {
         if (!ap.p) return `<td>—</td>`;
@@ -1338,14 +1576,19 @@ function renderMatrixTable() {
         const total = c.total_complaints || 0;
         const active = c.active_under_enquiry_count || 0;
 
+        const isWin = isCompDiff && total === minComp;
+        const isLoss = isCompDiff && total === maxComp && total > 0;
+
         return `
-          <td>
+          <td class="${isWin ? 'cell-win' : (isLoss ? 'cell-loss' : '')}">
             <div style="font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:1rem; color:${total === 0 ? 'var(--clear)' : 'var(--flag)'}">
               ${total} Total Complaints
             </div>
             <div style="font-size:0.75rem; color:var(--ink-soft); margin-top:4px;">
               Project: ${c.project_complaints_count || 0} · Promoter: ${c.promoter_complaints_count || 0}
             </div>
+            ${isWin ? '<span class="winner-pill" style="margin-top:4px;">🏆 Cleanest Legal Record</span>' : ''}
+            ${isLoss ? '<span class="loss-pill" style="margin-top:4px;">⚠️ Higher Complaints</span>' : ''}
             ${active > 0 ? `<div style="font-size:0.72rem; color:var(--flag); margin-top:3px; font-weight:600;">⚠️ ${active} Under Active Enquiry</div>` : ''}
           </td>
         `;
