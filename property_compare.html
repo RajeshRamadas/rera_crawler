@@ -1144,9 +1144,118 @@ function renderMatrixTable() {
   });
 
   // --- SECTION 3: KEY PROPERTY SPECIFICATIONS ---
-  html += `<tr class="section-header"><td class="col-label">3. Specifications & Location</td><td colspan="3">Property Type, Location & Inventory</td></tr>`;
+  html += `<tr class="section-header"><td class="col-label">3. Specifications & Authority Approvals</td><td colspan="3">Engineering Details, Area Specs & Authorities</td></tr>`;
+
+  // Helper for currency formatting
+  function formatINR(val) {
+    if (!val || val === 'N/A' || isNaN(val)) return val || 'N/A';
+    const num = Number(val);
+    if (num >= 10000000) return `₹${(num / 10000000).toFixed(2)} Cr`;
+    if (num >= 100000) return `₹${(num / 100000).toFixed(2)} Lakh`;
+    return `₹${num.toLocaleString('en-IN')}`;
+  }
 
   html += `
+    <tr>
+      <td class="col-label">Approving Authority</td>
+      ${activeProjects.map(ap => {
+        if (!ap.p) return `<td>—</td>`;
+        const spec = (ap.p.project_summary && ap.p.project_summary.specifications) || {};
+        return `<td><strong>${escapeHtml(spec.approving_authority || 'N/A')}</strong></td>`;
+      }).join('')}
+    </tr>
+    <tr>
+      <td class="col-label">Local Authority</td>
+      ${activeProjects.map(ap => {
+        if (!ap.p) return `<td>—</td>`;
+        const spec = (ap.p.project_summary && ap.p.project_summary.specifications) || {};
+        return `<td>${escapeHtml(spec.local_authority || 'N/A')}</td>`;
+      }).join('')}
+    </tr>
+    <tr>
+      <td class="col-label">Total Land Area</td>
+      ${activeProjects.map(ap => {
+        if (!ap.p) return `<td>—</td>`;
+        const spec = (ap.p.project_summary && ap.p.project_summary.specifications) || {};
+        const area = spec.land_area_sqm;
+        return `<td><span class="mono">${area && area !== 'N/A' ? Number(area).toLocaleString('en-IN') + ' SqM' : 'N/A'}</span></td>`;
+      }).join('')}
+    </tr>
+    <tr>
+      <td class="col-label">Total Plinth Area</td>
+      ${activeProjects.map(ap => {
+        if (!ap.p) return `<td>—</td>`;
+        const spec = (ap.p.project_summary && ap.p.project_summary.specifications) || {};
+        const area = spec.plinth_area_sqm;
+        return `<td><span class="mono">${area && area !== 'N/A' ? Number(area).toLocaleString('en-IN') + ' SqM' : 'N/A'}</span></td>`;
+      }).join('')}
+    </tr>
+    <tr>
+      <td class="col-label">Total Carpet Area</td>
+      ${activeProjects.map(ap => {
+        if (!ap.p) return `<td>—</td>`;
+        const spec = (ap.p.project_summary && ap.p.project_summary.specifications) || {};
+        const area = spec.carpet_area_sqm;
+        return `<td><span class="mono">${area && area !== 'N/A' ? Number(area).toLocaleString('en-IN') + ' SqM' : 'N/A'}</span></td>`;
+      }).join('')}
+    </tr>
+    <tr>
+      <td class="col-label">Total Inventories / Units & Towers</td>
+      ${activeProjects.map(ap => {
+        if (!ap.p) return `<td>—</td>`;
+        const spec = (ap.p.project_summary && ap.p.project_summary.specifications) || {};
+        const units = spec.total_units !== 'N/A' ? `${spec.total_units} Units` : 'N/A';
+        const towers = spec.number_of_towers !== 'N/A' ? `${spec.number_of_towers} Towers` : '';
+        return `<td><strong>${units}</strong> ${towers ? `<span style="font-size:0.78rem; color:var(--ink-soft);">(${towers})</span>` : ''}</td>`;
+      }).join('')}
+    </tr>
+    <tr>
+      <td class="col-label">Covered & Open Parking</td>
+      ${activeProjects.map(ap => {
+        if (!ap.p) return `<td>—</td>`;
+        const spec = (ap.p.project_summary && ap.p.project_summary.specifications) || {};
+        const cov = spec.covered_parking || '0';
+        const op = spec.open_parking || '0';
+        return `<td><div><strong>Covered:</strong> ${cov}</div><div style="margin-top:2px; font-size:0.78rem; color:var(--ink-soft)"><strong>Open:</strong> ${op}</div></td>`;
+      }).join('')}
+    </tr>
+    <tr>
+      <td class="col-label">Source of Water</td>
+      ${activeProjects.map(ap => {
+        if (!ap.p) return `<td>—</td>`;
+        const spec = (ap.p.project_summary && ap.p.project_summary.specifications) || {};
+        return `<td>${escapeHtml(spec.source_of_water || 'Local Authority')}</td>`;
+      }).join('')}
+    </tr>
+    <tr>
+      <td class="col-label">Total Project Cost & Breakdown</td>
+      ${activeProjects.map(ap => {
+        if (!ap.p) return `<td>—</td>`;
+        const spec = (ap.p.project_summary && ap.p.project_summary.specifications) || {};
+        const total = formatINR(spec.total_project_cost);
+        const land = formatINR(spec.land_cost);
+        const dev = formatINR(spec.dev_cost);
+        return `
+          <td>
+            <strong>${total}</strong>
+            ${(land !== 'N/A' || dev !== 'N/A') ? `<div style="font-size:0.75rem; color:var(--ink-soft); margin-top:2px;">Land: ${land} · Dev: ${dev}</div>` : ''}
+          </td>
+        `;
+      }).join('')}
+    </tr>
+    <tr>
+      <td class="col-label">Approved Plan No & Approval Date</td>
+      ${activeProjects.map(ap => {
+        if (!ap.p) return `<td>—</td>`;
+        const spec = (ap.p.project_summary && ap.p.project_summary.specifications) || {};
+        return `
+          <td>
+            <div><strong>Plan No:</strong> ${escapeHtml(spec.approved_plan_no || 'N/A')}</div>
+            <div style="font-size:0.75rem; color:var(--ink-soft); margin-top:2px;"><strong>Approval Date:</strong> ${escapeHtml(spec.plan_approval_date || 'N/A')}</div>
+          </td>
+        `;
+      }).join('')}
+    </tr>
     <tr>
       <td class="col-label">Property Type & District</td>
       ${activeProjects.map(ap => {
