@@ -661,6 +661,7 @@
     </a>
     <div class="nav-actions">
       <a href="/register" class="btn ghost-nav">← Register Listing</a>
+      <a href="/compare" id="compareNavBtn" class="btn ghost-nav">Compare 2–3 Properties ↗</a>
       <button class="btn ghost-nav" onclick="window.print();">Print Audit PDF</button>
     </div>
   </header>
@@ -1582,6 +1583,11 @@
     sealEl.className = `hero-seal ${isGateOK ? 'pass' : 'fail'}`;
 
     document.getElementById('crawledAt').textContent = `Crawled: ${fmtDate(raw.crawled_at)}`;
+
+    const cmpBtn = document.getElementById('compareNavBtn');
+    if (cmpBtn && (overview.registration_no || overview.project_name)) {
+      cmpBtn.href = `/compare?p=${encodeURIComponent(overview.registration_no || overview.project_name)}`;
+    }
 
     // 1. Overview Grid
     const overviewGrid = document.getElementById('overviewGrid');

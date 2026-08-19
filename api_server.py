@@ -83,6 +83,17 @@ def get_property_detail_page():
     return FileResponse(html_path, media_type="text/html")
 
 
+@app.get("/compare", summary="Property Comparison Dashboard")
+@app.get("/property-compare", summary="Property Comparison Dashboard")
+def get_property_compare_page():
+    """Serves the single-file HTML Property Comparison Dashboard page."""
+    html_path = os.path.join(os.path.dirname(__file__), "property_compare.html")
+    if not os.path.exists(html_path):
+        raise HTTPException(status_code=404, detail="property_compare.html not found.")
+    return FileResponse(html_path, media_type="text/html")
+
+
+
 
 def get_db_connection():
     """Establish connection to PostgreSQL database."""

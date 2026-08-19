@@ -477,7 +477,10 @@
   <header class="masthead">
     <div class="eyebrow">
       <span><span class="dot"></span> RERA Karnataka Intelligence · Property Register</span>
-      <a href="/radar-chart" style="margin-left: auto; color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink); font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; text-transform: uppercase;">Compare Radar ↗</a>
+      <div style="margin-left: auto; display: flex; gap: 1rem;">
+        <a href="/compare" style="color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink); font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; text-transform: uppercase;">Compare 2–3 Properties ↗</a>
+        <a href="/radar-chart" style="color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink); font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; text-transform: uppercase;">Compare Radar ↗</a>
+      </div>
     </div>
     <h1>Property Risk & Compliance Register</h1>
     <p class="sub">All tracked developments in one list, ranked by weighted composite score.</p>
@@ -1188,8 +1191,9 @@ try {
 
           <div class="axis-grid">${axisLines}</div>
           <div class="prop-note"><strong>Regulatory Audit Summary:</strong> ${p.note}</div>
-          <div style="margin-top: 1rem; text-align: right;">
-            <a class="btn btn-sm" style="text-decoration:none;" href="/property-detail?q=${encodeURIComponent(p.name)}" target="_blank" onclick="event.stopPropagation();">Open Full Property Audit Page ↗</a>
+          <div style="margin-top: 1rem; text-align: right; display: flex; justify-content: flex-end; gap: 0.5rem;">
+            <a class="btn btn-sm ghost" style="text-decoration:none;" href="/compare?p=${encodeURIComponent(p.registrationNo || p.name)}" target="_blank" onclick="event.stopPropagation();">Compare Property ↗</a>
+            <a class="btn btn-sm" style="text-decoration:none;" href="/property-detail?q=${encodeURIComponent(p.registrationNo || p.name)}" target="_blank" onclick="event.stopPropagation();">Open Full Property Audit Page ↗</a>
           </div>
         </div>
       `;

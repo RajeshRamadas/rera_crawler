@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Property Comparison Dashboard — RERA Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --paper: #F6F5F1;
+    --paper-raised: #FCFBF8;
+    --ink: #1B1E24;
+    --ink-soft: #565B66;
+    --hairline: #DBD7CC;
+    --hairline-strong: #C7C2B3;
+    --clear: #2F6E4F;
+    --clear-tint: #2F6E4F12;
+    --watch: #97701A;
+    --watch-tint: #97701A14;
+    --flag: #AC2C2C;
+    --flag-tint: #AC2C2C12;
+    --gold: #8A6A1F;
+    --p1-color: #2F6E4F;
+    --p2-color: #1E56A0;
+    --p3-color: #D97706;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.5;
+    padding-bottom: 4rem;
+  }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+  .serif { font-family: 'IBM Plex Serif', serif; }
+
+  /* Navigation Bar */
+  .navbar {
+    background: var(--ink);
+    color: #fff;
+    padding: 0.85rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+    color: #fff;
+  }
+  .nav-title {
+    font-family: 'IBM Plex Serif', serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .nav-subtitle {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    color: #A0A5B1;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    height: 36px;
+    padding: 0 1rem;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #fff;
+    background: var(--ink);
+    border: 1px solid var(--ink);
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+  .btn:hover { background: #323742; border-color: #323742; }
+  .btn.ghost {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--hairline-strong);
+  }
+  .btn.ghost:hover { background: rgba(27,30,36,0.05); border-color: var(--ink); }
+  .btn.ghost-nav {
+    background: transparent;
+    color: #fff;
+    border: 1px solid #454B57;
+  }
+  .btn.ghost-nav:hover { background: rgba(255,255,255,0.1); border-color: #fff; }
+  .btn.btn-sm {
+    height: 28px;
+    padding: 0 0.65rem;
+    font-size: 0.72rem;
+  }
+  .btn.btn-danger {
+    background: #FEF2F2;
+    color: #991B1B;
+    border-color: #FCA5A5;
+  }
+  .btn.btn-danger:hover {
+    background: #FEE2E2;
+    border-color: #EF4444;
+  }
+
+  /* Container */
+  .container {
+    max-width: 1340px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+  }
+
+  /* Page Header */
+  .masthead {
+    border-bottom: 1px solid var(--hairline-strong);
+    padding-bottom: 1.25rem;
+    margin-bottom: 1.75rem;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ink-soft); display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem;
+  }
+  .eyebrow .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--ink-soft); }
+  h1 { font-family: 'IBM Plex Serif', serif; font-weight: 600; font-size: 1.9rem; letter-spacing: -0.01em; }
+  .masthead p.sub { font-size: 0.88rem; color: var(--ink-soft); margin-top: 0.3rem; max-width: 65ch; }
+
+  /* Selector Slot Row */
+  .selector-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    margin-bottom: 1.75rem;
+  }
+  @media (max-width: 900px) {
+    .selector-row { grid-template-columns: 1fr; }
+  }
+
+  .slot-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--hairline-strong);
+    border-top: 4px solid var(--hairline-strong);
+    border-radius: 6px;
+    padding: 1.25rem;
+    position: relative;
+    box-shadow: 0 4px 14px rgba(27,30,36,0.03);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .slot-card.slot-p1 { border-top-color: var(--p1-color); }
+  .slot-card.slot-p2 { border-top-color: var(--p2-color); }
+  .slot-card.slot-p3 { border-top-color: var(--p3-color); }
+
+  .slot-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-soft);
+  }
+  .slot-tag {
+    font-weight: 600;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    color: #fff;
+  }
+  .slot-tag.p1 { background: var(--p1-color); }
+  .slot-tag.p2 { background: var(--p2-color); }
+  .slot-tag.p3 { background: var(--p3-color); }
+
+  /* Search Autocomplete */
+  .search-wrap {
+    position: relative;
+    width: 100%;
+  }
+  .search-input {
+    width: 100%;
+    height: 38px;
+    padding: 0 0.85rem;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.85rem;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 4px;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  .search-input:focus {
+    outline: none;
+    border-color: var(--ink);
+    background: #fff;
+    box-shadow: 0 0 0 2px rgba(27,30,36,0.1);
+  }
+  .autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid var(--hairline-strong);
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 500;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    display: none;
+  }
+  .autocomplete-item {
+    padding: 0.6rem 0.85rem;
+    font-size: 0.82rem;
+    cursor: pointer;
+    border-bottom: 1px solid var(--hairline);
+    display: flex;
+    flex-direction: column;
+  }
+  .autocomplete-item:last-child { border-bottom: none; }
+  .autocomplete-item:hover { background: #F3F1E9; }
+  .autocomplete-item .item-title { font-family: 'IBM Plex Serif', serif; font-weight: 600; color: var(--ink); }
+  .autocomplete-item .item-sub { font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; color: var(--ink-soft); }
+
+  /* Active Property Summary Card inside slot */
+  .slot-active-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .slot-name {
+    font-family: 'IBM Plex Serif', serif;
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--ink);
+    line-height: 1.25;
+  }
+  .slot-dev {
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+  }
+  .slot-meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0.25rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .slot-score-box {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+  }
+  .slot-score-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700;
+    font-size: 1.4rem;
+  }
+  .winner-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: var(--gold);
+    color: #fff;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  /* Card Layout */
+  .card {
+    background: var(--paper-raised);
+    border: 1px solid var(--hairline-strong);
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(27,30,36,0.04);
+    padding: 1.5rem;
+    margin-bottom: 1.75rem;
+  }
+  .card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 0.85rem;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .card-head-title {
+    font-family: 'IBM Plex Serif', serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  /* Grid Layouts for Visual Comparison */
+  .radar-map-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 1.5rem;
+  }
+  @media (max-width: 960px) {
+    .radar-map-grid { grid-template-columns: 1fr; }
+  }
+
+  #radarContainer {
+    position: relative;
+    width: 100%;
+    max-width: 520px;
+    height: 380px;
+    margin: 0 auto;
+  }
+  #compareMap {
+    width: 100%;
+    height: 380px;
+    border-radius: 4px;
+    border: 1px solid var(--hairline-strong);
+    background: #e5e3df;
+  }
+
+  /* Sticky Side-by-Side Comparison Matrix Table */
+  .matrix-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 6px;
+    background: var(--paper-raised);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+  }
+  .matrix-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.84rem;
+    text-align: left;
+  }
+  .matrix-table th, .matrix-table td {
+    padding: 0.85rem 1.1rem;
+    border-bottom: 1px solid var(--hairline);
+    vertical-align: top;
+  }
+  .matrix-table th {
+    background: #EEECDF;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ink);
+  }
+  .matrix-table th.col-label {
+    width: 220px;
+    min-width: 180px;
+    position: sticky;
+    left: 0;
+    background: #E5E2D3;
+    z-index: 10;
+    border-right: 1px solid var(--hairline-strong);
+  }
+  .matrix-table td.col-label {
+    position: sticky;
+    left: 0;
+    background: #F4F2E8;
+    z-index: 5;
+    font-weight: 600;
+    font-size: 0.82rem;
+    color: var(--ink);
+    border-right: 1px solid var(--hairline-strong);
+  }
+  .matrix-table tr.section-header td {
+    background: var(--ink);
+    color: #fff;
+    font-family: 'IBM Plex Serif', serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    padding: 0.65rem 1.1rem;
+    border-bottom: none;
+  }
+  .matrix-table tr.section-header td.col-label {
+    background: var(--ink);
+    color: #fff;
+  }
+  .matrix-table th.col-prop {
+    width: 30%;
+    min-width: 250px;
+  }
+  .matrix-table th.col-prop.p1 { border-top: 4px solid var(--p1-color); }
+  .matrix-table th.col-prop.p2 { border-top: 4px solid var(--p2-color); }
+  .matrix-table th.col-prop.p3 { border-top: 4px solid var(--p3-color); }
+
+  .matrix-table tr:hover td {
+    background: rgba(27,30,36,0.015);
+  }
+  .matrix-table tr:hover td.col-label {
+    background: #EBE8DC;
+  }
+
+  /* Score Bar inside table cell */
+  .cell-score-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+  }
+  .cell-score-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  .cell-score-bar {
+    height: 6px;
+    background: var(--hairline);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 0.4rem;
+  }
+  .cell-score-fill {
+    height: 100%;
+    border-radius: 3px;
+  }
+  .cell-score-fill.p1 { background: var(--p1-color); }
+  .cell-score-fill.p2 { background: var(--p2-color); }
+  .cell-score-fill.p3 { background: var(--p3-color); }
+
+  .winner-pill {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: #FEF3C7;
+    color: #92400E;
+    border: 1px solid #FCD34D;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    display: inline-block;
+    margin-top: 0.2rem;
+  }
+
+  /* Positives vs Negatives side-by-side cards */
+  .pos-neg-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .pos-neg-list li {
+    font-size: 0.8rem;
+    line-height: 1.4;
+    position: relative;
+    padding-left: 1.15rem;
+  }
+  .pos-list li::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: var(--clear);
+    font-weight: bold;
+  }
+  .neg-list li::before {
+    content: "✕";
+    position: absolute;
+    left: 0;
+    color: var(--flag);
+    font-weight: bold;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 1.25rem; left: 50%; transform: translateX(-50%) translateY(8px);
+    background: var(--ink); color: var(--paper); font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem;
+    padding: 0.55rem 0.9rem; opacity: 0; pointer-events: none; transition: all 0.2s; z-index: 2000;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media print {
+    .navbar, .selector-row, .btn { display: none !important; }
+    body { background: #fff; padding: 0; }
+    .container { max-width: 100%; margin: 0; padding: 0; }
+    .card, .matrix-table-wrap { box-shadow: none; border-color: #ccc; page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header class="navbar">
+    <a href="/register" class="nav-brand">
+      <div>
+        <div class="nav-title">RERA Intelligence</div>
+        <div class="nav-subtitle">Property Comparison Dashboard</div>
+      </div>
+    </a>
+    <div class="nav-actions">
+      <a href="/register" class="btn ghost-nav">← Property Register</a>
+      <button class="btn ghost-nav" id="shareBtn">Share Comparison</button>
+      <button class="btn ghost-nav" onclick="window.print();">Export PDF</button>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- Page Header -->
+    <div class="masthead">
+      <div>
+        <div class="eyebrow">
+          <span><span class="dot"></span> Side-by-Side Audit Matrix</span>
+        </div>
+        <h1>Compare Properties</h1>
+        <p class="sub">Evaluate 2 to 3 RERA developments across composite risk scores, 8-axis radar profiles, location USPs, legal filings, and promoter track record.</p>
+      </div>
+      <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+        <button class="btn ghost btn-sm" onclick="loadPreset('top-rated')">⚡ Preset: Top Rated</button>
+        <button class="btn ghost btn-sm" onclick="loadPreset('sarjapur')">⚡ Preset: Sarjapur Corridor</button>
+        <button class="btn ghost btn-sm" onclick="loadPreset('whitefield')">⚡ Preset: Whitefield IT Hub</button>
+      </div>
+    </div>
+
+    <!-- 3 Property Selector Slots -->
+    <div class="selector-row" id="selectorRow">
+      <!-- Slot 1 -->
+      <div class="slot-card slot-p1" id="slotCard0">
+        <div class="slot-header">
+          <span class="slot-tag p1">Property 1</span>
+          <button class="btn ghost btn-sm btn-danger" onclick="removeSlot(0)" title="Remove property">Remove</button>
+        </div>
+        <div class="search-wrap">
+          <input type="text" class="search-input" id="searchInput0" placeholder="Search project name, builder, or RERA Reg No..." oninput="onSearchInput(0)" />
+          <div class="autocomplete-dropdown" id="dropdown0"></div>
+        </div>
+        <div class="slot-active-info" id="slotInfo0"></div>
+      </div>
+
+      <!-- Slot 2 -->
+      <div class="slot-card slot-p2" id="slotCard1">
+        <div class="slot-header">
+          <span class="slot-tag p2">Property 2</span>
+          <button class="btn ghost btn-sm btn-danger" onclick="removeSlot(1)" title="Remove property">Remove</button>
+        </div>
+        <div class="search-wrap">
+          <input type="text" class="search-input" id="searchInput1" placeholder="Search project name, builder, or RERA Reg No..." oninput="onSearchInput(1)" />
+          <div class="autocomplete-dropdown" id="dropdown1"></div>
+        </div>
+        <div class="slot-active-info" id="slotInfo1"></div>
+      </div>
+
+      <!-- Slot 3 -->
+      <div class="slot-card slot-p3" id="slotCard2">
+        <div class="slot-header">
+          <span class="slot-tag p3">Property 3</span>
+          <button class="btn ghost btn-sm btn-danger" id="removeBtn2" onclick="removeSlot(2)" title="Remove property">Remove</button>
+        </div>
+        <div class="search-wrap">
+          <input type="text" class="search-input" id="searchInput2" placeholder="Search project name, builder, or RERA Reg No..." oninput="onSearchInput(2)" />
+          <div class="autocomplete-dropdown" id="dropdown2"></div>
+        </div>
+        <div class="slot-active-info" id="slotInfo2"></div>
+      </div>
+    </div>
+
+    <!-- Visual Profiles: 8-Axis Radar Chart + GIS Location Map -->
+    <div class="card">
+      <div class="card-head">
+        <span class="card-head-title">Risk Radar & GIS Geolocation Profiles</span>
+        <span class="mono" style="font-size:0.72rem; color:var(--ink-soft);">Multi-Property Overlay</span>
+      </div>
+      <div class="radar-map-grid">
+        <!-- Radar Chart -->
+        <div>
+          <div id="radarContainer">
+            <canvas id="compareRadarCanvas"></canvas>
+          </div>
+          <div style="text-align:center; margin-top:0.75rem; font-size:0.72rem; font-family:'IBM Plex Mono',monospace; color:var(--ink-soft);">
+            Outer boundary (100) represents perfect compliance & zero risk factors.
+          </div>
+        </div>
+        <!-- GIS Map -->
+        <div>
+          <div id="compareMap"></div>
+          <div style="text-align:center; margin-top:0.75rem; font-size:0.72rem; font-family:'IBM Plex Mono',monospace; color:var(--ink-soft);">
+            Click markers to view individual project summary popups.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Side-by-Side Detailed Comparison Matrix -->
+    <div class="matrix-table-wrap">
+      <table class="matrix-table" id="matrixTable">
+        <thead id="matrixHead"></thead>
+        <tbody id="matrixBody"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<style>
+  .btn-add-slot {
+    width: 100%;
+    padding: 1rem 0;
+    text-align: center;
+    color: var(--ink-soft);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.84rem;
+    font-weight: 600;
+    background: var(--paper);
+    border: 1.5px dashed var(--hairline-strong);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    transition: all 0.2s ease;
+  }
+  .btn-add-slot:hover {
+    background: #fff;
+    border-color: var(--ink);
+    color: var(--ink);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+</style>
+
+<script>
+let currentProjects = [null, null, null];
+let radarChart = null;
+let leafletMap = null;
+let mapMarkers = [];
+
+const PRESETS = {
+  'top-rated': [
+    'PRM/KA/RERA/1251/446/PR/120123/005611',
+    'PRM/KA/RERA/1251/309/PR/300522/004936',
+    'PRM/KA/RERA/1250/303/PR/101122/005448'
+  ],
+  'sarjapur': [
+    'PRM/KA/RERA/1251/308/PR/270922/005268',
+    'PRM/KA/RERA/1251/309/PR/300522/004936',
+    'PRM/KA/RERA/1250/307/PR/180621/001906'
+  ],
+  'whitefield': [
+    'PRM/KA/RERA/1251/446/PR/120123/005611',
+    'PRM/KA/RERA/1251/310/PR/140622/004982',
+    'PRM/KA/RERA/1250/303/PR/101122/005448'
+  ]
+};
+
+const AXES = [
+  { key: 'compliance', name: 'Regulatory Compliance' },
+  { key: 'litigation', name: 'Litigation Risk' },
+  { key: 'timeline', name: 'Timeline Adherence' },
+  { key: 'title', name: 'Land & Title Clarity' },
+  { key: 'location', name: 'Location & Connectivity' },
+  { key: 'layout', name: 'Layout & Amenities' },
+  { key: 'promoter', name: 'Promoter Reputation' },
+  { key: 'transparency', name: 'Data Transparency' }
+];
+
+const COLORS = [
+  { main: '#2F6E4F', bg: 'rgba(47, 110, 79, 0.18)', border: '#2F6E4F', class: 'p1' },
+  { main: '#1E56A0', bg: 'rgba(30, 86, 160, 0.18)', border: '#1E56A0', class: 'p2' },
+  { main: '#D97706', bg: 'rgba(217, 119, 6, 0.18)', border: '#D97706', class: 'p3' }
+];
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.innerText = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function focusSlotInput(slotIdx) {
+  const input = document.getElementById(`searchInput${slotIdx}`);
+  if (input) {
+    input.focus();
+    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    input.style.borderColor = 'var(--clear)';
+    input.style.boxShadow = '0 0 0 3px rgba(47, 110, 79, 0.25)';
+    setTimeout(() => {
+      input.style.borderColor = '';
+      input.style.boxShadow = '';
+    }, 2000);
+  }
+}
+
+document.addEventListener('click', (e) => {
+  for (let i = 0; i < 3; i++) {
+    const card = document.getElementById(`slotCard${i}`);
+    if (card && !card.contains(e.target)) {
+      const drop = document.getElementById(`dropdown${i}`);
+      if (drop) drop.style.display = 'none';
+    }
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Initialization
+// ---------------------------------------------------------------------------
+window.addEventListener('DOMContentLoaded', async () => {
+  initMap();
+
+  // Parse URL search params
+  const urlParams = new URLSearchParams(window.location.search);
+  let pQuery = urlParams.get('p') || urlParams.get('ids') || urlParams.get('projects');
+  
+  let targetQueries = [];
+  if (pQuery) {
+    targetQueries = pQuery.split(',').map(s => s.trim()).filter(Boolean);
+  } else {
+    if (urlParams.get('id1')) targetQueries.push(urlParams.get('id1'));
+    if (urlParams.get('id2')) targetQueries.push(urlParams.get('id2'));
+    if (urlParams.get('id3')) targetQueries.push(urlParams.get('id3'));
+  }
+
+  if (targetQueries.length === 0) {
+    targetQueries = PRESETS['top-rated'];
+  }
+
+  await loadProjectsByQueries(targetQueries);
+
+  document.getElementById('shareBtn').addEventListener('click', () => {
+    const regs = currentProjects.filter(Boolean).map(p => p.project_summary.registration_no);
+    const newUrl = `${window.location.origin}${window.location.pathname}?p=${regs.map(encodeURIComponent).join(',')}`;
+    navigator.clipboard.writeText(newUrl).then(() => {
+      showToast('Comparison link copied to clipboard!');
+    }).catch(() => {
+      showToast('URL updated in address bar!');
+    });
+    window.history.replaceState({}, '', newUrl);
+  });
+});
+
+async function loadProjectsByQueries(queries) {
+  const fetchPromises = queries.slice(0, 3).map(q => fetchProjectAnalysis(q));
+  const results = await Promise.all(fetchPromises);
+  
+  for (let i = 0; i < 3; i++) {
+    currentProjects[i] = results[i] || null;
+  }
+  renderAll();
+}
+
+async function fetchProjectAnalysis(queryStr) {
+  if (!queryStr) return null;
+  try {
+    const res = await fetch(`/api/v1/projects/analyze?q=${encodeURIComponent(queryStr)}`);
+    if (!res.ok) throw new Error('Not found');
+    const data = await res.json();
+    return data.error ? null : data;
+  } catch (err) {
+    console.warn(`Failed to fetch project analysis for '${queryStr}':`, err);
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Search & Autocomplete
+// ---------------------------------------------------------------------------
+let searchDebounceTimers = [null, null, null];
+
+function onSearchInput(slotIdx) {
+  clearTimeout(searchDebounceTimers[slotIdx]);
+  const input = document.getElementById(`searchInput${slotIdx}`);
+  const val = input.value.trim();
+  const dropdown = document.getElementById(`dropdown${slotIdx}`);
+
+  if (val.length < 2) {
+    dropdown.style.display = 'none';
+    return;
+  }
+
+  searchDebounceTimers[slotIdx] = setTimeout(async () => {
+    try {
+      const res = await fetch(`/api/v1/projects?q=${encodeURIComponent(val)}&limit=6`);
+      const data = await res.json();
+      if (!data.results || data.results.length === 0) {
+        dropdown.innerHTML = '<div class="autocomplete-item"><span class="item-sub">No matching projects found</span></div>';
+      } else {
+        dropdown.innerHTML = data.results.map(r => `
+          <div class="autocomplete-item" onclick="selectProjectForSlot(${slotIdx}, '${r.registration_no.replace(/'/g, "\\'")}')">
+            <span class="item-title">${escapeHtml(r.project_name)}</span>
+            <span class="item-sub">${escapeHtml(r.promoter_name || '')} · Reg: ${escapeHtml(r.registration_no)}</span>
+          </div>
+        `).join('');
+      }
+      dropdown.style.display = 'block';
+    } catch (e) {
+      console.error(e);
+    }
+  }, 250);
+}
+
+async function selectProjectForSlot(slotIdx, regNo) {
+  document.getElementById(`dropdown${slotIdx}`).style.display = 'none';
+  document.getElementById(`searchInput${slotIdx}`).value = '';
+  const data = await fetchProjectAnalysis(regNo);
+  if (data) {
+    currentProjects[slotIdx] = data;
+    renderAll();
+    updateUrlParams();
+  } else {
+    showToast('Failed to load project details.');
+  }
+}
+
+function removeSlot(slotIdx) {
+  currentProjects[slotIdx] = null;
+  renderAll();
+  updateUrlParams();
+}
+
+async function loadPreset(key) {
+  if (PRESETS[key]) {
+    showToast(`Loading preset...`);
+    await loadProjectsByQueries(PRESETS[key]);
+    updateUrlParams();
+    showToast(`Loaded ${key.replace('-', ' ')} preset!`);
+  }
+}
+
+function updateUrlParams() {
+  const activeRegs = currentProjects.filter(Boolean).map(p => p.project_summary.registration_no);
+  if (activeRegs.length > 0) {
+    const newUrl = `${window.location.origin}${window.location.pathname}?p=${activeRegs.map(encodeURIComponent).join(',')}`;
+    window.history.replaceState({}, '', newUrl);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Main Render Pipeline
+// ---------------------------------------------------------------------------
+function renderAll() {
+  renderSlotHeaders();
+  renderRadarChart();
+  renderMapMarkers();
+  renderMatrixTable();
+}
+
+function getHighestScoreIndex() {
+  let maxScore = -1;
+  let maxIdx = -1;
+  currentProjects.forEach((p, idx) => {
+    if (p && p.overall_evaluation && p.overall_evaluation.health_score > maxScore) {
+      maxScore = p.overall_evaluation.health_score;
+      maxIdx = idx;
+    }
+  });
+  return maxIdx;
+}
+
+function renderSlotHeaders() {
+  const winnerIdx = getHighestScoreIndex();
+  const validCount = currentProjects.filter(Boolean).length;
+
+  for (let i = 0; i < 3; i++) {
+    const p = currentProjects[i];
+    const infoDiv = document.getElementById(`slotInfo${i}`);
+    
+    if (!p) {
+      infoDiv.innerHTML = `
+        <button type="button" class="btn-add-slot" onclick="focusSlotInput(${i})">
+          <span style="font-size:1.1rem; font-weight:bold;">+</span> Add Property to Compare
+        </button>
+      `;
+      continue;
+    }
+
+    const s = p.project_summary;
+    const ev = p.overall_evaluation;
+    const isWinner = (i === winnerIdx && validCount > 1);
+
+    infoDiv.innerHTML = `
+      <div class="slot-name">${escapeHtml(s.project_name)}</div>
+      <div class="slot-dev">${escapeHtml(s.developer_name)}</div>
+      <div class="slot-meta-row">
+        <div class="slot-score-box">
+          <span class="slot-score-num" style="color: ${COLORS[i].main}">${ev.health_score}</span>
+          <span class="mono" style="font-size:0.68rem; color:var(--ink-soft);">/ 100</span>
+        </div>
+        <div>
+          ${isWinner ? '<span class="winner-badge">★ Top Health Score</span>' : ''}
+          <span class="badge ${s.status === 'APPROVED' ? 'badge-approved' : 'badge-flag'}" style="font-size:0.62rem;">${escapeHtml(s.status)}</span>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.4rem;">
+        <span class="mono" style="font-size:0.65rem; color:var(--ink-soft); text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:180px;">${escapeHtml(s.registration_no)}</span>
+        <a href="/property-detail?q=${encodeURIComponent(s.registration_no)}" target="_blank" class="btn ghost btn-sm" style="font-size:0.65rem;">Audit Detail ↗</a>
+      </div>
+    `;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Radar Chart Rendering
+// ---------------------------------------------------------------------------
+function renderRadarChart() {
+  const canvas = document.getElementById('compareRadarCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  const datasets = [];
+  currentProjects.forEach((p, idx) => {
+    if (!p || !p.radar_profile) return;
+    const scores = p.radar_profile.scores || {};
+    const dataVals = AXES.map(a => scores[a.key] || 0);
+
+    datasets.push({
+      label: p.project_summary.project_name,
+      data: dataVals,
+      backgroundColor: COLORS[idx].bg,
+      borderColor: COLORS[idx].border,
+      borderWidth: 2.5,
+      pointBackgroundColor: COLORS[idx].border,
+      pointBorderColor: '#fff',
+      pointHoverRadius: 6,
+    });
+  });
+
+  if (radarChart) {
+    radarChart.destroy();
+  }
+
+  radarChart = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: AXES.map(a => a.name),
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          min: 0,
+          max: 100,
+          beginAtZero: true,
+          ticks: { stepSize: 20, display: true, backdropColor: 'transparent', font: { family: 'IBM Plex Mono', size: 10 } },
+          grid: { color: '#DBD7CC' },
+          angleLines: { color: '#C7C2B3' },
+          pointLabels: { font: { family: 'IBM Plex Sans', size: 11, weight: '600' }, color: '#1B1E24' }
+        }
+      },
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { font: { family: 'IBM Plex Sans', size: 12, weight: '500' }, usePointStyle: true, boxWidth: 8 }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) { return ` ${ctx.dataset.label}: ${ctx.raw} / 100`; }
+          }
+        }
+      }
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// GIS Map Rendering
+// ---------------------------------------------------------------------------
+function initMap() {
+  if (leafletMap) return;
+  leafletMap = L.map('compareMap').setView([12.9716, 77.5946], 11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+  }).addTo(leafletMap);
+}
+
+function renderMapMarkers() {
+  if (!leafletMap) return;
+
+  // Clear existing markers
+  mapMarkers.forEach(m => leafletMap.removeLayer(m));
+  mapMarkers = [];
+
+  const bounds = [];
+
+  currentProjects.forEach((p, idx) => {
+    if (!p || !p.project_summary) return;
+    const s = p.project_summary;
+    const coords = s.coordinates;
+
+    if (coords && coords.latitude && coords.longitude) {
+      const lat = coords.latitude;
+      const lng = coords.longitude;
+
+      const markerHtml = `<div style="background:${COLORS[idx].main}; color:#fff; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-weight:bold; font-size:12px; border:2px solid #fff; box-shadow:0 3px 8px rgba(0,0,0,0.3);">${idx+1}</div>`;
+      const customIcon = L.divIcon({ html: markerHtml, className: '', iconSize: [26, 26], iconAnchor: [13, 13] });
+
+      const marker = L.marker([lat, lng], { icon: customIcon }).addTo(leafletMap);
+      marker.bindPopup(`
+        <div style="font-family:'IBM Plex Sans',sans-serif;">
+          <div style="font-family:'IBM Plex Serif',serif; font-weight:600; font-size:0.95rem; color:#1B1E24;">${escapeHtml(s.project_name)}</div>
+          <div style="font-size:0.75rem; color:#565B66; margin-top:2px;">${escapeHtml(s.developer_name)}</div>
+          <div style="margin-top:6px; font-family:'IBM Plex Mono',monospace; font-size:0.8rem; font-weight:600; color:${COLORS[idx].main}">
+            Health Score: ${p.overall_evaluation.health_score}/100
+          </div>
+        </div>
+      `);
+      mapMarkers.push(marker);
+      bounds.push([lat, lng]);
+    }
+  });
+
+  if (bounds.length > 0) {
+    if (bounds.length === 1) {
+      leafletMap.setView(bounds[0], 13);
+    } else {
+      leafletMap.fitBounds(bounds, { padding: [40, 40] });
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Side-by-Side Comparison Matrix Table
+// ---------------------------------------------------------------------------
+function renderMatrixTable() {
+  const head = document.getElementById('matrixHead');
+  const body = document.getElementById('matrixBody');
+
+  const activeProjects = currentProjects.map((p, idx) => ({ p, idx }));
+
+  // Head Row
+  head.innerHTML = `
+    <tr>
+      <th class="col-label">Comparison Parameter</th>
+      ${activeProjects.map(ap => `
+        <th class="col-prop ${COLORS[ap.idx].class}">
+          ${ap.p ? `
+            <div style="font-family:'IBM Plex Serif',serif; font-size:1rem; font-weight:600; color:var(--ink);">${escapeHtml(ap.p.project_summary.project_name)}</div>
+            <div style="font-size:0.75rem; color:var(--ink-soft); font-weight:normal; text-transform:none; margin-top:2px;">${escapeHtml(ap.p.project_summary.developer_name)}</div>
+          ` : `<span style="color:var(--ink-soft); font-weight:normal;">Slot ${ap.idx+1} Empty</span>`}
+        </th>
+      `).join('')}
+    </tr>
+  `;
+
+  let html = '';
+
+  // --- SECTION 1: EXECUTIVE & COMPOSITE OVERVIEW ---
+  html += `<tr class="section-header"><td class="col-label">1. Executive & Risk Assessment</td><td colspan="3">Overall Health & Risk Index</td></tr>`;
+
+  html += `
+    <tr>
+      <td class="col-label">Overall Health Score</td>
+      ${activeProjects.map(ap => {
+        if (!ap.p) return `<td>—</td>`;
+        const score = ap.p.overall_evaluation.health_score;
+        const highest = Math.max(...currentProjects.filter(Boolean).map(x => x.overall_evaluation.health_score));
+        const isWin = score === highest && currentProjects.filter(Boolean).length > 1;
+        return `
+          <td>
+            <div class="cell-score-wrap">
+              <span class="cell-score-num" style="color:${COLORS[ap.idx].main}; font-size:1.3rem;">${score} <span style="font-size:0.7rem; color:var(--ink-soft)">/ 100</span></span>
+              ${isWin ? '<span class="winner-pill">★ HIGHEST SCORE</span>' : ''}
+            </div>
+            <div class="cell-score-bar"><div class="cell-score-fill ${COLORS[ap.idx].class}" style="width:${score}%"></div></div>
+            <div style="font-size:0.75rem; color:var(--ink-soft); margin-top:4px;">${escapeHtml(ap.p.overall_evaluation.verdict)}</div>
+          </td>
+        `;
+      }).join('')}
+    </tr>
+    <tr>
+      <td class="col-label">RERA Status & Regulatory Gate</td>
+      ${activeProjects.map(ap => {
+        if (!ap.p) return `<td>—</td>`;
+        const st = ap.p.project_summary.status;
+        const gate = ap.p.radar_profile.gateOK;
+        return `
+          <td>
+            <span class="badge ${st === 'APPROVED' ? 'badge-approved' : 'badge-flag'}">${escapeHtml(st)}</span>
+            <div style="font-size:0.75rem; color:var(--ink-soft); margin-top:6px;">
+              ${gate ? '✓ Gate Cleared: Active Registration' : '✕ Hard Gate Alert: Inactive Registration'}
+            </div>
+          </td>
+        `;
+      }).join('')}
+    </tr>
+  `;
+
+  // --- SECTION 2: 8-AXIS RADAR SCORE BREAKDOWN ---
+  html += `<tr class="section-header"><td class="col-label">2. 8-Axis Risk Breakdown</td><td colspan="3">Detailed Component Scores (0 – 100)</td></tr>`;
+
+  AXES.forEach(axis => {
+    const scores = currentProjects.map(p => p ? (p.radar_profile.scores[axis.key] || 0) : -1);
+    const maxScore = Math.max(...scores);
+
+    html += `
+      <tr>
+        <td class="col-label">${axis.name}</td>
+        ${activeProjects.map(ap => {
+          if (!ap.p) return `<td>—</td>`;
+          const score = ap.p.radar_profile.scores[axis.key] || 0;
+          const isWin = score === maxScore && score > 0 && currentProjects.filter(Boolean).length > 1;
+          const reasons = (ap.p.radar_profile.reasons[axis.key] || []).slice(0, 2);
+
+          return `
+            <td>
+              <div class="cell-score-wrap">
+                <span class="cell-score-num">${score} <span style="font-size:0.68rem; color:var(--ink-soft)">/ 100</span></span>
+                ${isWin ? '<span class="winner-pill">Winner</span>' : ''}
+              </div>
+              <div class="cell-score-bar"><div class="cell-score-fill ${COLORS[ap.idx].class}" style="width:${score}%"></div></div>
+              <div style="font-size:0.72rem; color:var(--ink-soft); margin-top:3px; line-height:1.35;">
+                ${reasons.map(r => `<div>${escapeHtml(r)}</div>`).join('')}
+              </div>
+            </td>
+          `;
+        }).join('')}
+      </tr>
+    `;
+  });
+
+  // --- SECTION 3: KEY PROPERTY SPECIFICATIONS ---
+  html += `<tr class="section-header"><td class="col-label">3. Specifications & Location</td><td colspan="3">Property Type, Location & Inventory</td></tr>`;
+
+  html += `
+    <tr>
+      <td class="col-label">Property Type & District</td>
+      ${activeProjects.map(ap => {
+        if (!ap.p) return `<td>—</td>`;
+        const s = ap.p.project_summary;
+        return `
+          <td>
+            <strong>${escapeHtml(s.project_type)}</strong>
+            <div style="font-size:0.78rem; color:var(--ink-soft); margin-top:2px;">${escapeHtml(s.district)}${s.taluk && s.taluk !== 'N/A' ? ', ' + escapeHtml(s.taluk) : ''}</div>
+          </td>
+        `;
+      }).join('')}
+    </tr>
+    <tr>
+      <td class="col-label">Property Configurations</td>
+      ${activeProjects.map(ap => {
+        if (!ap.p) return `<td>—</td>`;
+        const configs = ap.p.property_configurations || [];
+        return `
+          <td>
+            ${configs.length > 0 ? configs.map(c => `<span class="unit-tag" style="display:inline-block; border:1px solid var(--hairline-strong); padding:2px 6px; border-radius:3px; font-family:'IBM Plex Mono',monospace; font-size:0.72rem; margin:2px;">${escapeHtml(c)}</span>`).join('') : '<span style="color:var(--ink-soft)">Not Specified</span>'}
+          </td>
+        `;
+      }).join('')}
+    </tr>
+    <tr>
+      <td class="col-label">Proposed Schedule</td>
+      ${activeProjects.map(ap => {
+        if (!ap.p) return `<td>—</td>`;
+        const s = ap.p.project_summary;
+        return `
+          <td>
+            <div><strong>Approval:</strong> ${escapeHtml(s.approved_on)}</div>
+            <div style="margin-top:3px;"><strong>Target Completion:</strong> ${escapeHtml(s.proposed_completion_date)}</div>
+          </td>
+        `;
+      }).join('')}
+    </tr>
+  `;
+
+  // --- SECTION 4: LAND & LEGAL DISCLOSURES ---
+  html += `<tr class="section-header"><td class="col-label">4. Land & Title Clarity</td><td colspan="3">Survey Numbers, SRO Jurisdiction & Layout Specs</td></tr>`;
+
+  html += `
+    <tr>
+      <td class="col-label">Survey Numbers</td>
+      ${activeProjects.map(ap => {
+        if (!ap.p) return `<td>—</td>`;
+        const surveys = ap.p.project_summary.survey_numbers || [];
+        return `
+          <td>
+            ${surveys.length > 0 ? `<span class="mono" style="font-size:0.78rem;">${surveys.slice(0, 5).join(', ')}</span>` : '<span style="color:var(--flag)">Missing Survey Nos</span>'}
+          </td>
+        `;
+      }).join('')}
+    </tr>
+    <tr>
+      <td class="col-label">Sub-Registrar Office (SRO)</td>
+      ${activeProjects.map(ap => {
+        if (!ap.p) return `<td>—</td>`;
+        const sros = ap.p.project_summary.sub_registrar_offices || [];
+        return `
+          <td>
+            ${sros.length > 0 ? sros.join(', ') : '<span style="color:var(--ink-soft)">N/A</span>'}
+          </td>
+        `;
+      }).join('')}
+    </tr>
+  `;
+
+  // --- SECTION 5: COMPLAINTS & LITIGATION HISTORY ---
+  html += `<tr class="section-header"><td class="col-label">5. Legal Disputes & Complaints</td><td colspan="3">RERA Buyer Complaints & Enquiry Status</td></tr>`;
+
+  html += `
+    <tr>
+      <td class="col-label">RERA Complaint Summary</td>
+      ${activeProjects.map(ap => {
+        if (!ap.p) return `<td>—</td>`;
+        const c = ap.p.complaints_summary || {};
+        const total = c.total_complaints || 0;
+        const active = c.active_under_enquiry_count || 0;
+
+        return `
+          <td>
+            <div style="font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:1rem; color:${total === 0 ? 'var(--clear)' : 'var(--flag)'}">
+              ${total} Total Complaints
+            </div>
+            <div style="font-size:0.75rem; color:var(--ink-soft); margin-top:4px;">
+              Project: ${c.project_complaints_count || 0} · Promoter: ${c.promoter_complaints_count || 0}
+            </div>
+            ${active > 0 ? `<div style="font-size:0.72rem; color:var(--flag); margin-top:3px; font-weight:600;">⚠️ ${active} Under Active Enquiry</div>` : ''}
+          </td>
+        `;
+      }).join('')}
+    </tr>
+  `;
+
+  // --- SECTION 6: LOCATION HIGHLIGHTS & USPs ---
+  html += `<tr class="section-header"><td class="col-label">6. Location Highlights & USPs</td><td colspan="3">Connectivity, Tech Belts & Lifestyle Advantages</td></tr>`;
+
+  html += `
+    <tr>
+      <td class="col-label">Contextual Location Highlights</td>
+      ${activeProjects.map(ap => {
+        if (!ap.p) return `<td>—</td>`;
+        const usps = ap.p.project_summary.location_usps || [];
+        if (usps.length === 0) return `<td><span style="color:var(--ink-soft)">Standard Regional Connectivity</span></td>`;
+
+        return `
+          <td>
+            <div style="display:flex; flex-direction:column; gap:0.5rem;">
+              ${usps.map(u => `
+                <div style="background:#F7F6F0; border:1px solid var(--hairline-strong); padding:0.5rem 0.65rem; border-radius:4px;">
+                  <div style="font-weight:600; font-size:0.8rem; color:var(--ink);">${escapeHtml(u.title)}</div>
+                  <div style="font-size:0.73rem; color:var(--ink-soft); margin-top:2px;">${escapeHtml(u.description)}</div>
+                </div>
+              `).join('')}
+            </div>
+          </td>
+        `;
+      }).join('')}
+    </tr>
+  `;
+
+  // --- SECTION 7: STRENGTHS (+) VS RED FLAGS (-) ---
+  html += `<tr class="section-header"><td class="col-label">7. Positives (+) vs Negatives (-)</td><td colspan="3">Key Compliance Strengths & Risk Warnings</td></tr>`;
+
+  html += `
+    <tr>
+      <td class="col-label">Verified Strengths (+)</td>
+      ${activeProjects.map(ap => {
+        if (!ap.p) return `<td>—</td>`;
+        const pos = ap.p.positives || [];
+        return `
+          <td>
+            <ul class="pos-neg-list pos-list">
+              ${pos.map(item => `<li><strong>${escapeHtml(item.title)}:</strong> ${escapeHtml(item.description)}</li>`).join('')}
+            </ul>
+          </td>
+        `;
+      }).join('')}
+    </tr>
+    <tr>
+      <td class="col-label">Risk Flags & Deductions (-)</td>
+      ${activeProjects.map(ap => {
+        if (!ap.p) return `<td>—</td>`;
+        const neg = ap.p.negatives || [];
+        if (neg.length === 0) return `<td><span style="color:var(--clear); font-weight:600;">✓ Zero Red Flags Identified</span></td>`;
+
+        return `
+          <td>
+            <ul class="pos-neg-list neg-list">
+              ${neg.map(item => `<li><strong>${escapeHtml(item.title)}:</strong> ${escapeHtml(item.description)}</li>`).join('')}
+            </ul>
+          </td>
+        `;
+      }).join('')}
+    </tr>
+  `;
+
+  body.innerHTML = html;
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+</script>
+</body>
+</html>
