@@ -923,12 +923,20 @@
   function extractAllProjectDocuments(raw, overview) {
     const docs = [];
     const seenUrls = new Set();
+    // Also deduplicate by normalized title+annexure for survey-table docs
+    // (same document type can appear once per survey number with different URLs)
+    const seenTitleKeys = new Set();
 
-    function addDoc(item) {
+    function addDoc(item, dedupByTitle = false) {
       if (!item.url || typeof item.url !== 'string' || !item.url.startsWith('http')) return;
       const cleanUrl = item.url.trim();
       if (cleanUrl.endsWith('DOC_ID=')) return;
       if (seenUrls.has(cleanUrl)) return;
+      if (dedupByTitle) {
+        const titleKey = `${item.annexure}||${item.categoryKey}`;
+        if (seenTitleKeys.has(titleKey)) return;
+        seenTitleKeys.add(titleKey);
+      }
       seenUrls.add(cleanUrl);
       docs.push(item);
     }
@@ -1196,7 +1204,7 @@
                 annexure: annTag,
                 fileType: 'Legal Document',
                 desc: desc
-              });
+              }, true /* dedupByTitle — one entry per doc type across all survey rows */);
             }
           });
         }
@@ -1238,7 +1246,7 @@
       const content = compDetails[sec];
       if (content && typeof content === 'object') {
         Object.keys(content).forEach(k => {
-          if (k.endsWith(' URL') || k.endsWith('_url') || k.toLowerCase().includes('photo') || k.includes('URL')) {
+          if (k.endsWith(' URL') || k.endsWith('_url') || (k.includes('URL') && typeof content[k] !== 'string')) {
             const label = k.replace(/\s*URL.*$/, '').replace(/_url$/, '').trim();
             const val = content[k];
             const urls = Array.isArray(val) ? val : [val];
