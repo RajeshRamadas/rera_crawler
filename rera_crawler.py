@@ -693,7 +693,9 @@ def normalize_project_detail(html_text: str) -> dict:
             sections["survey_land_tables"] = all_table_rows
         result["project_details"] = sections
 
-    # Uploaded Documents tab (menu2) - contains both Location/Overview specs and Document Matrix
+    # Uploaded Documents tab (menu2) - new format: contains both Location/Overview specs and Document Matrix.
+    # Old pre-~2020 format: menu2 contains only document file links (NOCs, certs, etc.);
+    # the overview data (Latitude, Longitude, District, Total Area, etc.) lives in menu1 instead.
     div = soup.find("div", id=TAB_IDS["uploaded_documents"])
     if div is None:
         _warn_missing("uploaded_documents", TAB_IDS["uploaded_documents"])
@@ -703,6 +705,31 @@ def normalize_project_detail(html_text: str) -> dict:
     else:
         result["uploaded_documents"] = parse_documents_matrix(div)
         overview_pairs, map_iframes = parse_all_label_value_pairs(div)
+
+        # -- Old-format detection & fallback ----------------------------------
+        # Signals that the overview data is NOT in menu2 but in menu1 (old format).
+        # Key fields present in every real project overview; absent if menu2 only has documents.
+        _OLD_OVERVIEW_SIGNALS = {"District", "Project Address", "Total Area Of Land (Sq Mtr)",
+                                  "Total Area Of Land (Sq Mtr) (A1+A2)", "Latitude",
+                                  "North Latitude", "Approving Authority"}
+        is_old_format = not any(k in overview_pairs for k in _OLD_OVERVIEW_SIGNALS)
+        if is_old_format:
+            menu1_div = soup.find("div", id=TAB_IDS["project_details"])
+            if menu1_div:
+                old_overview, old_iframes = parse_all_label_value_pairs(menu1_div)
+                # Merge old overview into overview_pairs, not overwriting any new-format keys.
+                for k, v in old_overview.items():
+                    if k not in overview_pairs:
+                        overview_pairs[k] = v
+                if not map_iframes:
+                    map_iframes = old_iframes
+                result["_layout_format"] = "legacy_pre2020"
+            else:
+                result["_layout_format"] = "legacy_pre2020_no_menu1"
+        else:
+            result["_layout_format"] = "current"
+        # ---------------------------------------------------------------------
+
         result["project_overview_details"] = overview_pairs
         result["map_iframes"] = map_iframes
 
@@ -792,26 +819,48 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
     # ------------------------------------------------------------------
     # Coordinate extraction helpers
     # ------------------------------------------------------------------
-    # Anchored pattern that extracts the first well-formed float from a raw
-    # coordinate string, regardless of surrounding direction labels, degree
-    # symbols, or extra whitespace.
+    # Two coordinate formats are used across RERA Karnataka registrations:
     #
-    # Handles all observed RERA Karnataka formats and their failure modes:
-    #   "12.9716"          → 12.9716   (plain)
-    #   "-12.9716"         → -12.9716  (negative — isdigit() would fail)
-    #   "+12.9716"         → 12.9716   (explicit plus)
-    #   "12.9716°"         → 12.9716   (degree symbol)
-    #   "12.9716° N"       → 12.9716   (direction suffix)
-    #   "N 12.9716"        → 12.9716   (direction prefix)
-    #   "12.9716 N 77.59"  → 12.9716   (first float only — caller handles sign)
-    #   "N/A", ""          → None      (garbage → None)
+    #   NEW format (post-~2020)  — decimal degrees in menu2 overview:
+    #     "12.9716"            → 12.9716   (plain)
+    #     "-12.9716"           → -12.9716  (negative)
+    #     "+12.9716"           → 12.9716   (explicit plus)
+    #     "12.9716°"           → 12.9716   (degree symbol)
+    #     "12.9716° N"         → 12.9716   (direction suffix)
+    #     "N 12.9716"          → 12.9716   (direction prefix)
+    #     "N/A", ""            → None      (garbage → None)
+    #
+    #   OLD format (pre-~2020) — DMS in menu1 boundary coord fields:
+    #     "12°59'45.61"N"      → 12.9960028  (DMS with direction)
+    #     "77°42'17.22"E"      → 77.7047833  (DMS with direction)
+    #     degrees°minutes'seconds"direction  (all three parts required)
+    #
+    # _parse_coord() tries DMS first, then falls back to the first float.
+    _DMS_RE = re.compile(
+        r"([+-]?\d+)[°º]\s*(\d+)['\'′]\s*(\d+(?:\.\d+)?)[\"″]?\s*([NSEW])?",
+        re.IGNORECASE,
+    )
     _FLOAT_RE = re.compile(r"[+-]?\d+(?:\.\d+)?")
 
     def _parse_coord(raw_str):
-        """Extract the first valid float from a raw coordinate string, or None."""
+        """Convert a raw coordinate string to a float decimal degree value, or None.
+
+        Handles both DMS (12°59'45.61"N) and decimal-degree (12.9716) formats.
+        DMS is tried first so pre-2020 boundary coords parse correctly.
+        """
         if raw_str is None:
             return None
-        m = _FLOAT_RE.search(str(raw_str))
+        s = str(raw_str).strip()
+        # -- DMS: degrees°minutes'seconds["direction] --
+        m = _DMS_RE.search(s)
+        if m:
+            deg, mins, secs, direction = m.groups()
+            val = float(deg) + float(mins) / 60.0 + float(secs) / 3600.0
+            if direction and direction.upper() in ("S", "W"):
+                val = -val
+            return round(val, 7)
+        # -- Decimal degrees: first float in the string --
+        m = _FLOAT_RE.search(s)
         return float(m.group()) if m else None
 
     def _extract_coord_by_keys(keys):
@@ -847,6 +896,46 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
     lng = _extract_coord_by_keys(["Longitude"])
 
     coordinate_source = "rera_html" if (lat is not None and lng is not None) else None
+
+    # ------------------------------------------------------------------
+    # Old-format fallback: pre-2020 pages only publish boundary edge coords
+    # ("North Latitude", "South Latitude", etc.) — no single center point.
+    # Derive a best-effort center by averaging the N/S latitudes and E/W
+    # longitudes already resolved above as boundary_coordinates.
+    # Only applied when at least one center coord is still missing.
+    #
+    # IMPORTANT: Bounds validation is applied to each boundary value before
+    # averaging. RERA promoters occasionally paste a latitude value into a
+    # longitude field (or vice-versa), which produces a coordinate wildly
+    # outside Karnataka.  We skip such corrupt values and try the other edge
+    # (e.g. if West Longitude is corrupt, use only East Longitude).
+    # ------------------------------------------------------------------
+    _KA_LAT = (11.0, 19.0)   # Karnataka latitude  bounds
+    _KA_LNG = (74.0, 79.5)   # Karnataka longitude bounds
+
+    def _valid_lat(v):
+        return v is not None and _KA_LAT[0] <= v <= _KA_LAT[1]
+
+    def _valid_lng(v):
+        return v is not None and _KA_LNG[0] <= v <= _KA_LNG[1]
+
+    if lat is None or lng is None:
+        n_lat = boundary_coordinates["north"]["latitude"]
+        s_lat = boundary_coordinates["south"]["latitude"]
+        e_lng = boundary_coordinates["east"]["longitude"]
+        w_lng = boundary_coordinates["west"]["longitude"]
+
+        # Filter to only in-bounds values before averaging
+        valid_lats = [v for v in (n_lat, s_lat) if _valid_lat(v)]
+        valid_lngs = [v for v in (e_lng, w_lng) if _valid_lng(v)]
+
+        derived_lat = round(sum(valid_lats) / len(valid_lats), 7) if valid_lats else None
+        derived_lng = round(sum(valid_lngs) / len(valid_lngs), 7) if valid_lngs else None
+
+        if derived_lat is not None and derived_lng is not None:
+            lat = derived_lat
+            lng = derived_lng
+            coordinate_source = "boundary_avg"
 
     # ------------------------------------------------------------------
     # Iframe fallback: if HTML missed at least one coordinate, try parsing
@@ -1140,9 +1229,15 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
 
     full_address = overview.get("Project Address") or (land_addresses[0] if land_addresses else promoter_address)
 
-    # Address survey number regex fallback
+    # Address / description survey number regex fallback.
+    # Old-format projects embed the survey number in "Project Address" or
+    # "Project Description" (e.g. "Sy.No. 28/2, Hoodi Village...") rather
+    # than in a structured land-survey table.
     if not survey_nos:
-        addr_text = full_address or ""
+        # Combine address + project description for broader coverage.
+        proj_desc = overview.get("Project Description") or ""
+        addr_text = " ".join(filter(None, [full_address, proj_desc]))
+        # Match patterns like "28/2", "59/1A", "123/4B" but avoid plain integers
         for sn in re.findall(r"\b(\d+/\d+[A-Za-z]?)\b", addr_text):
             if sn not in survey_nos:
                 survey_nos.append(sn)
@@ -1319,7 +1414,8 @@ def build_clean_structured_record(
         "registration_no": reg_no or raw_data.get("registration_number") or raw_data.get("_registration_no") or overview_details.get("Registration Number"),
         "acknowledgement_no": acknowledgement_no or raw_data.get("acknowledgement_number") or raw_data.get("_acknowledgement_no") or overview_details.get("Acknowledgement Number"),
         "project_name": project_name or raw_data.get("project_name") or overview_details.get("Project Name"),
-        "promoter_name": promoter_name or search_info.get("promoter_name") or raw_data.get("_firm_name_from_listing") or p_details.get("Promoter Name"),
+        # Old format uses "Name"; new format uses "Promoter Name".
+        "promoter_name": promoter_name or search_info.get("promoter_name") or raw_data.get("_firm_name_from_listing") or p_details.get("Promoter Name") or p_details.get("Name"),
         "status": search_info.get("status") or overview_details.get("Project Status"),
         "district": location_info.get("district"),
         "taluk": location_info.get("taluk"),
