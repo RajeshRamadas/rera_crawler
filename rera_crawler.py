@@ -833,11 +833,24 @@ def extract_location_details(raw_data: dict, search_info: dict) -> dict:
     #   OLD format (pre-~2020) — DMS in menu1 boundary coord fields:
     #     "12°59'45.61"N"      → 12.9960028  (DMS with direction)
     #     "77°42'17.22"E"      → 77.7047833  (DMS with direction)
-    #     degrees°minutes'seconds"direction  (all three parts required)
     #
-    # _parse_coord() tries DMS first, then falls back to the first float.
+    # Real-world DMS variants observed in RERA Karnataka data:
+    #   Standard:          12°59'45.61"N      (degree ° + single-quote + double-quote)
+    #   Space-padded:      12° 55' 18.8292'' N  (spaces around separators, '' for seconds)
+    #   Corrupted degree:  12?58'41.98" N     (° stored as ? after charset mangling)
+    #   Unicode primes:    12°55′18.8292″N    (′ and ″ Unicode prime chars)
+    #   No seconds marker: 12°59'45.61 N      (missing closing quote before direction)
+    #
+    # The regex uses broad character classes for each separator so all variants match.
+    # Group layout: (degrees) (minutes) (seconds) (direction-letter or None)
     _DMS_RE = re.compile(
-        r"([+-]?\d+)[°º]\s*(\d+)['\'′]\s*(\d+(?:\.\d+)?)[\"″]?\s*([NSEW])?",
+        r"([+-]?\d+)"           # degrees (integer, optional sign)
+        r"[°ºo\?]"              # degree separator: °, º, o, or ? (charset-mangled °)
+        r"\s*(\d+)"             # minutes (integer)
+        r"['\u2032]"            # minute separator: ' or Unicode prime ′
+        r"\s*(\d+(?:\.\d+)?)"   # seconds (float)
+        r"(?:['\u2032]{0,2}[\"\u2033]?)?"  # optional seconds marker: '', ", ″, ′′, etc.
+        r"\s*([NSEW])?",        # optional direction letter
         re.IGNORECASE,
     )
     _FLOAT_RE = re.compile(r"[+-]?\d+(?:\.\d+)?")
