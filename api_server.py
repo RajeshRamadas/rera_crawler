@@ -33,12 +33,15 @@ import ssl
 import urllib.request
 from fastapi.responses import FileResponse, StreamingResponse
 from project_analyzer import search_project, analyze_project_data, analyze_by_name_or_reg
+from legal_due_diligence_agent import KarnatakaPropertyLegalAgent, SAMPLE_PROPERTIES
+
+legal_agent_instance = KarnatakaPropertyLegalAgent()
 
 DB_URI = os.getenv("DATABASE_URL", "postgresql://rera_user:rera_password@localhost:5432/rera_db")
 
 app = FastAPI(
     title="RERA Karnataka Property API",
-    description="REST API for querying RERA Karnataka scraped project data, spatial coordinates, documents, and analytics.",
+    description="REST API for querying RERA Karnataka scraped project data, spatial coordinates, documents, analytics, and AI legal due-diligence.",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -52,6 +55,39 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/legal-report", summary="Karnataka Property Legal Due-Diligence Audit Report Dashboard")
+@app.get("/legal-due-diligence", summary="Karnataka Property Legal Due-Diligence Audit Report Dashboard")
+def get_legal_report_page():
+    """Serves the single-file HTML Karnataka Property Legal Due-Diligence interactive report interface."""
+    html_path = os.path.join(os.path.dirname(__file__), "property_legal_report.html")
+    if not os.path.exists(html_path):
+        raise HTTPException(status_code=404, detail="property_legal_report.html not found.")
+    return FileResponse(html_path, media_type="text/html")
+
+
+@app.get("/api/legal-due-diligence/sample", summary="Get Pre-configured Sample Property Legal Due-Diligence Reports")
+def get_sample_legal_report(preset: str = Query("sarjapur_plot", description="Preset key: sarjapur_plot | whitefield_apartment | kengeri_illegal_plot")):
+    """Returns evaluated legal due-diligence assessment for sample Karnataka properties."""
+    if preset not in SAMPLE_PROPERTIES:
+        raise HTTPException(status_code=404, detail=f"Preset '{preset}' not found. Available: {list(SAMPLE_PROPERTIES.keys())}")
+    
+    payload = SAMPLE_PROPERTIES[preset]
+    return legal_agent_instance.run_due_diligence(payload)
+
+
+@app.post("/api/legal-due-diligence/evaluate", summary="Run AI Property Legal Due-Diligence Assessment")
+def evaluate_property_legal_risk(payload: dict):
+    """
+    Evaluates property metadata across 27 Karnataka legal due-diligence checks,
+    cross-verifies document sources, detects contradictions & missing evidence,
+    and returns overall Legal Risk Score & BUY Gate Decision.
+    """
+    try:
+        return legal_agent_instance.run_due_diligence(payload)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Legal Engine Error: {str(exc)}")
 
 
 @app.get("/radar-chart", summary="Property Composite Risk & Quality Radar Dashboard")
@@ -91,6 +127,7 @@ def get_property_compare_page():
     if not os.path.exists(html_path):
         raise HTTPException(status_code=404, detail="property_compare.html not found.")
     return FileResponse(html_path, media_type="text/html")
+
 
 
 
