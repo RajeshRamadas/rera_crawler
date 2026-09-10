@@ -675,6 +675,19 @@
     <!-- Main Content Container -->
     <div id="auditContent" style="display:none;">
 
+      <!-- Persona Mode Selection Bar -->
+      <div class="card" style="padding: 0.85rem 1.25rem; margin-bottom: 1.25rem; background: var(--paper-raised); border: 1px solid var(--hairline-strong); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <span class="serif" style="font-size: 0.95rem; font-weight: 600; color: var(--ink);">Audit Persona Mode:</span>
+          <span class="mono" style="font-size: 0.7rem; color: var(--ink-soft);">Adjust risk weightings per institutional persona</span>
+        </div>
+        <div id="personaSelectorPills" style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+          <button class="doc-pill active" data-persona="homebuyer">🏡 Homebuyer Mode</button>
+          <button class="doc-pill" data-persona="lender">🏦 Bank / Lender Mode</button>
+          <button class="doc-pill" data-persona="investor">📈 Investor ROI Mode</button>
+        </div>
+      </div>
+
       <!-- Hero Header Card -->
       <div class="card hero-card">
         <div class="hero-top">
@@ -690,6 +703,7 @@
           <div class="hero-score-box">
             <div class="hero-score-num clear" id="compositeScore">0</div>
             <div class="mono" style="font-size:0.65rem; color:var(--ink-soft);">COMPOSITE RISK INDEX</div>
+            <div class="mono" id="heroPersonaLabel" style="font-size:0.62rem; font-weight:600; color:var(--gold); margin-top:0.15rem; text-transform:uppercase;">HOMEBUYER MODE</div>
             <div class="hero-seal pass" id="gateSeal">GATE CLEARED</div>
           </div>
         </div>
@@ -762,6 +776,20 @@
             </div>
             <div class="card-body">
               <div class="audit-grid" id="promoterGrid"></div>
+            </div>
+          </div>
+
+          <!-- 5b. Financial & ESCROW Solvency Audit -->
+          <div class="card collapsible" id="financialEscrowCard">
+            <div class="card-head">
+              <div>
+                <span class="card-head-title">Financial & 70% ESCROW Solvency Audit</span>
+                <span class="mono" style="font-size:0.7rem; color:var(--ink-soft); margin-left:0.5rem;" id="financialScoreBadge">Form 3 CA & Escrow Verification</span>
+              </div>
+              <span class="collapse-icon">▼</span>
+            </div>
+            <div class="card-body">
+              <div id="financialEscrowWrap"></div>
             </div>
           </div>
 
@@ -1401,9 +1429,10 @@
       'Location &\nConnectivity',
       'Layout &\nAmenities',
       'Promoter\nReputation',
-      'Data\nTransparency'
+      'Data\nTransparency',
+      'Financial &\nESCROW'
     ];
-    const AXIS_KEYS = ['compliance', 'litigation', 'timeline', 'title', 'location', 'layout', 'promoter', 'transparency'];
+    const AXIS_KEYS = ['compliance', 'litigation', 'timeline', 'title', 'location', 'layout', 'promoter', 'transparency', 'financial_escrow'];
     const dataValues = AXIS_KEYS.map(k => scores[k] ?? 80);
 
     // Destroy any previous instance to avoid canvas reuse error
@@ -1543,11 +1572,15 @@
     return isNaN(d) ? clean : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
-  async function loadPropertyDetails() {
-    const query = getQueryParam('q') || 'BHAVANI PEARL STONE';
+  let currentPersona = getQueryParam('persona') || 'homebuyer';
+
+  async function loadPropertyDetails(queryOverride = null, personaOverride = null) {
+    const query = queryOverride || getQueryParam('q') || 'BHAVANI PEARL STONE';
+    if (personaOverride) currentPersona = personaOverride;
+    else currentPersona = getQueryParam('persona') || currentPersona || 'homebuyer';
     
     try {
-      const res = await fetch(`/api/v1/projects/analyze?q=${encodeURIComponent(query)}`);
+      const res = await fetch(`/api/v1/projects/analyze?q=${encodeURIComponent(query)}&persona=${encodeURIComponent(currentPersona)}`);
       if (!res.ok) throw new Error('Project not found in database');
       const data = await res.json();
       renderDetails(data, query);
@@ -1557,9 +1590,49 @@
     }
   }
 
+  function setupPersonaPills() {
+    const pillsWrap = document.getElementById('personaSelectorPills');
+    if (!pillsWrap || pillsWrap.dataset.initialized) return;
+    pillsWrap.dataset.initialized = 'true';
+
+    pillsWrap.addEventListener('click', (e) => {
+      const btn = e.target.closest('.doc-pill');
+      if (!btn) return;
+      const targetPersona = btn.dataset.persona;
+      if (!targetPersona || targetPersona === currentPersona) return;
+
+      currentPersona = targetPersona;
+      pillsWrap.querySelectorAll('.doc-pill').forEach(b => {
+        if (b.dataset.persona === currentPersona) b.classList.add('active');
+        else b.classList.remove('active');
+      });
+
+      const url = new URL(window.location.href);
+      url.searchParams.set('persona', currentPersona);
+      window.history.replaceState({}, '', url);
+
+      const query = getQueryParam('q') || 'BHAVANI PEARL STONE';
+      loadPropertyDetails(query, currentPersona);
+    });
+  }
+
   function renderDetails(data, currentQuery = '') {
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('auditContent').style.display = 'block';
+
+    // Update active persona pills and hero persona label
+    const pillsWrap = document.getElementById('personaSelectorPills');
+    if (pillsWrap) {
+      pillsWrap.querySelectorAll('.doc-pill').forEach(b => {
+        if (b.dataset.persona === currentPersona) b.classList.add('active');
+        else b.classList.remove('active');
+      });
+    }
+
+    const heroPersonaLabel = document.getElementById('heroPersonaLabel');
+    if (heroPersonaLabel) {
+      heroPersonaLabel.textContent = `${currentPersona.toUpperCase()} RISK WEIGHTING`;
+    }
 
     const overview = data.project_summary || {};
     const raw = data.raw_data || {};
@@ -1579,7 +1652,8 @@
     document.getElementById('propStatus').textContent = overview.status || 'APPROVED';
     document.getElementById('propLocation').textContent = `${overview.district || 'Karnataka'} ${overview.taluk ? '· ' + overview.taluk : ''}`;
 
-    const heroScore = (data.overall_evaluation || {}).health_score || 75;
+    const personaEval = data.persona_evaluation || {};
+    const heroScore = personaEval.health_score || (data.overall_evaluation || {}).health_score || 75;
     const heroBand = getBand(heroScore);
     const scoreEl = document.getElementById('compositeScore');
     scoreEl.textContent = heroScore;
@@ -1738,7 +1812,7 @@
       <div class="audit-item"><span class="audit-label">West Schedule</span><span class="audit-val">${rawOverview['West Schedule'] || 'N/A'}</span></div>
     `;
 
-    // 4. Promoter Details
+    // 4. Promoter Details & Track Record
     const promoterGrid = document.getElementById('promoterGrid');
     const pastProjs = rawProm['List of Projects Launched in Past 5 Years ( As per Promoter )'];
     let rawPastCount = 0;
@@ -1768,6 +1842,10 @@
     });
     const topDistricts = Object.keys(distCounts).sort((a, b) => distCounts[b] - a)[0] || 'Karnataka';
 
+    const promoterTrack = data.promoter_track_record || {};
+    const trackScore = promoterTrack.track_record_score ?? 80;
+    const trackBand = getBand(trackScore);
+
     promoterGrid.innerHTML = `
       <div style="grid-column: span 2; background: #FAF9F6; border: 1px solid var(--hairline-strong); padding: 1.25rem; border-radius: 6px; margin-bottom: 1rem;">
         <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.75rem; margin-bottom: 1rem;">
@@ -1779,22 +1857,24 @@
             <span style="background:var(--paper); border:1px solid var(--hairline-strong); padding:0.35rem 0.65rem; border-radius:4px; font-size:0.72rem; color:var(--ink);">
               <strong style="color:var(--primary);">${totalRegisteredCount}</strong> Total RERA Filings
             </span>
-            <span style="background:rgba(47,110,79,0.08); border:1px solid rgba(47,110,79,0.2); padding:0.35rem 0.65rem; border-radius:4px; font-size:0.72rem; color:#2F6E4F; font-weight:600;">
-              ✓ ${approvedCount} Approved
+            <span class="band-tag band-${trackBand.class}" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.72rem;">
+              Track Record Score: ${trackScore}/100 (${trackBand.label})
             </span>
-            ${withdrawnCount > 0 ? `
-              <span style="background:rgba(172,44,44,0.08); border:1px solid rgba(172,44,44,0.2); padding:0.35rem 0.65rem; border-radius:4px; font-size:0.72rem; color:#AC2C2C; font-weight:600;">
-                ⚠️ ${withdrawnCount} Withdrawn / Expired
-              </span>
-            ` : ''}
           </div>
         </div>
 
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:0.75rem; font-size:0.78rem;">
-          <div class="audit-item" style="background:#fff;"><span class="audit-label">RERA Database Index</span><span class="audit-val mono" style="color:var(--primary); font-weight:700;">${totalRegisteredCount} Projects Found</span></div>
-          <div class="audit-item" style="background:#fff;"><span class="audit-label">Primary District Hub</span><span class="audit-val" style="text-transform:capitalize;">${topDistricts}</span></div>
-          <div class="audit-item" style="background:#fff;"><span class="audit-label">Filing Form Self-Reported</span><span class="audit-val mono">${rawPastCount} Projects Declared</span></div>
+          <div class="audit-item" style="background:#fff;"><span class="audit-label">RERA Database Portfolio</span><span class="audit-val mono" style="color:var(--primary); font-weight:700;">${totalRegisteredCount} Projects Found</span></div>
+          <div class="audit-item" style="background:#fff;"><span class="audit-label">Portfolio Delivery Breakdown</span><span class="audit-val mono">${promoterTrack.completed_projects ?? 0} Completed / ${promoterTrack.active_projects ?? 0} Active</span></div>
+          <div class="audit-item" style="background:#fff;"><span class="audit-label">Historical Avg Delay</span><span class="audit-val mono" style="color:${(promoterTrack.avg_delay_years || 0) > 1 ? 'var(--flag)' : 'var(--clear)'}; font-weight:700;">${promoterTrack.avg_delay_years ?? 0} Years</span></div>
+          <div class="audit-item" style="background:#fff;"><span class="audit-label">Portfolio Total Complaints</span><span class="audit-val mono" style="color:${(promoterTrack.total_portfolio_complaints || 0) > 0 ? 'var(--flag)' : 'var(--clear)'}; font-weight:700;">${promoterTrack.total_portfolio_complaints ?? 0} Complaints</span></div>
         </div>
+
+        ${(promoterTrack.reasons && promoterTrack.reasons.length > 0) ? `
+          <div style="margin-top:0.85rem; padding-top:0.75rem; border-top:1px dashed var(--hairline-strong); font-size:0.75rem; color:var(--ink-soft);">
+            <strong style="color:var(--ink);">Institutional Portfolio Audit:</strong> ${promoterTrack.reasons.join(' · ')}
+          </div>
+        ` : ''}
       </div>
 
       ${portfolioList.length > 0 ? `
@@ -1915,11 +1995,55 @@
       drawPromoterTable();
     }
 
-    // 5. Property Risk & Compliance Report with 8-Axis Profile Breakdown
+    // 5b. Financial & ESCROW Solvency Audit
+    const finAudit = data.financial_escrow_audit || {};
+    const finScore = finAudit.score ?? 100;
+    const finBadge = document.getElementById('financialScoreBadge');
+    if (finBadge) finBadge.textContent = `Solvency Score: ${finScore}/100`;
+
+    const finWrap = document.getElementById('financialEscrowWrap');
+    if (finWrap) {
+      finWrap.innerHTML = `
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:0.75rem; margin-bottom:1rem;">
+          <div class="audit-item" style="background:#fff;">
+            <span class="audit-label">Form 3 CA Certificate</span>
+            <span class="audit-val" style="color:${finAudit.has_form3 ? 'var(--clear)' : 'var(--flag)'}; font-weight:700;">
+              ${finAudit.has_form3 ? '✓ Disclosed & Verified' : '❌ Missing Filing'}
+            </span>
+          </div>
+          <div class="audit-item" style="background:#fff;">
+            <span class="audit-label">Form 5 Annual Audit</span>
+            <span class="audit-val" style="color:${finAudit.has_form5 ? 'var(--clear)' : 'var(--flag)'}; font-weight:700;">
+              ${finAudit.has_form5 ? '✓ Disclosed & Verified' : '❌ Missing Audit'}
+            </span>
+          </div>
+          <div class="audit-item" style="background:#fff;">
+            <span class="audit-label">70% ESCROW Bank Account</span>
+            <span class="audit-val" style="color:${finAudit.has_escrow ? 'var(--clear)' : 'var(--watch)'}; font-weight:700;">
+              ${finAudit.has_escrow ? '✓ Dedicated Escrow Active' : '⚠️ Unverified Disclosure'}
+            </span>
+          </div>
+          <div class="audit-item" style="background:#fff;">
+            <span class="audit-label">Form 1 & 2 Progress Certs</span>
+            <span class="audit-val" style="color:${(finAudit.has_form1 && finAudit.has_form2) ? 'var(--clear)' : 'var(--watch)'}; font-weight:700;">
+              ${(finAudit.has_form1 && finAudit.has_form2) ? '✓ Architect & Eng Verified' : '⚠️ Partial Progress Certs'}
+            </span>
+          </div>
+        </div>
+        <div style="background:var(--paper); border:1px solid var(--hairline-strong); padding:0.85rem; border-radius:4px;">
+          <div class="serif" style="font-size:0.85rem; font-weight:600; color:var(--ink); margin-bottom:0.4rem;">Financial Solvency Audit Findings:</div>
+          <ul style="padding-left:1.1rem; font-size:0.78rem; color:var(--ink-soft); line-height:1.5;">
+            ${(finAudit.reasons || []).map(r => `<li>${r}</li>`).join('')}
+          </ul>
+        </div>
+      `;
+    }
+
+    // 5c. Property Risk & Compliance Report with 9-Axis Profile Breakdown
     const radar = data.radar_profile || {};
     const scores = radar.scores || {};
     const reasons = radar.reasons || {};
-    const evalData = data.overall_evaluation || {};
+    const evalData = personaEval.health_score ? personaEval : (data.overall_evaluation || {});
     const healthScore = evalData.health_score ?? heroScore;
     const band = getBand(healthScore);
 
@@ -1927,12 +2051,22 @@
     drawSpiderChart(scores, overview.project_name || currentQuery);
 
     const riskBadgeEl = document.getElementById('riskScoreBadge');
-    if (riskBadgeEl) riskBadgeEl.textContent = `Health Score: ${healthScore}/100`;
+    if (riskBadgeEl) riskBadgeEl.textContent = `${currentPersona.toUpperCase()} Score: ${healthScore}/100`;
 
     const verdictBadgeEl = document.getElementById('riskVerdictBadge');
     if (verdictBadgeEl) {
       verdictBadgeEl.className = `band-tag band-${band.class}`;
       verdictBadgeEl.textContent = `HEALTH SCORE: ${healthScore} / 100 (${band.label})`;
+    }
+
+    const verdictTitleEl = document.getElementById('riskVerdictTitle');
+    if (verdictTitleEl) {
+      const titles = {
+        homebuyer: 'Homebuyer Risk & Quality Assessment',
+        lender: 'Bank & Lender Solvency Risk Assessment',
+        investor: 'Investor ROI & Track Record Assessment'
+      };
+      verdictTitleEl.textContent = titles[currentPersona] || 'Executive Risk & Quality Assessment';
     }
 
     const verdictTextEl = document.getElementById('riskVerdictText');
@@ -1950,7 +2084,7 @@
       radarBtnEl.href = `/radar-chart?a=${encodeURIComponent(overview.project_name || currentQuery)}`;
     }
 
-    // Render 8 Axes Breakdown Cards
+    // Render 9 Axes Breakdown Cards
     const AXIS_DEFS = [
       { key: 'compliance', name: 'Regulatory Compliance', points: 'P-02 – P-04' },
       { key: 'litigation', name: 'Litigation Risk', points: 'P-05 – P-11' },
@@ -1959,7 +2093,8 @@
       { key: 'location', name: 'Location & Connectivity', points: 'P-22 – P-29' },
       { key: 'layout', name: 'Layout & Amenities', points: 'P-30 – P-33' },
       { key: 'promoter', name: 'Promoter Reputation', points: 'P-34 – P-35' },
-      { key: 'transparency', name: 'Data Transparency', points: 'P-36 – P-37' }
+      { key: 'transparency', name: 'Data Transparency', points: 'P-36 – P-37' },
+      { key: 'financial_escrow', name: 'Financial & ESCROW Solvency', points: 'Form 3/5 & Escrow' }
     ];
 
     const axisGrid = document.getElementById('axisBreakdownGrid');
@@ -2190,6 +2325,7 @@
 
   window.addEventListener('DOMContentLoaded', () => {
     setupCollapsibleCards();
+    setupPersonaPills();
     loadPropertyDetails();
   });
 </script>

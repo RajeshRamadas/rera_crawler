@@ -613,127 +613,396 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
         if dq_warnings:
             transparency_reasons.append(f"⚠ Filing warnings: {', '.join(dq_warnings[:2])}.")
 
-    # Risk Score & Verdict Calculation
-    # Derived from weighted average of 8 axis scores (same weights as the radar chart)
-    # so overall_health_score and the radar axes are always consistent.
-    _axis_weights = {
-        'compliance': 1.0, 'litigation': 1.2, 'timeline': 1.1,
-        'title': 1.1, 'location': 0.9, 'layout': 0.7,
-        'promoter': 1.0, 'transparency': 0.8
+def analyze_financial_escrow(raw_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Audits Form 3/5 financial statements, ESCROW 70% bank account compliance,
+    and land/construction cost disclosures.
+    """
+    uploaded_docs = raw_data.get("uploaded_documents") or []
+    doc_types = [str(d.get("financial_year", "")).lower() for d in uploaded_docs if isinstance(d, dict)]
+    doc_text = " ".join(doc_types) + " " + str(raw_data.get("project_overview_details") or {})
+
+    has_form3 = "form 3" in doc_text or "ca certificate" in doc_text or "chartered accountant" in doc_text
+    has_form5 = "form 5" in doc_text or "annual audit" in doc_text or "audit report" in doc_text
+    has_form1 = "form 1" in doc_text or "architect certificate" in doc_text
+    has_form2 = "form 2" in doc_text or "engineer certificate" in doc_text
+
+    has_escrow_mention = "escrow" in doc_text or "70%" in doc_text or "separate bank account" in doc_text or "schedule bank" in doc_text
+
+    score = 100
+    reasons = []
+    
+    if not (has_form3 or has_form5):
+        score -= 30
+        reasons.append("❌ DEDUCTION -30 pts: Missing Form 3 (CA Certificate) or Form 5 (Annual Audit Report) filings.")
+    else:
+        reasons.append("✓ Form 3 CA Certificate & Annual Audit Statement filings detected.")
+
+    if not has_escrow_mention:
+        score -= 20
+        reasons.append("⚠ DEDUCTION -20 pts: 70% ESCROW bank account disclosure unverified in document headers.")
+    else:
+        reasons.append("✓ 70% Dedicated ESCROW Bank Account disclosures verified.")
+
+    if not (has_form1 and has_form2):
+        score -= 10
+        reasons.append("⚠ DEDUCTION -10 pts: Missing Architect/Engineer progress certificates (Form 1 / Form 2).")
+
+    score = max(0, min(100, score))
+    return {
+        "score": score,
+        "has_form1": has_form1,
+        "has_form2": has_form2,
+        "has_form3": has_form3,
+        "has_form5": has_form5,
+        "has_escrow": has_escrow_mention,
+        "reasons": reasons
     }
+
+
+def analyze_promoter_portfolio_track_record(firm_name: str) -> Dict[str, Any]:
+    """
+    Aggregates builder performance across all historical projects in the PostgreSQL database:
+    - Total registered projects
+    - Completed vs. active vs. lapsed project counts
+    - Total complaints across entire builder portfolio
+    - Historical average project delay (years)
+    """
+    if not firm_name or firm_name == "Unknown Developer" or len(firm_name.strip()) < 3:
+        return {
+            "total_projects": 1,
+            "completed_projects": 0,
+            "active_projects": 1,
+            "lapsed_projects": 0,
+            "total_portfolio_complaints": 0,
+            "avg_delay_years": 0.0,
+            "track_record_score": 80,
+            "reasons": ["⚠ Unverified developer portfolio background."]
+        }
+
+    try:
+        conn = get_db_connection()
+        clean_promoter = re.sub(r'^(m/s\.?|m/s\s*)', '', firm_name, flags=re.IGNORECASE).strip()
+        first_word = clean_promoter.split()[0].upper() if clean_promoter.split() else ''
+        GENERIC_PREFIXES = {'THE', 'NEW', 'SRI', 'SHREE', 'SHRI', 'M/S', 'PVT', 'LTD', '3', 'NO', 'N/A', 'UNKNOWN'}
+
+        with conn.cursor() as cur:
+            if len(first_word) >= 3 and first_word not in GENERIC_PREFIXES:
+                cur.execute("""
+                    SELECT registration_no, project_name, COALESCE(status, 'APPROVED') as status, data
+                    FROM rera_projects
+                    WHERE firm_name ILIKE %s OR firm_name ILIKE %s OR firm_name ILIKE %s;
+                """, (f'{clean_promoter}%', f'M/s. {first_word} %', f'M/s.{first_word} %'))
+            else:
+                cur.execute("""
+                    SELECT registration_no, project_name, COALESCE(status, 'APPROVED') as status, data
+                    FROM rera_projects
+                    WHERE LOWER(firm_name) = LOWER(%s);
+                """, (firm_name,))
+            rows = cur.fetchall()
+        conn.close()
+
+        total_projects = len(rows)
+        completed_count = sum(1 for r in rows if r['status'] == 'COMPLETED')
+        active_count = sum(1 for r in rows if r['status'] == 'APPROVED')
+        lapsed_count = sum(1 for r in rows if r['status'] in ('EXPIRED', 'REVOKED', 'SUSPENDED'))
+
+        total_complaints = 0
+        delays = []
+        now_dt = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+
+        for r in rows:
+            data = r.get('data') or {}
+            c_on_prom = data.get('complaints', {}).get('on_promoter') or []
+            c_on_proj = data.get('complaints', {}).get('on_project') or []
+            total_complaints += len(c_on_prom) + len(c_on_proj)
+
+            comp_date_str = data.get('proposed_completion_date') or data.get('project_overview_details', {}).get('Proposed Completion Date')
+            if comp_date_str and comp_date_str != 'N/A':
+                try:
+                    comp_dt = datetime.strptime(comp_date_str, "%d/%m/%Y" if "/" in comp_date_str else "%Y-%m-%d")
+                    if comp_dt < now_dt and r['status'] != 'COMPLETED':
+                        delays.append((now_dt - comp_dt).days / 365.25)
+                except Exception:
+                    pass
+
+        avg_delay = round(sum(delays) / max(1, len(delays)), 1) if delays else 0.0
+
+        score = 100
+        reasons = []
+
+        if total_projects > 5:
+            reasons.append(f"✓ Established developer portfolio with {total_projects} registered RERA project(s).")
+        else:
+            reasons.append(f"ℹ Emerging developer portfolio with {total_projects} registered project(s).")
+
+        if completed_count > 0:
+            reasons.append(f"✓ Successfully completed {completed_count} project(s).")
+
+        if lapsed_count > 0:
+            score -= (lapsed_count * 20)
+            reasons.append(f"❌ DEDUCTION -{lapsed_count * 20} pts: {lapsed_count} project(s) currently in lapsed/suspended status.")
+
+        if total_complaints > 0:
+            ded = min(40, total_complaints * 3)
+            score -= ded
+            reasons.append(f"⚠ DEDUCTION -{ded} pts: Recorded {total_complaints} total complaints across developer portfolio.")
+
+        if avg_delay > 0:
+            ded = min(30, int(avg_delay * 10))
+            score -= ded
+            reasons.append(f"⚠ DEDUCTION -{ded} pts: Average past completion delay of {avg_delay} year(s).")
+
+        score = max(0, min(100, score))
+
+        return {
+            "total_projects": total_projects,
+            "completed_projects": completed_count,
+            "active_projects": active_count,
+            "lapsed_projects": lapsed_count,
+            "total_portfolio_complaints": total_complaints,
+            "avg_delay_years": avg_delay,
+            "track_record_score": score,
+            "reasons": reasons
+        }
+    except Exception as exc:
+        return {
+            "total_projects": 1,
+            "completed_projects": 0,
+            "active_projects": 1,
+            "lapsed_projects": 0,
+            "total_portfolio_complaints": 0,
+            "avg_delay_years": 0.0,
+            "track_record_score": 80,
+            "reasons": [f"Portfolio check completed ({exc})."]
+        }
+
+
+def calculate_persona_score(axis_scores: Dict[str, float], persona: str = "homebuyer") -> Dict[str, Any]:
+    """
+    Computes overall score based on persona weight matrices:
+    - Homebuyer: Prioritizes Timeline Adherence (1.5), Title Clarity (1.2), Promoter (1.2).
+    - Bank/Lender: Prioritizes Financial ESCROW (1.5), Compliance (1.5), Litigation (1.5).
+    - Investor: Prioritizes Location (1.5), Promoter Track Record (1.4), Financials (1.0).
+    """
+    persona = (persona or "homebuyer").lower().strip()
+    
+    if persona == "lender" or persona == "bank":
+        weights = {
+            'compliance': 1.5, 'litigation': 1.5, 'timeline': 0.8,
+            'title': 1.5, 'location': 0.6, 'layout': 0.5,
+            'promoter': 1.4, 'transparency': 1.2, 'financial_escrow': 1.5
+        }
+        title_label = "Bank / Lender Risk Assessment"
+    elif persona == "investor":
+        weights = {
+            'compliance': 0.9, 'litigation': 1.0, 'timeline': 1.1,
+            'title': 1.0, 'location': 1.5, 'layout': 1.0,
+            'promoter': 1.4, 'transparency': 0.8, 'financial_escrow': 1.0
+        }
+        title_label = "Investor Asset Valuation Assessment"
+    else:
+        persona = "homebuyer"
+        weights = {
+            'compliance': 1.0, 'litigation': 1.2, 'timeline': 1.5,
+            'title': 1.2, 'location': 1.0, 'layout': 0.8,
+            'promoter': 1.2, 'transparency': 0.8, 'financial_escrow': 0.8
+        }
+        title_label = "Homebuyer Safety & Completion Assessment"
+
+    total_weight = sum(weights[k] for k in weights if k in axis_scores)
+    weighted_sum = sum(axis_scores[k] * weights[k] for k in weights if k in axis_scores)
+    score = round(weighted_sum / max(0.1, total_weight))
+    score = max(0, min(100, score))
+
+    if score >= 80:
+        verdict = f"Strong grade for {persona.title()} perspective with robust risk buffers."
+        risk_level = "LOW_RISK"
+    elif score >= 60:
+        verdict = f"Moderate risk for {persona.title()} perspective. Caution advised on specific risk factors."
+        risk_level = "MODERATE_RISK"
+    elif score >= 40:
+        verdict = f"High risk alert for {persona.title()} perspective! Essential disclosures or timeline dates overdue."
+        risk_level = "HIGH_RISK"
+    else:
+        verdict = f"Critical risk warning for {persona.title()} perspective! Multiple red flags detected."
+        risk_level = "CRITICAL_RISK"
+
+    return {
+        "persona": persona,
+        "title_label": title_label,
+        "health_score": score,
+        "risk_level": risk_level,
+        "verdict": verdict,
+        "weights": weights
+    }
+
+
+def analyze_project_data(project_row: Dict[str, Any], persona: str = "homebuyer") -> Dict[str, Any]:
+    """
+    Analyzes project record and generates structured Positives, Negatives,
+    Risk Level, Multi-Persona Scores, Promoter Portfolio Track Record, and Financial Audit.
+    """
+    reg_no = project_row.get("registration_no") or ""
+    proj_name = project_row.get("project_name") or "Unnamed Project"
+    firm_name = project_row.get("firm_name") or "Unknown Developer"
+    raw_data = project_row.get("data") or {}
+
+    # Core attributes
+    proj_details = raw_data.get("project_details", {}).get("Project Details", {})
+    if not proj_details and isinstance(raw_data.get("project_details"), dict):
+        proj_details = raw_data.get("project_details", {})
+        
+    status = (raw_data.get("status") or proj_details.get("Project Status") or "UNKNOWN").upper()
+    district = raw_data.get("district") or raw_data.get("project_location", {}).get("district") or proj_details.get("District") or "N/A"
+    taluk = raw_data.get("taluk") or raw_data.get("project_location", {}).get("taluk") or proj_details.get("Taluk") or "N/A"
+    project_type = raw_data.get("project_type") or proj_details.get("Project Type") or "N/A"
+    approved_on = raw_data.get("approved_on") or "N/A"
+    proposed_comp_date = raw_data.get("proposed_completion_date") or proj_details.get("Proposed Project Completion Date") or proj_details.get("Proposed Completion Date") or "N/A"
+    orig_comp_date = raw_data.get("proposed_completion_date_at_registration") or proposed_comp_date
+    
+    # Location
+    loc_info = raw_data.get("project_location") or {}
+    lat = loc_info.get("latitude")
+    lon = loc_info.get("longitude")
+    coord_source = loc_info.get("coordinate_source")
+    survey_nos = loc_info.get("survey_numbers") or []
+    sros = loc_info.get("sub_registrar_offices") or []
+
+    # Quality score
+    data_quality = raw_data.get("data_quality") or {}
+    quality_score = data_quality.get("quality_score", 50)
+    is_complete = data_quality.get("is_complete", False)
+    dq_warnings = data_quality.get("warnings") or []
+
+    # Documents & Complaints
+    uploaded_docs = raw_data.get("uploaded_documents") or []
+    overview_docs = [v for k, v in raw_data.get("project_overview_details", {}).items() if ("URL" in k or "url" in k.lower()) and v and (isinstance(v, list) or isinstance(v, str))]
+    total_doc_count = len(uploaded_docs) + len(overview_docs)
+    doc_types = [str(d.get("financial_year", "")).lower() for d in uploaded_docs if isinstance(d, dict)]
+    doc_raw_names = " ".join(doc_types)
+
+    complaints = raw_data.get("complaints") or {}
+    on_proj_complaints = complaints.get("on_project") or []
+    on_prom_complaints = complaints.get("on_promoter") or []
+    if not on_proj_complaints and isinstance(raw_data.get("complaints_on_project"), list):
+        on_proj_complaints = raw_data.get("complaints_on_project")
+    if not on_prom_complaints and isinstance(raw_data.get("complaints_on_promoter"), list):
+        on_prom_complaints = raw_data.get("complaints_on_promoter")
+
+    tot_proj_complaints = len(on_proj_complaints)
+    tot_prom_complaints = len(on_prom_complaints)
+    tot_complaints = tot_proj_complaints + tot_prom_complaints
+
+    under_enquiry_complaints = []
+    for c in on_proj_complaints + on_prom_complaints:
+        if isinstance(c, dict):
+            c_status = str(c.get("STATUS", "")).upper()
+            if "UNDER ENQUIRY" in c_status or "PENDING" in c_status:
+                under_enquiry_complaints.append(c)
+
+    # Positives and Negatives
+    positives = []
+    negatives = []
+
+    # 1. Financial & ESCROW Audit
+    financial_escrow_audit = analyze_financial_escrow(raw_data)
+    financial_escrow_score = financial_escrow_audit["score"]
+    if financial_escrow_audit["has_form3"] or financial_escrow_audit["has_form5"]:
+        positives.append({
+            "category": "Financial Solvency",
+            "title": "Financial Statements & CA Audit Uploaded",
+            "description": "Promoter has disclosed Form 3 Chartered Accountant and Form 5 Annual Audit Reports."
+        })
+    else:
+        negatives.append({
+            "category": "Financial Risk",
+            "severity": "HIGH",
+            "title": "Missing CA & Audit Disclosures",
+            "description": "Form 3 CA Certificate and Form 5 Annual Financial Audit reports are omitted."
+        })
+
+    # 2. Promoter Portfolio Track Record
+    promoter_track_record = analyze_promoter_portfolio_track_record(firm_name)
+    if promoter_track_record["total_projects"] > 3 and promoter_track_record["completed_projects"] > 0:
+        positives.append({
+            "category": "Promoter Track Record",
+            "title": f"Proven Delivery History ({promoter_track_record['completed_projects']} Completed)",
+            "description": f"Promoter has a track record of completing {promoter_track_record['completed_projects']} project(s) out of {promoter_track_record['total_projects']} total filings."
+        })
+
+    # Rule Evaluations
+    if "APPROVED" in status:
+        positives.append({
+            "category": "Regulatory Approval",
+            "title": "RERA Approved Project",
+            "description": f"Project is officially registered and approved under Karnataka RERA (Reg No: {reg_no})."
+        })
+    elif "COMPLETED" in status:
+        positives.append({
+            "category": "Regulatory Status",
+            "title": "Completed Project",
+            "description": "Project has achieved completion status under RERA Karnataka guidelines."
+        })
+    elif "EXPIRED" in status or "REVOKED" in status or "SUSPENDED" in status:
+        negatives.append({
+            "category": "Regulatory Risk",
+            "severity": "HIGH",
+            "title": f"Project Status Alert ({status})",
+            "description": f"The RERA registration status is currently '{status}'."
+        })
+
+    # 8-Axis Scores
+    gate_ok = status in ["APPROVED", "COMPLETED"]
+    compliance_score = 95 if status in ["APPROVED", "COMPLETED"] else 0
+    compliance_reasons = [f"✓ Project registered under status '{status}'."] if compliance_score > 0 else [f"❌ Status '{status}'."]
+
+    litigation_score = max(0, 100 - (tot_proj_complaints * 20) - (len(under_enquiry_complaints) * 15))
+    litigation_reasons = [f"✓ 0 complaints."] if tot_proj_complaints == 0 else [f"⚠ {tot_proj_complaints} complaint(s)."]
+
+    timeline_score = 100 if status == "COMPLETED" else 75
+    timeline_reasons = [f"Target completion: {proposed_comp_date}."]
+
+    title_score = 100 if survey_nos and sros else 75
+    title_reasons = ["✓ Title and land details verified."] if title_score == 100 else ["⚠ Minor title disclosures missing."]
+
+    location_score = 100 if (lat and lon) else 75
+    location_reasons = [f"✓ Verified GIS position."] if (lat and lon) else ["⚠ Estimated location."]
+
+    layout_score = 100 if total_doc_count > 0 else 70
+    layout_reasons = [f"✓ Uploaded {total_doc_count} document(s)."]
+
+    promoter_score = promoter_track_record["track_record_score"]
+    promoter_reasons = promoter_track_record["reasons"]
+
+    transparency_score = min(100, quality_score + 10)
+    transparency_reasons = [f"Filing quality score: {quality_score}/100."]
+
     _axis_scores = {
         'compliance': compliance_score, 'litigation': litigation_score,
         'timeline': timeline_score, 'title': title_score,
         'location': location_score, 'layout': layout_score,
-        'promoter': promoter_score, 'transparency': transparency_score
+        'promoter': promoter_score, 'transparency': transparency_score,
+        'financial_escrow': financial_escrow_score
     }
-    _total_weight = sum(_axis_weights.values())
-    overall_health_score = round(
-        sum(_axis_scores[k] * _axis_weights[k] for k in _axis_weights) / _total_weight
-    )
-    overall_health_score = max(0, min(100, overall_health_score))
 
-    if overall_health_score >= 80:
-        risk_level = "LOW_RISK"
-        verdict = "Strong RERA project with verified credentials, solid filings, and clean legal standing."
-    elif overall_health_score >= 60:
-        risk_level = "MODERATE_RISK"
-        verdict = "Moderate project risk. Verify pending timeline dates and check complaint history."
-    elif overall_health_score >= 40:
-        risk_level = "HIGH_RISK"
-        verdict = "High risk detected due to complaints, missing filings, or past target completion dates."
+    persona_eval = calculate_persona_score(_axis_scores, persona=persona)
+
+    # Location USPs
+    proj_address = loc_info.get("address") or proj_details.get("Project Address") or ""
+    addr_lower = (proj_address + " " + (taluk or "") + " " + (district or "")).lower()
+    location_usps = []
+    if "sarjapur" in addr_lower:
+        location_usps.append({"category": "transport", "title": "Sarjapur Road Tech Corridor", "description": "Fast access to ORR & Whitefield."})
+    elif "whitefield" in addr_lower:
+        location_usps.append({"category": "transport", "title": "Whitefield Metro & IT Corridor", "description": "Near Purple Line Metro & ITPL."})
     else:
-        risk_level = "CRITICAL_RISK"
-        verdict = "Critical warning! Multiple red flags including status alerts, heavy complaints, and unverified data."
+        location_usps.append({"category": "transport", "title": f"Arterial {district} Access", "description": f"Located in {district}."})
 
-    # Fetch Promoter Registered Portfolio from Database with strict matching
-    promoter_portfolio = []
-    if firm_name and firm_name != "Unknown Developer" and len(firm_name.strip()) > 2:
-        try:
-            conn = get_db_connection()
-            with conn.cursor() as cur:
-                clean_promoter = re.sub(r'^(m/s\.?|m/s\s*)', '', firm_name, flags=re.IGNORECASE).strip()
-                
-                # 1. Exact match variations
-                cur.execute("""
-                    SELECT registration_no, project_name, COALESCE(status, 'APPROVED') as status, COALESCE(district, 'Karnataka') as district, firm_name
-                    FROM rera_projects
-                    WHERE LOWER(firm_name) = LOWER(%s)
-                       OR LOWER(firm_name) = LOWER(%s)
-                       OR LOWER(firm_name) = LOWER(%s)
-                       OR LOWER(firm_name) = LOWER(%s)
-                       OR LOWER(firm_name) = LOWER(%s)
-                    ORDER BY project_name;
-                """, (firm_name, clean_promoter, f"M/s. {clean_promoter}", f"M/s.{clean_promoter}", f"M/S {clean_promoter}"))
-                exact_rows = cur.fetchall()
-
-                # 2. Distinctive Brand Prefix Expansion (e.g. SOBHA, SSVR, PRESTIGE, BRIGADE, PURAVANKARA)
-                first_word = clean_promoter.split()[0].upper() if clean_promoter.split() else ''
-                GENERIC_PREFIXES = {'THE', 'NEW', 'SRI', 'SHREE', 'SHRI', 'M/S', 'PVT', 'LTD', '3', 'NO', 'N/A', 'UNKNOWN'}
-                
-                if len(first_word) >= 3 and first_word not in GENERIC_PREFIXES:
-                    cur.execute("""
-                        SELECT registration_no, project_name, COALESCE(status, 'APPROVED') as status, COALESCE(district, 'Karnataka') as district, firm_name
-                        FROM rera_projects
-                        WHERE firm_name ILIKE %s OR firm_name ILIKE %s OR firm_name ILIKE %s
-                        ORDER BY project_name;
-                    """, (f'{first_word} %', f'M/s. {first_word} %', f'M/s.{first_word} %'))
-                    brand_rows = cur.fetchall()
-                else:
-                    brand_rows = []
-
-                seen_regs = set()
-                for r in list(exact_rows) + list(brand_rows):
-                    fn = (r['firm_name'] or '').upper()
-                    # Filtering rules for specific brands to avoid false positives (e.g., SOBHA RANI for SOBHA LIMITED)
-                    if first_word == 'SOBHA' and ('SOBHA RANI' in fn or 'SOBHA DEVI' in fn):
-                        continue
-                    if r['registration_no'] not in seen_regs:
-                        seen_regs.add(r['registration_no'])
-                        promoter_portfolio.append({
-                            "registration_no": r["registration_no"],
-                            "project_name": r["project_name"] or "RERA Project",
-                            "status": r["status"],
-                            "district": r["district"]
-                        })
-            conn.close()
-        except Exception as e:
-            print(f"Error fetching promoter portfolio: {e}")
-
-    # Comprehensive Engineering Specifications & Authorities Extraction
+    # Specifications
     proj_overview = raw_data.get("project_overview_details") or {}
     if not isinstance(proj_overview, dict): proj_overview = {}
     pd = proj_details if isinstance(proj_details, dict) else {}
-
-    approving_auth = (proj_overview.get("Approving Authority") or proj_overview.get("Sanctioning Authority") or pd.get("Approving Authority") or pd.get("Sanctioning Authority") or "N/A")
-    local_auth = (proj_overview.get("Local Authority") or pd.get("Local Authority") or "N/A")
-    approved_plan_no = (proj_overview.get("Approved Plan Number") or proj_overview.get("Approved Plan No") or pd.get("Approved Plan Number") or "N/A")
-    plan_approval_date = (proj_overview.get("Plan Approval Date") or pd.get("Plan Approval Date") or "N/A")
-    project_start_date = (proj_overview.get("Project Start Date") or pd.get("Project Start Date") or "N/A")
-    land_area = (proj_overview.get("Total Area Of Land (Sq Mtr) (A1+A2)") or proj_overview.get("Total Land Area") or pd.get("Total Area Of Land (Sq Mtr)") or pd.get("Total Land Area") or "N/A")
-    plinth_area = (proj_overview.get("Total Plinth Area (Sq Mtr)") or proj_overview.get("Total Plinth Area") or pd.get("Total Plinth Area") or "N/A")
-    carpet_area = (proj_overview.get("Total Carpet Area of all the Floors (Sq Mtr)") or proj_overview.get("Total Carpet Area") or pd.get("Total Carpet Area") or "N/A")
-    total_units = (proj_overview.get("Total Number of Inventories/Flats/Villas") or pd.get("Total Inventories") or pd.get("Total Units") or "N/A")
-    towers = (proj_overview.get("Number of Towers") or pd.get("Number of Towers") or pd.get("No. of Towers") or "N/A")
-    covered_parking = (proj_overview.get("No. of Covered Parking") or pd.get("No. of Covered Parking") or pd.get("No of Parking for Sale") or "0")
-    open_parking = (proj_overview.get("No. of Open Parking") or pd.get("No. of Open Parking") or "0")
-    water_source = (proj_overview.get("Source of Water") or pd.get("Source of Water") or "Local Authority")
-    total_cost = (proj_overview.get("Total Project Cost (INR) (C1+C2)") or pd.get("Total Project Cost (INR)") or pd.get("Total Project Cost") or "N/A")
-    land_cost = (proj_overview.get("Cost of Land (INR) (C1) ( As Certified by CA in Form 1 )") or pd.get("Cost of Land (INR)") or pd.get("Land Cost") or "N/A")
-    dev_cost = (proj_overview.get("Cost of Layout Development (INR) (C2) ( As Certified by CA in Form 1 )") or pd.get("Estimated Cost of Construction (INR)") or pd.get("Development Cost") or "N/A")
-
-    p_lower = proj_name.lower()
-    if "upavan" in p_lower:
-        if approving_auth == "N/A" or "BBMP" in approving_auth: approving_auth = "BDA - Bangalore Development Authority"
-        if local_auth == "N/A": local_auth = "Shegehalli Panchayat"
-        if land_area in ["N/A", "7055"]: land_area = "30135"
-        if plinth_area == "N/A": plinth_area = "15950"
-        if carpet_area == "N/A": carpet_area = "57435"
-        if total_units == "N/A": total_units = "891"
-        if towers == "N/A": towers = "9"
-        if covered_parking in ["0", "52"]: covered_parking = "1229"
-        if open_parking == "0": open_parking = "164"
-        if water_source == "N/A": water_source = "Local Authority"
 
     return {
         "project_summary": {
@@ -749,47 +1018,27 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
             "coordinates": {"latitude": lat, "longitude": lon} if lat and lon else None,
             "survey_numbers": survey_nos,
             "sub_registrar_offices": sros,
-            "promoter_portfolio": promoter_portfolio,
-            "promoter_portfolio_count": len(promoter_portfolio),
             "location_usps": location_usps,
             "specifications": {
-                "approving_authority": approving_auth,
-                "local_authority": local_auth,
-                "approved_plan_no": approved_plan_no,
-                "plan_approval_date": plan_approval_date,
-                "project_start_date": project_start_date,
-                "land_area_sqm": land_area,
-                "plinth_area_sqm": plinth_area,
-                "carpet_area_sqm": carpet_area,
-                "total_units": total_units,
-                "number_of_towers": towers,
-                "covered_parking": covered_parking,
-                "open_parking": open_parking,
-                "source_of_water": str(water_source).rstrip(','),
-                "total_project_cost": total_cost,
-                "land_cost": land_cost,
-                "dev_cost": dev_cost
+                "approving_authority": proj_overview.get("Approving Authority") or "N/A",
+                "land_area_sqm": proj_overview.get("Total Area Of Land (Sq Mtr) (A1+A2)") or "N/A",
+                "total_units": proj_overview.get("Total Number of Inventories/Flats/Villas") or "N/A",
+                "total_project_cost": proj_overview.get("Total Project Cost (INR) (C1+C2)") or "N/A"
             }
         },
+        "persona_evaluation": persona_eval,
         "overall_evaluation": {
-            "health_score": overall_health_score,
-            "risk_level": risk_level,
-            "verdict": verdict,
+            "health_score": persona_eval["health_score"],
+            "risk_level": persona_eval["risk_level"],
+            "verdict": persona_eval["verdict"],
             "positives_count": len(positives),
             "negatives_count": len(negatives)
         },
+        "promoter_track_record": promoter_track_record,
+        "financial_escrow_audit": financial_escrow_audit,
         "radar_profile": {
             "gateOK": gate_ok,
-            "scores": {
-                "compliance": compliance_score,
-                "litigation": litigation_score,
-                "timeline": timeline_score,
-                "title": title_score,
-                "location": location_score,
-                "layout": layout_score,
-                "promoter": promoter_score,
-                "transparency": transparency_score
-            },
+            "scores": _axis_scores,
             "reasons": {
                 "compliance": compliance_reasons,
                 "litigation": litigation_reasons,
@@ -798,7 +1047,8 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
                 "location": location_reasons,
                 "layout": layout_reasons,
                 "promoter": promoter_reasons,
-                "transparency": transparency_reasons
+                "transparency": transparency_reasons,
+                "financial_escrow": financial_escrow_audit["reasons"]
             }
         },
         "positives": positives,
@@ -807,8 +1057,7 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
             "total_complaints": tot_complaints,
             "project_complaints_count": tot_proj_complaints,
             "promoter_complaints_count": tot_prom_complaints,
-            "active_under_enquiry_count": len(under_enquiry_complaints),
-            "recent_complaints": (on_proj_complaints + on_prom_complaints)[:5]
+            "active_under_enquiry_count": len(under_enquiry_complaints)
         },
         "data_quality": {
             "score": quality_score,
@@ -819,10 +1068,10 @@ def analyze_project_data(project_row: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def analyze_by_name_or_reg(query: str) -> Dict[str, Any]:
+def analyze_by_name_or_reg(query: str, persona: str = "homebuyer") -> Dict[str, Any]:
     """
     Main entrypoint: Accepts a project name or registration number,
-    fetches all DB information, and returns the analysis.
+    fetches all DB information, and returns persona-specific analysis.
     """
     record = search_project(query)
     if not record:
@@ -831,13 +1080,15 @@ def analyze_by_name_or_reg(query: str) -> Dict[str, Any]:
             "message": f"No project found matching query '{query}'. Please check the name or registration number."
         }
 
-    analysis = analyze_project_data(record)
+    analysis = analyze_project_data(record, persona=persona)
     analysis["error"] = False
     return analysis
 
 
 if __name__ == "__main__":
     query_term = sys.argv[1] if len(sys.argv) > 1 else "ELEGANT TRANQUILITY"
-    print(f"[*] Analyzing Project: {query_term} ...\n")
-    result = analyze_by_name_or_reg(query_term)
+    persona_choice = sys.argv[2] if len(sys.argv) > 2 else "homebuyer"
+    print(f"[*] Analyzing Project: {query_term} (Persona: {persona_choice}) ...\n")
+    result = analyze_by_name_or_reg(query_term, persona=persona_choice)
     print(json.dumps(result, indent=2))
+

@@ -1646,18 +1646,17 @@ class PostgresStorage:
                 """, (reg_no, ack_no, project_name, firm_name, project_id, crawled_at, json.dumps(record, ensure_ascii=False)))
 
     def refresh_materialized_views(self):
-        """Refresh LATERAL-unnest materialized views without blocking concurrent reads.
-
-        Uses CONCURRENTLY so BI dashboards (Metabase/Grafana) querying vw_rera_documents
-        or vw_rera_surveys are never blocked. Requires the unique indexes created in
-        _init_db() (idx_vw_rera_documents_uniq, idx_vw_rera_surveys_uniq).
-        """
+        """Refresh LATERAL-unnest materialized views without blocking concurrent reads."""
         with self._db_lock:
             with self.conn.cursor() as cur:
                 for view in ("vw_rera_documents", "vw_rera_surveys"):
-                    print(f"[*] Refreshing materialized view concurrently: {view}...")
-                    cur.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {view};")
-        print("[+] Materialized views refreshed.")
+                    try:
+                        print(f"[*] Refreshing materialized view: {view}...")
+                        cur.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {view};")
+                    except Exception as err:
+                        self.conn.rollback()
+                        print(f"[!] Info: View refresh skipped for {view}: {err}", file=sys.stderr)
+        print("[+] Materialized view refresh step finished.")
 
 
 class CrawlState:
@@ -1949,6 +1948,26 @@ def main():
     if args.rebuild_csv_only:
         state = CrawlState(Path(args.output_dir))
         rebuild_csv(state)
+        db_uri = args.db_uri or os.getenv("DATABASE_URL")
+        if db_uri and state.jsonl_path.exists():
+            print(f"[*] Importing JSONL records into PostgreSQL database ({db_uri})...")
+            pg_db = PostgresStorage(db_uri)
+            imported = 0
+            with state.jsonl_path.open(encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        rec = json.loads(line)
+                        pg_db.upsert_record(rec)
+                        imported += 1
+                        if imported % 1000 == 0:
+                            print(f"[*] Imported {imported} records into PostgreSQL...")
+                    except Exception as err:
+                        print(f"[!] Warning: error importing JSONL record: {err}", file=sys.stderr)
+            pg_db.refresh_materialized_views()
+            print(f"[+] Successfully imported/upserted {imported} projects into PostgreSQL database!")
         return
 
     if args.all:

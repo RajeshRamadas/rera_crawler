@@ -405,18 +405,20 @@ def get_property_types():
 @app.get("/api/v1/projects/analyze", summary="Analyze project information, positives and negatives")
 def analyze_project(
     q: Optional[str] = Query(None, description="Search term for project name, promoter name, or registration number"),
-    name: Optional[str] = Query(None, description="Project name")
+    name: Optional[str] = Query(None, description="Project name"),
+    persona: Optional[str] = Query("homebuyer", description="Evaluation persona ('homebuyer', 'lender', or 'investor')")
 ):
     """
     Given a project name or registration number, fetches all project details,
     analyzes regulatory approvals, filing completeness, timeline delays, complaints,
-    and produces a comprehensive Positives (+) vs Negatives (-) Risk Evaluation Report.
+    and produces a comprehensive Positives (+) vs Negatives (-) Risk Evaluation Report
+    tailored to the selected persona (Homebuyer, Lender, or Investor).
     """
     query_str = name or q
     if not query_str:
         raise HTTPException(status_code=400, detail="Must provide 'q' or 'name' parameter to analyze a project.")
     
-    result = analyze_by_name_or_reg(query_str)
+    result = analyze_by_name_or_reg(query_str, persona=persona)
     if result.get("error"):
         raise HTTPException(status_code=404, detail=result.get("message"))
     result["property_configurations"] = extract_configurations(
@@ -427,12 +429,15 @@ def analyze_project(
 
 
 @app.get("/api/v1/projects/analyze/{query:path}", summary="Analyze project by path query")
-def analyze_project_by_path(query: str):
+def analyze_project_by_path(
+    query: str,
+    persona: Optional[str] = Query("homebuyer", description="Evaluation persona ('homebuyer', 'lender', or 'investor')")
+):
     """
-    Given a project name or registration number in path, fetches all project details and returns Positives/Negatives report.
+    Given a project name or registration number in path, fetches all project details and returns persona-tailored evaluation report.
     """
     decoded_q = urllib.parse.unquote(query)
-    result = analyze_by_name_or_reg(decoded_q)
+    result = analyze_by_name_or_reg(decoded_q, persona=persona)
     if result.get("error"):
         raise HTTPException(status_code=404, detail=result.get("message"))
     result["property_configurations"] = extract_configurations(
@@ -440,6 +445,16 @@ def analyze_project_by_path(query: str):
         project_type=result.get("raw_data", {}).get("project_type", "")
     )
     return result
+
+
+@app.get("/api/v1/promoters/{promoter_name:path}/track-record", summary="Get developer portfolio track record")
+def get_promoter_track_record(promoter_name: str):
+    """
+    Returns historical portfolio delivery track record, delay rates, and complaint density for a developer.
+    """
+    decoded_name = urllib.parse.unquote(promoter_name)
+    from project_analyzer import analyze_promoter_portfolio_track_record
+    return analyze_promoter_portfolio_track_record(decoded_name)
 
 
 @app.get("/api/v1/projects/geojson", summary="Export properties as standard GeoJSON FeatureCollection")
