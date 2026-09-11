@@ -75,6 +75,9 @@ class VerificationCheckResult:
     missing_evidence: List[str]
     contradictions: List[str]
     legal_rule: str
+    proof_details: str = ""
+    verifiable_link: str = ""
+    verifiable_link_text: str = ""
     mitigation_step: Optional[str] = None
 
 

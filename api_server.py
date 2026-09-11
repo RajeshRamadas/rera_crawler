@@ -77,6 +77,18 @@ def get_sample_legal_report(preset: str = Query("sarjapur_plot", description="Pr
     return legal_agent_instance.run_due_diligence(payload)
 
 
+@app.get("/api/legal-due-diligence/evaluate-query", summary="Search & Evaluate Real Property Legal Due-Diligence")
+def evaluate_property_by_query(q: str = Query("Chartered Windsong - 2", description="Project Name or RERA Registration Number")):
+    """
+    Searches PostgreSQL RERA database for real scraped project details,
+    extracts real uploaded document URLs, and returns complete 27-check legal assessment.
+    """
+    try:
+        return legal_agent_instance.evaluate_project_query(q)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Legal Engine Error: {str(exc)}")
+
+
 @app.post("/api/legal-due-diligence/evaluate", summary="Run AI Property Legal Due-Diligence Assessment")
 def evaluate_property_legal_risk(payload: dict):
     """

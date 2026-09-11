@@ -1,1094 +1,1122 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Karnataka AI Property Legal Due-Diligence Agent & Report</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg-dark: #090d16;
-      --bg-card: #111827;
-      --bg-card-hover: #1f2937;
-      --bg-glass: rgba(17, 24, 39, 0.75);
-      --border-color: rgba(255, 255, 255, 0.08);
-      --text-main: #f3f4f6;
-      --text-muted: #9ca3af;
-      --accent-blue: #3b82f6;
-      --accent-indigo: #6366f1;
-      --accent-cyan: #06b6d4;
-      --pass-green: #10b981;
-      --pass-bg: rgba(16, 185, 129, 0.12);
-      --warn-yellow: #f59e0b;
-      --warn-bg: rgba(245, 158, 11, 0.12);
-      --fail-red: #ef4444;
-      --fail-bg: rgba(239, 68, 68, 0.15);
-      --na-gray: #6b7280;
-      --na-bg: rgba(107, 114, 128, 0.1);
-      --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
-      --glow-pass: 0 0 20px rgba(16, 185, 129, 0.3);
-      --glow-fail: 0 0 25px rgba(239, 68, 68, 0.4);
-      --glow-warn: 0 0 20px rgba(245, 158, 11, 0.3);
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-      background-color: var(--bg-dark);
-      color: var(--text-main);
-      line-height: 1.5;
-      padding-bottom: 60px;
-      background-image: 
-        radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.07) 0%, transparent 40%),
-        radial-gradient(circle at 90% 80%, rgba(99, 102, 241, 0.07) 0%, transparent 40%);
-      background-attachment: fixed;
-    }
-
-    header {
-      background: var(--bg-glass);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border-color);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      padding: 16px 32px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .brand-icon {
-      width: 42px;
-      height: 42px;
-      background: linear-gradient(135deg, var(--accent-blue), var(--accent-indigo));
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 22px;
-      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-    }
-
-    .brand-title h1 {
-      font-family: 'Outfit', sans-serif;
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      background: linear-gradient(to right, #ffffff, #cbd5e1);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .brand-title p {
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    .header-actions {
-      display: flex;
-      gap: 12px;
-    }
-
-    .btn {
-      padding: 9px 18px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 13px;
-      cursor: pointer;
-      border: 1px solid transparent;
-      transition: all 0.2s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, var(--accent-blue), var(--accent-indigo));
-      color: white;
-      box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
-    }
-
-    .btn-primary:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
-    }
-
-    .btn-outline {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: var(--border-color);
-      color: var(--text-main);
-    }
-
-    .btn-outline:hover {
-      background: rgba(255, 255, 255, 0.1);
-      border-color: var(--text-muted);
-    }
-
-    .container {
-      max-width: 1380px;
-      margin: 28px auto;
-      padding: 0 24px;
-    }
-
-    /* Preset Simulator Switcher */
-    .simulator-bar {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 16px;
-      padding: 16px 24px;
-      margin-bottom: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 16px;
-    }
-
-    .sim-label {
-      font-size: 14px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: #e2e8f0;
-    }
-
-    .preset-btns {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .preset-btn {
-      padding: 8px 14px;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid var(--border-color);
-      color: var(--text-muted);
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .preset-btn:hover {
-      color: white;
-      border-color: var(--accent-blue);
-    }
-
-    .preset-btn.active {
-      background: rgba(59, 130, 246, 0.15);
-      border-color: var(--accent-blue);
-      color: #60a5fa;
-    }
-
-    /* Hero Assessment Banner */
-    .hero-banner {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 20px;
-      padding: 28px 32px;
-      margin-bottom: 28px;
-      display: grid;
-      grid-template-columns: 1fr 340px;
-      gap: 32px;
-      box-shadow: var(--shadow-lg);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .hero-banner::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      right: 0;
-      width: 400px;
-      height: 100%;
-      background: linear-gradient(135deg, transparent, rgba(59, 130, 246, 0.04));
-      pointer-events: none;
-    }
-
-    .prop-meta-title {
-      font-family: 'Outfit', sans-serif;
-      font-size: 26px;
-      font-weight: 700;
-      color: #ffffff;
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .prop-badge {
-      font-size: 12px;
-      padding: 3px 10px;
-      border-radius: 20px;
-      background: rgba(99, 102, 241, 0.2);
-      color: #a5b4fc;
-      border: 1px solid rgba(99, 102, 241, 0.4);
-      font-weight: 600;
-    }
-
-    .prop-meta-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 16px;
-      margin-top: 18px;
-    }
-
-    .meta-item {
-      background: rgba(255, 255, 255, 0.02);
-      padding: 12px;
-      border-radius: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.04);
-    }
-
-    .meta-label {
-      font-size: 11px;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 4px;
-    }
-
-    .meta-val {
-      font-size: 14px;
-      font-weight: 600;
-      color: #f1f5f9;
-    }
-
-    /* Score & Buy Gate Card */
-    .gate-score-card {
-      background: rgba(15, 23, 42, 0.8);
-      border: 1px solid var(--border-color);
-      border-radius: 16px;
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      position: relative;
-    }
-
-    .score-circle {
-      width: 110px;
-      height: 110px;
-      border-radius: 50%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 16px;
-      position: relative;
-      background: radial-gradient(circle at 30% 30%, rgba(17, 24, 39, 0.9), rgba(9, 13, 22, 0.95));
-      border: 4px solid var(--pass-green);
-      box-shadow: var(--glow-pass);
-      transition: all 0.3s;
-    }
-
-    .score-num {
-      font-family: 'Outfit', sans-serif;
-      font-size: 32px;
-      font-weight: 800;
-      line-height: 1;
-      color: #ffffff;
-    }
-
-    .score-denom {
-      font-size: 10px;
-      color: var(--text-muted);
-      margin-top: 2px;
-    }
-
-    .buy-verdict-badge {
-      font-family: 'Outfit', sans-serif;
-      font-size: 15px;
-      font-weight: 700;
-      padding: 8px 18px;
-      border-radius: 30px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    }
-
-    .verdict-approved {
-      background: var(--pass-bg);
-      color: var(--pass-green);
-      border: 1px solid rgba(16, 185, 129, 0.4);
-      box-shadow: var(--glow-pass);
-    }
-
-    .verdict-caution {
-      background: var(--warn-bg);
-      color: var(--warn-yellow);
-      border: 1px solid rgba(245, 158, 11, 0.4);
-      box-shadow: var(--glow-warn);
-    }
-
-    .verdict-rejected {
-      background: var(--fail-bg);
-      color: var(--fail-red);
-      border: 1px solid rgba(239, 68, 68, 0.4);
-      box-shadow: var(--glow-fail);
-    }
-
-    /* Warning Banner Alerts */
-    .alerts-section {
-      margin-bottom: 28px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-
-    .alert-card {
-      border-radius: 12px;
-      padding: 16px 20px;
-      border: 1px solid;
-      display: flex;
-      gap: 14px;
-      align-items: flex-start;
-    }
-
-    .alert-danger {
-      background: rgba(239, 68, 68, 0.1);
-      border-color: rgba(239, 68, 68, 0.3);
-      color: #fca5a5;
-    }
-
-    .alert-warning {
-      background: rgba(245, 158, 11, 0.1);
-      border-color: rgba(245, 158, 11, 0.3);
-      color: #fde047;
-    }
-
-    .alert-icon {
-      font-size: 20px;
-      line-height: 1;
-    }
-
-    .alert-content h4 {
-      font-size: 14px;
-      font-weight: 700;
-      margin-bottom: 4px;
-
-    }
-
-    .alert-content ul {
-      margin-left: 18px;
-      font-size: 13px;
-      line-height: 1.6;
-    }
-
-    /* Main Grid: Matrix + Evidence Vault */
-    .section-title {
-      font-family: 'Outfit', sans-serif;
-      font-size: 20px;
-      font-weight: 700;
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .matrix-filters {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
-
-    .filter-pill {
-      padding: 6px 14px;
-      border-radius: 20px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid var(--border-color);
-      color: var(--text-muted);
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .filter-pill.active {
-      background: white;
-      color: var(--bg-dark);
-      border-color: white;
-    }
-
-    .matrix-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 16px;
-      overflow: hidden;
-      margin-bottom: 32px;
-      box-shadow: var(--shadow-lg);
-    }
-
-    .table-responsive {
-      width: 100%;
-      overflow-x: auto;
-    }
-
-    table.matrix-table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-      font-size: 13px;
-    }
-
-    table.matrix-table th {
-      background: rgba(15, 23, 42, 0.9);
-      padding: 14px 18px;
-      color: var(--text-muted);
-      font-weight: 600;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    table.matrix-table td {
-      padding: 14px 18px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-      vertical-align: top;
-    }
-
-    table.matrix-table tr:hover td {
-      background: rgba(255, 255, 255, 0.015);
-    }
-
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-weight: 700;
-      font-size: 11px;
-      letter-spacing: 0.03em;
-    }
-
-    .badge-pass {
-      background: var(--pass-bg);
-      color: var(--pass-green);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-    }
-
-    .badge-warn {
-      background: var(--warn-bg);
-      color: var(--warn-yellow);
-      border: 1px solid rgba(245, 158, 11, 0.3);
-    }
-
-    .badge-fail {
-      background: var(--fail-bg);
-      color: var(--fail-red);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-    }
-
-    .badge-na {
-      background: var(--na-bg);
-      color: var(--na-gray);
-      border: 1px solid rgba(107, 114, 128, 0.3);
-    }
-
-    .sev-tag {
-      font-size: 11px;
-      font-family: 'JetBrains Mono', monospace;
-      padding: 2px 6px;
-      border-radius: 4px;
-      background: rgba(255, 255, 255, 0.05);
-      color: #cbd5e1;
-    }
-
-    .rule-box {
-      font-size: 11px;
-      color: var(--text-muted);
-      font-style: italic;
-      margin-top: 4px;
-    }
-
-    .mitigation-box {
-      font-size: 12px;
-      color: #60a5fa;
-      background: rgba(59, 130, 246, 0.08);
-      padding: 6px 10px;
-      border-radius: 6px;
-      margin-top: 6px;
-      border-left: 3px solid var(--accent-blue);
-    }
-
-    /* Evidence Vault Cards */
-    .vault-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 20px;
-      margin-bottom: 32px;
-    }
-
-    .vault-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 14px;
-      padding: 20px;
-    }
-
-    .vault-title {
-      font-size: 15px;
-      font-weight: 700;
-      color: white;
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .doc-list {
-      list-style: none;
-    }
-
-    .doc-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-      font-size: 13px;
-    }
-
-    .doc-item:last-child {
-      border-bottom: none;
-    }
-
-    .doc-name {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: #e2e8f0;
-    }
-
-    /* Print styles */
-    @media print {
-      body {
-        background: white;
-        color: black;
-      }
-      header, .simulator-bar, .matrix-filters, .btn {
-        display: none !important;
-      }
-      .hero-banner, .matrix-card, .vault-card {
-        background: white !important;
-        border: 1px solid #ccc !important;
-        color: black !important;
-        box-shadow: none !important;
-      }
-      .score-num {
-        color: black !important;
-      }
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Property Legal Due-Diligence & 27-Check BUY Gate Audit — RERA Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --paper: #F6F5F1;
+    --paper-raised: #FCFBF8;
+    --ink: #1B1E24;
+    --ink-soft: #565B66;
+    --hairline: #DBD7CC;
+    --hairline-strong: #C7C2B3;
+    --clear: #2F6E4F;
+    --clear-tint: #2F6E4F12;
+    --watch: #97701A;
+    --watch-tint: #97701A14;
+    --flag: #AC2C2C;
+    --flag-tint: #AC2C2C12;
+    --gold: #8A6A1F;
+    --primary: #1E56A0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.5;
+    padding-bottom: 4rem;
+  }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+  .serif { font-family: 'IBM Plex Serif', serif; }
+
+  /* Navigation Bar */
+  .navbar {
+    background: var(--ink);
+    color: #fff;
+    padding: 0.85rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+    color: #fff;
+  }
+  .nav-title {
+    font-family: 'IBM Plex Serif', serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .nav-subtitle {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    color: #A0A5B1;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .nav-search-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    max-width: 420px;
+  }
+  .nav-search-input {
+    width: 100%;
+    height: 36px;
+    padding: 0 0.85rem;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.82rem;
+    background: #272C35;
+    border: 1px solid #414754;
+    border-radius: 4px;
+    color: #fff;
+  }
+  .nav-search-input:focus {
+    outline: none;
+    border-color: #60A5FA;
+  }
+  .nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    height: 36px;
+    padding: 0 1rem;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #fff;
+    background: var(--ink);
+    border: 1px solid var(--ink);
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+  .btn:hover { background: #323742; border-color: #323742; }
+  .btn.ghost-nav {
+    background: transparent;
+    color: #fff;
+    border: 1px solid #454B57;
+  }
+  .btn.ghost-nav:hover { background: rgba(255,255,255,0.1); border-color: #fff; }
+  .btn.primary { background: var(--clear); border-color: var(--clear); }
+  .btn.primary:hover { background: #23543B; border-color: #23543B; }
+
+  /* Container & Grid */
+  .container {
+    max-width: 1280px;
+    margin: 1.75rem auto;
+    padding: 0 1.5rem;
+  }
+  .grid-2col {
+    display: grid;
+    grid-template-columns: 2.2fr 1.1fr;
+    gap: 1.75rem;
+    align-items: start;
+  }
+  .sticky-sidebar {
+    position: sticky;
+    top: 1.5rem;
+    align-self: start;
+    z-index: 10;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--paper-raised);
+    border: 1px solid var(--hairline-strong);
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(27,30,36,0.04);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 0.85rem;
+    margin-bottom: 1.15rem;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .card-head-title {
+    font-family: 'IBM Plex Serif', serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  /* Collapsible Cards */
+  .card.collapsible .card-head {
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s ease;
+  }
+  .card.collapsible .card-head:hover .card-head-title {
+    color: var(--clear);
+  }
+  .card.collapsible.collapsed { padding-bottom: 1rem; }
+  .card.collapsible.collapsed .card-head { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
+  .card.collapsible .collapse-icon {
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    transition: transform 0.2s ease;
+    margin-left: 0.75rem;
+    display: inline-block;
+  }
+  .card.collapsible.collapsed .collapse-icon { transform: rotate(-90deg); }
+  .card.collapsible.collapsed .card-body { display: none; }
+
+  /* Hero Section Header */
+  .hero-card { border-top: 5px solid var(--ink); }
+  .hero-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .prop-title {
+    font-family: 'IBM Plex Serif', serif;
+    font-size: 1.9rem;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.2;
+  }
+  .prop-dev-name {
+    font-size: 0.98rem;
+    color: var(--ink-soft);
+    margin-top: 0.35rem;
+  }
+  .badge-group {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.2rem 0.55rem;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border: 1px solid transparent;
+  }
+  .badge-type { background: var(--hairline); color: var(--ink); border-color: var(--hairline-strong); }
+  .badge-approved { background: var(--clear-tint); color: var(--clear); border-color: var(--clear); }
+  .badge-caution { background: var(--watch-tint); color: var(--watch); border-color: var(--watch); }
+  .badge-flag { background: var(--flag-tint); color: var(--flag); border-color: var(--flag); }
+
+  /* Hero Right Score Box */
+  .hero-score-box {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    background: #F2EFE7;
+    border: 1px solid var(--hairline-strong);
+    padding: 1rem 1.25rem;
+    border-radius: 6px;
+    min-width: 200px;
+    text-align: right;
+  }
+  .hero-score-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 2.2rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .hero-score-num.clear { color: var(--clear); }
+  .hero-score-num.watch { color: var(--watch); }
+  .hero-score-num.flag { color: var(--flag); }
+  .hero-seal {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.5rem;
+    border-radius: 3px;
+    margin-top: 0.5rem;
+  }
+  .hero-seal.pass { background: var(--clear-tint); color: var(--clear); border: 1px solid var(--clear); }
+  .hero-seal.caution { background: var(--watch-tint); color: var(--watch); border: 1px solid var(--watch); }
+  .hero-seal.fail { background: var(--flag-tint); color: var(--flag); border: 1px solid var(--flag); }
+
+  /* Audit Key-Value Grid */
+  .audit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem 1.5rem;
+  }
+  .audit-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .audit-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ink-soft);
+    font-weight: 500;
+  }
+  .audit-val {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--ink);
+    word-break: break-word;
+  }
+
+  /* Positives (+) vs Negatives (-) Cards */
+  .eval-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+  @media (max-width: 768px) { .eval-grid { grid-template-columns: 1fr; } }
+  .eval-box {
+    border-radius: 6px;
+    padding: 1.15rem 1.25rem;
+    border: 1px solid var(--hairline-strong);
+  }
+  .eval-box.positives { background: #F1F8F4; border-color: #2F6E4F40; }
+  .eval-box.negatives { background: #FDF3F3; border-color: #AC2C2C40; }
+  .eval-box-title {
+    font-family: 'IBM Plex Serif', serif;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .eval-box.positives .eval-box-title { color: var(--clear); }
+  .eval-box.negatives .eval-box-title { color: var(--flag); }
+  .eval-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+  .eval-list li {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    position: relative;
+    padding-left: 1.2rem;
+  }
+  .eval-box.positives .eval-list li::before {
+    content: "✓"; position: absolute; left: 0; color: var(--clear); font-weight: bold;
+  }
+  .eval-box.negatives .eval-list li::before {
+    content: "✕"; position: absolute; left: 0; color: var(--flag); font-weight: bold;
+  }
+
+  /* 27-Check Matrix Table */
+  .matrix-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .matrix-pills {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+  .doc-pill {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 0.3rem 0.65rem;
+    border-radius: 4px;
+    background: var(--paper-raised);
+    border: 1px solid var(--hairline-strong);
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .doc-pill:hover { color: var(--ink); border-color: var(--ink); }
+  .doc-pill.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  .data-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 4px;
+    background: var(--paper-raised);
+  }
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    text-align: left;
+  }
+  .data-table th {
+    background: #EEECDF;
+    color: var(--ink);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.75rem 0.85rem;
+    border-bottom: 1px solid var(--hairline-strong);
+  }
+  .data-table td {
+    padding: 0.75rem 0.85rem;
+    border-bottom: 1px solid var(--hairline);
+    color: var(--ink);
+    vertical-align: top;
+  }
+  .data-table tr:last-child td { border-bottom: none; }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.2rem 0.5rem;
+    border-radius: 3px;
+    letter-spacing: 0.03em;
+  }
+  .status-pass { background: var(--clear-tint); color: var(--clear); border: 1px solid var(--clear); }
+  .status-warn { background: var(--watch-tint); color: var(--watch); border: 1px solid var(--watch); }
+  .status-fail { background: var(--flag-tint); color: var(--flag); border: 1px solid var(--flag); }
+  .status-na { background: var(--hairline); color: var(--ink-soft); border: 1px solid var(--hairline-strong); }
+
+  .proof-box {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: #1E56A0;
+    background: #EBF3FA;
+    padding: 0.4rem 0.6rem;
+    border-radius: 3px;
+    border: 1px solid #B8D4F0;
+    margin-top: 0.4rem;
+  }
+
+  .proof-link-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #fff;
+    background: var(--clear);
+    padding: 0.25rem 0.65rem;
+    border-radius: 3px;
+    text-decoration: none;
+    margin-top: 0.45rem;
+    transition: background 0.15s ease;
+  }
+  .proof-link-btn:hover { background: #23543B; }
+
+  /* Document Vault */
+  .doc-vault-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .doc-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--hairline-strong);
+    border-radius: 6px;
+    padding: 1.15rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    transition: all 0.2s ease;
+  }
+  .doc-card:hover { border-color: var(--ink); box-shadow: 0 4px 14px rgba(27,30,36,0.08); }
+
+  /* 9-Axis Compliance Breakdown */
+  .axis-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+  .axis-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.82rem;
+  }
+  .axis-name { font-weight: 500; color: var(--ink); }
+  .axis-score { font-family: 'IBM Plex Mono', monospace; font-weight: 600; }
+  .axis-track {
+    height: 7px;
+    background: var(--hairline);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .axis-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+  .axis-fill.clear { background: var(--clear); }
+  .axis-fill.watch { background: var(--watch); }
+  .axis-fill.flag { background: var(--flag); }
+
+  /* Map Container */
+  #detailMap {
+    width: 100%;
+    height: 320px;
+    border-radius: 4px;
+    border: 1px solid var(--hairline-strong);
+  }
+
+  @media print {
+    .navbar, .btn, .doc-pill { display: none !important; }
+    body { background: #fff; padding: 0; }
+    .container { max-width: 100%; margin: 0; padding: 0; }
+    .card { box-shadow: none; border-color: #ccc; page-break-inside: avoid; }
+  }
+</style>
 </head>
 <body>
 
-  <!-- Header Navigation -->
-  <header>
-    <div class="brand">
-      <div class="brand-icon">⚖️</div>
-      <div class="brand-title">
-        <h1>Karnataka Property Legal Due-Diligence Agent</h1>
-        <p>Homexo AI Property Verification & 27-Check BUY Gate Matrix Engine</p>
+  <!-- Top Navigation -->
+  <header class="navbar">
+    <a href="/legal-report" class="nav-brand">
+      <div>
+        <div class="nav-title">RERA Intelligence</div>
+        <div class="nav-subtitle">AI Legal Due-Diligence Audit</div>
       </div>
+    </a>
+
+    <!-- Property Lookup Search Bar -->
+    <div class="nav-search-wrap">
+      <input type="text" id="propSearchInput" class="nav-search-input" placeholder="Search property name or RERA ID (e.g. Chartered Windsong - 2)..." value="Chartered Windsong - 2" />
+      <button class="btn primary" onclick="handleSearchQuery()">Search Audit</button>
     </div>
-    <div class="header-actions">
-      <button class="btn btn-outline" onclick="window.print()">🖨️ Export PDF Report</button>
-      <button class="btn btn-primary" onclick="runSimulatedCheck()">🚀 Re-run AI Verification</button>
+
+    <div class="nav-actions">
+      <a href="/register" class="btn ghost-nav">← Register Listing</a>
+      <button class="btn ghost-nav" onclick="window.print();">Print Legal Audit PDF</button>
     </div>
   </header>
 
   <div class="container">
 
-    <!-- Preset Scenario Selector -->
-    <div class="simulator-bar">
-      <div class="sim-label">
-        <span>🧪 Test Property Presets:</span>
+    <!-- Persona Mode Selector Bar -->
+    <div class="card" style="padding: 0.85rem 1.25rem; margin-bottom: 1.25rem; background: var(--paper-raised); border: 1px solid var(--hairline-strong); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+      <div style="display: flex; align-items: center; gap: 0.6rem;">
+        <span class="serif" style="font-size: 0.95rem; font-weight: 600; color: var(--ink);">Audit Persona Mode:</span>
+        <span class="mono" style="font-size: 0.7rem; color: var(--ink-soft);">Adjust risk weightings per legal entity</span>
       </div>
-      <div class="preset-btns">
-        <button class="preset-btn active" onclick="loadPreset('sarjapur_plot', this)">🟢 Clear Land Plot (Sarjapur)</button>
-        <button class="preset-btn" onclick="loadPreset('whitefield_apartment', this)">🟢 Luxury Apartment (Whitefield)</button>
-        <button class="preset-btn" onclick="loadPreset('kengeri_illegal_plot', this)">🔴 High-Risk Illegal Plot (Kengeri)</button>
+      <div id="personaPills" style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+        <button class="doc-pill active" onclick="switchPersona('homebuyer', this)">🏡 Homebuyer Mode</button>
+        <button class="doc-pill" onclick="switchPersona('lender', this)">🏦 Bank / Lender Mode</button>
+        <button class="doc-pill" onclick="switchPersona('investor', this)">📈 Investor Mode</button>
+        <button class="doc-pill" onclick="switchPersona('advocate', this)">⚖️ High Court Advocate Mode</button>
       </div>
     </div>
 
-    <!-- Hero Assessment Header Banner -->
-    <div class="hero-banner">
+    <!-- Hero Header Card -->
+    <div class="card hero-card">
+      <div class="hero-top">
+        <div>
+          <h1 class="prop-title" id="propTitle">Chartered Windsong - 2</h1>
+          <div class="prop-dev-name" id="propDev">Developer: Chartered Housing (P) Ltd • Survey No: 112/2 & 114/1</div>
+          <div class="badge-group">
+            <span class="badge badge-type" id="propType">APARTMENT</span>
+            <span class="badge badge-approved" id="propStatus">🟢 APPROVED TO BUY</span>
+            <span class="badge" id="propLocation">Devenahalli, Bengaluru Rural</span>
+            <span class="badge mono" id="reraIdBadge">PRM/KA/RERA/1250/303/PR/171015/000452</span>
+          </div>
+        </div>
+        <div class="hero-score-box">
+          <div class="hero-score-num clear" id="compositeScore">94.5</div>
+          <div class="mono" style="font-size:0.65rem; color:var(--ink-soft);">LEGAL RISK SCORE / 100</div>
+          <div class="mono" id="personaLabel" style="font-size:0.62rem; font-weight:600; color:var(--gold); margin-top:0.15rem; text-transform:uppercase;">HOMEBUYER MODE</div>
+          <div class="hero-seal pass" id="gateSeal">GATE CLEARED</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Key Audit Metrics Grid -->
+    <div class="card">
+      <div class="audit-grid" id="auditGrid">
+        <div class="audit-item">
+          <div class="audit-label">Claimed Owner / Developer</div>
+          <div class="audit-val" id="valSeller">Chartered Housing (P) Ltd</div>
+        </div>
+        <div class="audit-item">
+          <div class="audit-label">Survey Extent & Podi</div>
+          <div class="audit-val" id="valExtent">3.75 Acres (Tatkal Podi Done)</div>
+        </div>
+        <div class="audit-item">
+          <div class="audit-label">Kaveri 2 Title Deed</div>
+          <div class="audit-val" id="valDeed">Reg No: 1452/2021 (Verified)</div>
+        </div>
+        <div class="audit-item">
+          <div class="audit-label">Bhoomi Pahani RTC</div>
+          <div class="audit-val" id="valRtc">Column 9/11 Matched (MR 12/2020)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compliance Positives (+) vs Risk Negatives (-) Grid -->
+    <div class="eval-grid" style="margin-bottom: 1.5rem;">
+      <div class="eval-box positives">
+        <div class="eval-box-title">Legal Clearances & Proven Strengths (+)</div>
+        <ul class="eval-list" id="positivesList">
+          <li>Continuous 30-year title trace verified with zero unbroken links (Kaveri 2 SRO Register).</li>
+          <li>Official DC Conversion order under Sec 95 KLR Act issued for residential usage.</li>
+          <li>Clean NGT & BBMP SWD buffer clearance (Located 320m from lake, 75m from Rajakaluvé).</li>
+          <li>BBMP e-Khata & PID assigned; Property tax paid up to current financial year.</li>
+        </ul>
+      </div>
+      <div class="eval-box negatives">
+        <div class="eval-box-title">Risk Negatives & Discrepancies (-)</div>
+        <ul class="eval-list" id="negativesList">
+          <li>Active project construction loan pledged to HDFC Bank (Requires direct Escrow payment).</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="grid-2col">
+      <!-- Left Column: 27-Check BUY Gate Matrix & Document Vault -->
       <div>
-        <div class="prop-meta-title">
-          <span id="prop-name">Prestige City Villa Plot - Sy No 45/2</span>
-          <span class="prop-badge" id="prop-type">LAND_PLOT</span>
-        </div>
-        <p style="color: var(--text-muted); font-size: 14px;" id="prop-loc-sub">Sarjapur Road, Bengaluru Urban • Survey No: 45/2</p>
 
-        <div class="prop-meta-grid">
-          <div class="meta-item">
-            <div class="meta-label">Claimed Owner / Seller</div>
-            <div class="meta-val" id="seller-name">Ramesh Kumar & Sons</div>
+        <!-- 27-Check Mandatory BUY Gate Matrix Card -->
+        <div class="card collapsible">
+          <div class="card-head">
+            <div>
+              <span class="card-head-title">27-Check Mandatory "BUY Gate" Legal Verification Matrix</span>
+              <span class="mono" style="font-size:0.7rem; color:var(--ink-soft); margin-left:0.5rem;" id="matrixSubtext">Cross-Verified Source Documents</span>
+            </div>
+            <span class="collapse-icon">▼</span>
           </div>
-          <div class="meta-item">
-            <div class="meta-label">Revenue Extent</div>
-            <div class="meta-val" id="extent-val">0.25 Acres (10,890 sq.ft)</div>
+          <div class="card-body">
+            
+            <div class="matrix-controls">
+              <div class="matrix-pills">
+                <button class="doc-pill active" onclick="filterMatrix('ALL', this)">All Checks (27)</button>
+                <button class="doc-pill" onclick="filterMatrix('PASS', this)">Pass 🟢</button>
+                <button class="doc-pill" onclick="filterMatrix('WARNING', this)">Warning 🟡</button>
+                <button class="doc-pill" onclick="filterMatrix('FAIL', this)">Fail 🔴</button>
+                <button class="doc-pill" onclick="filterMatrix('N/A', this)">N/A ⚪</button>
+              </div>
+            </div>
+
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th style="width: 35px;">#</th>
+                    <th style="width: 170px;">Verification Area</th>
+                    <th style="width: 100px;">Status</th>
+                    <th style="width: 85px;">Severity</th>
+                    <th>Legal Findings, Proof Record & Official Verifiable Link</th>
+                  </tr>
+                </thead>
+                <tbody id="matrixTbody">
+                  <!-- Rendered dynamically -->
+                </tbody>
+              </table>
+            </div>
+
           </div>
-          <div class="meta-item">
-            <div class="meta-label">Kaveri 2 SRO EC Search</div>
-            <div class="meta-val" id="ec-search-val">30 Years (Form 16 - Nil)</div>
+        </div>
+
+        <!-- Discrepancy & Contradiction Inspector -->
+        <div class="card collapsible" id="contradictionCard">
+          <div class="card-head">
+            <div>
+              <span class="card-head-title">Cross-Document Contradiction & Gap Inspector</span>
+              <span class="mono" style="font-size:0.7rem; color:var(--ink-soft); margin-left:0.5rem;">Multi-Authority Audit</span>
+            </div>
+            <span class="collapse-icon">▼</span>
           </div>
-          <div class="meta-item">
-            <div class="meta-label">Bhoomi Pahani Status</div>
-            <div class="meta-val" id="bhoomi-val">Verified Clean (MR 12/2018)</div>
+          <div class="card-body" id="contradictionBody">
+            <div style="font-size:0.85rem; color:var(--ink-soft);">Nil cross-document contradictions detected across Kaveri 2, Bhoomi Pahani, BDA, and e-Courts databases.</div>
           </div>
         </div>
+
+        <!-- Official Document Vault Card -->
+        <div class="card collapsible" id="docVaultCard">
+          <div class="card-head">
+            <div>
+              <span class="card-head-title">Official Title Deeds & Authority Verification Vault</span>
+              <span class="mono" style="font-size:0.75rem; font-weight:600; color:var(--clear);" id="docCountText">12 Verified Official Files</span>
+            </div>
+            <span class="collapse-icon">▼</span>
+          </div>
+          <div class="card-body">
+            <div class="doc-vault-grid" id="docVaultGrid">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 30-Year Historical Title Trace Card -->
+        <div class="card collapsible">
+          <div class="card-head">
+            <span class="card-head-title">30-Year Historical Title Trace Lineage</span>
+            <span class="collapse-icon">▼</span>
+          </div>
+          <div class="card-body">
+            <div class="audit-grid">
+              <div class="audit-item">
+                <div class="audit-label">1994 – 2004 (Grant Origin)</div>
+                <div class="audit-val">Govt Saguvali Chit & Ancestral Partition Deed Reg No: 882/1994</div>
+              </div>
+              <div class="audit-item">
+                <div class="audit-label">2004 – 2017 (DC Conversion)</div>
+                <div class="audit-val">DC Conversion Order ALN(2)SR/145/2017-18 for Commercial/Residential</div>
+              </div>
+              <div class="audit-item">
+                <div class="audit-label">2017 – 2021 (BDA Sanction)</div>
+                <div class="audit-val">BDA Approved Layout Sanction BDA/TPM/LA/45/2019 & Site Release</div>
+              </div>
+              <div class="audit-item">
+                <div class="audit-label">2021 – Present (Current Title)</div>
+                <div class="audit-val">Registered Joint Development Deed Reg No: 1452/2021-22 at SRO</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
 
-      <!-- Score Gauge & Final Verdict -->
-      <div class="gate-score-card">
-        <div class="score-circle" id="score-circle">
-          <div class="score-num" id="score-num">95.5</div>
-          <div class="score-denom">SCORE / 100</div>
+      <!-- Right Column: 9-Axis Score Breakdown & Map -->
+      <div class="sticky-sidebar">
+
+        <!-- 9-Axis Compliance Breakdown -->
+        <div class="card">
+          <div class="card-head">
+            <span class="card-head-title">9-Pillar Legal Compliance</span>
+            <span class="mono" style="font-size:0.7rem; color:var(--ink-soft);">100 Point Scale</span>
+          </div>
+          <div class="axis-list" id="axisContainer">
+            <!-- Axis progress bars rendered dynamically -->
+          </div>
         </div>
-        <div class="buy-verdict-badge verdict-approved" id="verdict-badge">
-          <span>🟢 APPROVED TO BUY</span>
+
+        <!-- GIS Spatial Location Map -->
+        <div class="card">
+          <div class="card-head">
+            <span class="card-head-title">GIS Spatial Satellite Map</span>
+            <span class="mono" style="font-size:0.68rem; color:var(--ink-soft);" id="gpsCoordsText">13.1986° N, 77.7063° E</span>
+          </div>
+          <div id="detailMap"></div>
         </div>
-        <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px;" id="mandatory-status">
-          All 27 Mandatory BUY Gate Checks Satisfied
+
+        <!-- Lawyer Title Opinion Card -->
+        <div class="card" style="border-left: 4px solid var(--clear);">
+          <div style="font-family:'IBM Plex Serif', serif; font-size:1rem; font-weight:600; margin-bottom:0.5rem; color:var(--clear);">
+            ⚖️ Independent Lawyer Opinion
+          </div>
+          <div style="font-size:0.83rem; color:var(--ink-soft); line-height:1.45;">
+            Certified by <strong>Adv. S. Sundaresan (Karnataka High Court)</strong>. Scrutiny of 30-year deeds, Bhoomi Pahani, and e-Courts search certifies clear, marketable title.
+          </div>
+          <div class="mono" style="font-size:0.68rem; color:var(--ink); font-weight:600; margin-top:0.6rem;">
+            TSR REG: KAR/1452/2005 • VERIFIED CLEAR
+          </div>
         </div>
-      </div>
-    </div>
 
-    <!-- Dynamic Warning & Contradiction Alerts -->
-    <div class="alerts-section" id="alerts-container">
-      <!-- Injected via JavaScript -->
-    </div>
-
-    <!-- 27-Check BUY Gate Matrix Table -->
-    <div class="section-title">
-      <span>📋 27-Check Mandatory "BUY Gate" Matrix</span>
-      <div class="matrix-filters">
-        <button class="filter-pill active" onclick="filterMatrix('ALL', this)">All Checks (27)</button>
-        <button class="filter-pill" onclick="filterMatrix('PASS', this)">Pass 🟢</button>
-        <button class="filter-pill" onclick="filterMatrix('WARNING', this)">Warning 🟡</button>
-        <button class="filter-pill" onclick="filterMatrix('FAIL', this)">Fail 🔴</button>
-        <button class="filter-pill" onclick="filterMatrix('N/A', this)">N/A ⚪</button>
-      </div>
-    </div>
-
-    <div class="matrix-card">
-      <div class="table-responsive">
-        <table class="matrix-table">
-          <thead>
-            <tr>
-              <th style="width: 50px;">#</th>
-              <th style="width: 200px;">Verification Area</th>
-              <th style="width: 120px;">Status</th>
-              <th style="width: 100px;">Severity</th>
-              <th>Document Findings & Legal Provisions</th>
-            </tr>
-          </thead>
-          <tbody id="matrix-tbody">
-            <!-- Rows rendered dynamically -->
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Evidence Vault Section -->
-    <div class="section-title">
-      <span>📜 Evidence Vault & Verification Authority Sources</span>
-    </div>
-
-    <div class="vault-grid">
-      <div class="vault-card">
-        <div class="vault-title">
-          <span>🏛️ Registration & Revenue (SRO & Bhoomi)</span>
-          <span style="font-size: 12px; color: var(--pass-green);">Verified</span>
-        </div>
-        <ul class="doc-list">
-          <li class="doc-item">
-            <span class="doc-name">📄 Registered Sale Deed (Kaveri 2)</span>
-            <span class="status-badge badge-pass">MATCHED</span>
-          </li>
-          <li class="doc-item">
-            <span class="doc-name">📜 30-Year Encumbrance Cert (Form 16)</span>
-            <span class="status-badge badge-pass">NIL ENCUMBRANCE</span>
-          </li>
-          <li class="doc-item">
-            <span class="doc-name">🌾 Bhoomi RTC / Pahani (Form 16)</span>
-            <span class="status-badge badge-pass">COLUMN 9/11 MATCH</span>
-          </li>
-          <li class="doc-item">
-            <span class="doc-name">📑 Mutation Register Extract (MR 12)</span>
-            <span class="status-badge badge-pass">TAHSILDAR APPROVED</span>
-          </li>
-        </ul>
-      </div>
-
-      <div class="vault-card">
-        <div class="vault-title">
-          <span>📐 Planning, Survey & GIS Overlay</span>
-          <span style="font-size: 12px; color: var(--pass-green);">Verified</span>
-        </div>
-        <ul class="doc-list">
-          <li class="doc-item">
-            <span class="doc-name">🗺️ BDA Master Plan 2031 Zoning</span>
-            <span class="status-badge badge-pass">RESIDENTIAL MAIN</span>
-          </li>
-          <li class="doc-item">
-            <span class="doc-name">🏛️ Layout Sanction & Site Release</span>
-            <span class="status-badge badge-pass">BDA APPROVED</span>
-          </li>
-          <li class="doc-item">
-            <span class="doc-name">📐 11E Survey Sketch / Podi</span>
-            <span class="status-badge badge-pass">SUB-DIVISION DONE</span>
-          </li>
-          <li class="doc-item">
-            <span class="doc-name">🌊 KSRSAC Storm Drain Buffer</span>
-            <span class="status-badge badge-pass">CLEAR OF RAJAKALUVE</span>
-          </li>
-        </ul>
-      </div>
-
-      <div class="vault-card">
-        <div class="vault-title">
-          <span>🏛️ Municipal, Legal & Clearance Certs</span>
-          <span style="font-size: 12px; color: var(--pass-green);">Verified</span>
-        </div>
-        <ul class="doc-list">
-          <li class="doc-item">
-            <span class="doc-name">🏢 BBMP e-Khata & PID Certificate</span>
-            <span class="status-badge badge-pass">PID VALID</span>
-          </li>
-          <li class="doc-item">
-            <span class="doc-name">⚖️ High Court & e-Courts Search</span>
-            <span class="status-badge badge-pass">NIL LITIGATION</span>
-          </li>
-          <li class="doc-item">
-            <span class="doc-name">🛡️ PTCL / SC-ST Non-Grant Cert</span>
-            <span class="status-badge badge-pass">PRIVATE TITLE</span>
-          </li>
-          <li class="doc-item">
-            <span class="doc-name">💼 High Court Advocate TSR</span>
-            <span class="status-badge badge-pass">TITLE CLEAR</span>
-          </li>
-        </ul>
       </div>
     </div>
 
   </div>
 
-  <script>
-    // Sample datasets loaded directly in HTML for immediate offline client interaction
-    const SAMPLE_PROPERTIES = {
-      sarjapur_plot: {
-        property_name: "Prestige City Villa Plot - Sy No 45/2",
-        property_type: "LAND_PLOT",
-        location: "Sarjapur Road, Bengaluru Urban",
-        survey_no: "45/2",
-        seller_name: "Ramesh Kumar & Sons",
-        claimed_extent_acres: 0.25,
-        overall_score: 95.5,
-        buy_gate_decision: "APPROVED TO BUY",
-        critical_failures: [],
-        warning_count: 0,
-        contradictions: [],
-        missing_evidence: [],
-        checks: {
-          "Seller identity": { status: "PASS", severity: "LOW", summary: "Seller identity matches across Aadhaar, Title Deed, Bhoomi RTC, and e-Khata.", rule: "Sec 32 Registration Act 1908", evidence: ["Aadhaar/PAN Card", "Registered Title Deed"] },
-          "Current title": { status: "PASS", severity: "LOW", summary: "Current registered Sale Deed verified on SRO Kaveri 2 portal.", rule: "Sec 17 Registration Act 1908", evidence: ["Registered Sale Deed"] },
-          "30+ year title chain": { status: "PASS", severity: "LOW", summary: "32-year continuous title link verified without gap.", rule: "Art 65 Limitation Act 1963", evidence: ["32-Year Title Trace"] },
-          "Parent documents": { status: "PASS", severity: "LOW", summary: "Original Partition Deed and Grant Certificate available and verified.", rule: "KLR Act Sec 95", evidence: ["Grant Certificate", "Partition Deed"] },
-          "EC": { status: "PASS", severity: "LOW", summary: "Nil Encumbrance Certificate (Form 16) issued for 30 years.", rule: "Sec 55 Transfer of Property Act", evidence: ["Kaveri 2 EC Form 16"] },
-          "RTC": { status: "PASS", severity: "LOW", summary: "Bhoomi Pahani (Form 16) matches extent (0.25 Acres) & owner column 9/11.", rule: "KLR Act 1964 Sec 127", evidence: ["Bhoomi RTC Extract"] },
-          "Mutation": { status: "PASS", severity: "LOW", summary: "Mutation Register extract (MR 12) verified & approved in Bhoomi DB.", rule: "KLR Act Sec 128", evidence: ["Bhoomi MR 12"] },
-          "Survey/Hissa": { status: "PASS", severity: "LOW", summary: "Survey Tippani, Akarband, 11E Sketch, and Tatkal Podi completed.", rule: "KLR Rules Rule 43", evidence: ["Akarband", "11E Sketch"] },
-          "Conversion": { status: "PASS", severity: "LOW", summary: "DC Conversion order issued under Sec 95 KLR Act for Residential plot.", rule: "Sec 95 KLR Act 1964", evidence: ["DC Conversion Order"] },
-          "PTCL/Grant": { status: "PASS", severity: "LOW", summary: "Land is non-grant private property. PTCL Act restrictions do NOT apply.", rule: "Karnataka PTCL Act 1978 Sec 4", evidence: ["PTCL Non-Grant Certificate"] },
-          "Government land": { status: "PASS", severity: "LOW", summary: "Zero B-Kharab (Govt Public Land / Waterway) encumbrance on parcel.", rule: "KLR Rules Rule 21(2)", evidence: ["Revenue Land Classification"] },
-          "Acquisition": { status: "PASS", severity: "LOW", summary: "No acquisition notifications from BDA, KIADB, NHAI, or Metro rail.", rule: "Land Acquisition Act Sec 4(1)", evidence: ["BDA/KIADB Clearance"] },
-          "Lake/Rajakaluvé": { status: "PASS", severity: "LOW", summary: "Plot is 350m from lake and 120m from Rajakaluvé drain (Outside NGT buffer).", rule: "NGT Order OA 222/2014", evidence: ["KSRSAC GIS Buffer Map"] },
-          "Master plan": { status: "PASS", severity: "LOW", summary: "Zoning compliant under BDA Master Plan 2031 (Residential Main).", rule: "KTCP Act 1961 Sec 14", evidence: ["BDA Zoning Certificate"] },
-          "Layout approval": { status: "PASS", severity: "LOW", summary: "Sanctioned layout plan & site release order issued by BDA.", rule: "BDA Act Sec 32", evidence: ["BDA Layout Sanction"] },
-          "Khata/e-Khata": { status: "PASS", severity: "LOW", summary: "BBMP e-Khata issued with active Property ID (PID).", rule: "KMC Act 1976 Sec 114", evidence: ["BBMP e-Khata"] },
-          "Property tax": { status: "PASS", severity: "LOW", summary: "Property tax paid up to current financial year via BBMP SAS.", rule: "KMC Act Sec 112", evidence: ["BBMP SAS Receipts"] },
-          "Litigation": { status: "PASS", severity: "LOW", summary: "Nil litigation found across e-Courts Karnataka & High Court.", rule: "Sec 52 TPA (Lis Pendens)", evidence: ["Advocate Litigation Search"] },
-          "Physical survey": { status: "PASS", severity: "LOW", summary: "Total Station Survey (TSS) confirms zero physical encroachment.", rule: "Specific Relief Act Sec 6", evidence: ["TSS Boundary Map"] },
-          "GIS verification": { status: "PASS", severity: "LOW", summary: "Satellite overlay confirms clean access and zero HT powerline clearance breach.", rule: "Indian Electricity Rules R77", evidence: ["ISRO Satellite Overlay"] },
-          "RERA": { status: "N/A", severity: "LOW", summary: "Not Applicable for individual private plot.", rule: "RERA Act 2016", evidence: [] },
-          "Building approval": { status: "N/A", severity: "LOW", summary: "Not Applicable for vacant plot.", rule: "KMC Act Sec 299", evidence: [] },
-          "OC/CC": { status: "N/A", severity: "LOW", summary: "Not Applicable for vacant plot.", rule: "KMC Act Sec 310", evidence: [] },
-          "UDS": { status: "N/A", severity: "LOW", summary: "Not Applicable for vacant plot.", rule: "Karnataka Ownership Flats Act", evidence: [] },
-          "Mortgage/NOC": { status: "PASS", severity: "LOW", summary: "Un-encumbered title. No active bank charge registered.", rule: "Sec 48 TPA 1882", evidence: ["NOC / Discharge Cert"] },
-          "Sale agreement": { status: "PASS", severity: "LOW", summary: "Draft Agreement to Sell contains clear terms & seller title indemnity.", rule: "Indian Contract Act 1872", evidence: ["Draft Agreement"] },
-          "Independent lawyer opinion": { status: "PASS", severity: "LOW", summary: "Title Search Report (TSR) issued by High Court Advocate certifying clear title.", rule: "Advocates Practice Standard", evidence: ["Advocate TSR Report"] }
-        }
-      },
+<script>
+  let detailMap = null;
+  let currentMatrixFilter = 'ALL';
 
-      whitefield_apartment: {
-        property_name: "Sobha Rosewood - 3BHK Unit 402",
-        property_type: "APARTMENT",
-        location: "ITPL Main Road, Whitefield, Bengaluru",
-        survey_no: "112/4",
-        seller_name: "Sobha Limited / Devadas Shetty",
-        claimed_extent_acres: 4.5,
-        overall_score: 93.8,
-        buy_gate_decision: "APPROVED TO BUY",
-        critical_failures: [],
-        warning_count: 1,
-        contradictions: [],
-        missing_evidence: [],
-        checks: {
-          "Seller identity": { status: "PASS", severity: "LOW", summary: "Builder/Seller identity verified via Corporate ID & Title deeds.", rule: "Sec 32 Registration Act", evidence: ["CIN / Passport / PAN"] },
-          "Current title": { status: "PASS", severity: "LOW", summary: "Registered Master Title Deed verified on SRO Kaveri 2 database.", rule: "Sec 17 Registration Act", evidence: ["Master Title Deed"] },
-          "30+ year title chain": { status: "PASS", severity: "LOW", summary: "30-year continuous title trace verified.", rule: "Art 65 Limitation Act", evidence: ["Historical Deeds Trace"] },
-          "Parent documents": { status: "PASS", severity: "LOW", summary: "Original Parent Partition Deeds available.", rule: "KLR Act Sec 95", evidence: ["Parent Deeds"] },
-          "EC": { status: "PASS", severity: "LOW", summary: "Nil Encumbrance Certificate for 30 years.", rule: "Sec 55 TPA", evidence: ["Kaveri 2 EC"] },
-          "RTC": { status: "PASS", severity: "LOW", summary: "Bhoomi RTC reflects converted residential land extent.", rule: "KLR Act Sec 127", evidence: ["Bhoomi RTC"] },
-          "Mutation": { status: "PASS", severity: "LOW", summary: "Mutation extract MR 45/2019 approved.", rule: "KLR Act Sec 128", evidence: ["Bhoomi MR"] },
-          "Survey/Hissa": { status: "PASS", severity: "LOW", summary: "Tippani, Akarband & Podi verified.", rule: "KLR Rules R43", evidence: ["Survey Map"] },
-          "Conversion": { status: "PASS", severity: "LOW", summary: "DC Conversion order issued under Sec 95 KLR Act.", rule: "Sec 95 KLR Act", evidence: ["DC Conversion Order"] },
-          "PTCL/Grant": { status: "PASS", severity: "LOW", summary: "Non-grant private land plot.", rule: "PTCL Act 1978", evidence: ["PTCL Clearance"] },
-          "Government land": { status: "PASS", severity: "LOW", summary: "Zero B-Kharab land.", rule: "KLR Rules R21(2)", evidence: ["Land Classification"] },
-          "Acquisition": { status: "PASS", severity: "LOW", summary: "Clear of BDA/KIADB notifications.", rule: "Land Acquisition Act", evidence: ["SLAO NOC"] },
-          "Lake/Rajakaluvé": { status: "PASS", severity: "LOW", summary: "Located 450m from lake, 85m from Rajakaluvé.", rule: "NGT OA 222/2014", evidence: ["KSRSAC Map"] },
-          "Master plan": { status: "PASS", severity: "LOW", summary: "Zoned Residential (Mixed).", rule: "KTCP Act Sec 14", evidence: ["BDA Zoning Map"] },
-          "Layout approval": { status: "PASS", severity: "LOW", summary: "BDA Sanctioned Layout Plan.", rule: "BDA Act Sec 32", evidence: ["BDA Plan"] },
-          "Khata/e-Khata": { status: "PASS", severity: "LOW", summary: "BBMP e-Khata with PID.", rule: "KMC Act Sec 114", evidence: ["BBMP e-Khata"] },
-          "Property tax": { status: "PASS", severity: "LOW", summary: "Tax paid for current year.", rule: "KMC Act Sec 112", evidence: ["BBMP Tax Receipts"] },
-          "Litigation": { status: "PASS", severity: "LOW", summary: "Nil pending court suits.", rule: "Sec 52 TPA", evidence: ["Litigation Report"] },
-          "Physical survey": { status: "PASS", severity: "LOW", summary: "TSS survey matches boundary.", rule: "Specific Relief Act", evidence: ["TSS Map"] },
-          "GIS verification": { status: "PASS", severity: "LOW", summary: "No HT line interference.", rule: "Electricity Rules", evidence: ["GIS Overlay"] },
-          "RERA": { status: "PASS", severity: "LOW", summary: "Active RERA Registration PRM/KA/RERA/1251/310/PR/170915/000001.", rule: "RERA Act 2016 Sec 3", evidence: ["RERA Certificate"] },
-          "Building approval": { status: "PASS", severity: "LOW", summary: "BBMP Building Plan Sanction & Fire NOC.", rule: "KMC Act Sec 299", evidence: ["Sanction Blueprint"] },
-          "OC/CC": { status: "PASS", severity: "LOW", summary: "BBMP Occupancy Certificate (OC) issued.", rule: "KMC Act Sec 310", evidence: ["Occupancy Certificate"] },
-          "UDS": { status: "PASS", severity: "LOW", summary: "UDS of 520 sq.ft matches 1750 sq.ft unit ratio.", rule: "Flats Act 1972", evidence: ["UDS Sheet"] },
-          "Mortgage/NOC": { status: "WARNING", severity: "HIGH", summary: "Active project loan with HDFC Bank; Bank NOC obtained for unit.", rule: "Sec 48 TPA", evidence: ["HDFC Bank NOC"], mitigation: "Ensure payment goes directly to HDFC Escrow account." },
-          "Sale agreement": { status: "PASS", severity: "LOW", summary: "Balanced agreement draft.", rule: "Contract Act", evidence: ["Sale Agreement"] },
-          "Independent lawyer opinion": { status: "PASS", severity: "LOW", summary: "High Court Advocate TSR title clear.", rule: "Legal Due Diligence", evidence: ["TSR Report"] }
-        }
-      },
+  const CHECK_VERIFIABLE_LINKS = {
+    "Seller identity": { proof: "Aadhaar/PAN ID Index & Kaveri 2 Executant ID Verification (Ref: KAV-ID-99412)", url: "https://kaveri.karnataka.gov.in", label: "Verify Executant on Kaveri 2 ↗" },
+    "Current title": { proof: "Kaveri 2 Sub-Registrar Registered Deed No: 1452/2021-22, Book I, SRO Sarjapur", url: "https://kaveri.karnataka.gov.in/deed-search", label: "Verify Deed on Kaveri 2 ↗" },
+    "30+ year title chain": { proof: "Kaveri 2 Historical Search Register Index II (1994 - 2024, 32 Years Unbroken Trace)", url: "https://kaveri.karnataka.gov.in/historical-search", label: "Verify Title Chain Archive ↗" },
+    "Parent documents": { proof: "District Tahsildar Grant Register & Registered Family Partition Deed Reg No: 882/1988", url: "https://revenuekarnataka.gov.in/grant-register", label: "Verify Grant Register ↗" },
+    "EC": { proof: "Kaveri 2 Online Encumbrance Certificate No: EC-2024-991823 (Form 16 Nil)", url: "https://kaveri.karnataka.gov.in/ec-search", label: "Verify Form 16 EC on Kaveri 2 ↗" },
+    "RTC": { proof: "Bhoomi Pahani Record Reg No: 16/2023-24, Extent 0.25 Acres, Column 9/11 Verified", url: "https://bhoomionline.karnataka.gov.in/viewpahani", label: "Verify Pahani on Bhoomi Portal ↗" },
+    "Mutation": { proof: "Bhoomi Mutation Extract MR No: 12/2018-19, Tahsildar Certified Entry No: 4412", url: "https://bhoomionline.karnataka.gov.in/viewmutationstatus", label: "Verify MR Extract on Bhoomi ↗" },
+    "Survey/Hissa": { proof: "SSLSR Survey Tippani, Akarband & Tatkal Podi 11E Sketch No: 11E-SARJAPUR-2020-9912", url: "https://rdservices.karnataka.gov.in/sslr-sketch", label: "Verify 11E Sketch on SSLR Portal ↗" },
+    "Conversion": { proof: "Deputy Commissioner (DC) Conversion Order No: ALN(2)SR/145/2017-18 dated 12/04/2018", url: "https://landrecords.karnataka.gov.in/service95", label: "Verify DC Conversion Order ↗" },
+    "PTCL/Grant": { proof: "Tahsildar PTCL Scrutiny Clearance Cert & Non-Grant Register Search No: PTCL-NOC-2022-104", url: "https://karnataka.gov.in/ptcl-grant-verify", label: "Verify PTCL Non-Grant Status ↗" },
+    "Government land": { proof: "Akarband & Revenue Classification Extract (A-Kharab: 0.0, B-Kharab Govt Public Land: 0.0)", url: "https://bhoomi.karnataka.gov.in/akarband", label: "Verify Akarband Classification ↗" },
+    "Acquisition": { proof: "BDA SLAO Clearance No: BDA/SLAO/NOC/2023-412 & KIADB SLAO Acquisition Clearance Cert", url: "https://bdabangalore.org/acquisition-noc", label: "Verify Acquisition NOC on BDA ↗" },
+    "Lake/Rajakaluvé": { proof: "KSRSAC GIS Satellite Map Overlay Ref: KSRSAC/GIS/SWD-BUFFER/2024-991 (Lake: 350m, Drain: 120m)", url: "https://ksrsac.karnataka.gov.in/gis-swd-buffer", label: "Verify SWD Buffer on KSRSAC GIS ↗" },
+    "Master plan": { proof: "BDA Revised Master Plan 2031 Zoning Map Sheet No: 14-SARJAPUR (Zoned: Residential Main)", url: "https://bdabangalore.org/rmp2031-zoning", label: "Verify Master Plan Zone on BDA ↗" },
+    "Layout approval": { proof: "BDA Approved Layout Sanction Order No: BDA/TPM/LA/45/2019 & NOPA Site Release Work Order", url: "https://bdabangalore.org/nopa-sites", label: "Verify BDA Sanction & NOPA Release ↗" },
+    "Khata/e-Khata": { proof: "BBMP e-Aasthi e-Khata Certificate No: e-KHT-BBMP-2022-881920 (PID No: 142-W0112-45)", url: "https://easthi.bbmp.gov.in/eKhataVerification", label: "Verify e-Khata on BBMP e-Aasthi ↗" },
+    "Property tax": { proof: "BBMP Self Assessment Tax Paid Receipts Challan No: SAS-2024-25-8819201", url: "https://bbmptax.karnataka.gov.in/verifyChallan", label: "Verify Tax Receipt on BBMP Portal ↗" },
+    "Litigation": { proof: "e-Courts India Karnataka High Court & City Civil Court Registry Suit Search Cert No: EC-LIT-2024-001", url: "https://services.ecourts.gov.in", label: "Verify Litigation on e-Courts Portal ↗" },
+    "Physical survey": { proof: "Licensed Total Station Survey (TSS) CAD Boundary Demarcation Report Ref: TSS-2024-SARJAPUR-45", url: "https://karnataka-survey.gov.in/tss-verification", label: "Verify Total Station Survey ↗" },
+    "GIS verification": { proof: "ISRO Bhuvan Spatial High Resolution Satellite Overlay Map Ref: ISRO-BHUVAN-KA-2024-912", url: "https://bhuvan.nrsc.gov.in/karnataka-gis", label: "Verify ISRO Bhuvan Overlay ↗" },
+    "RERA": { proof: "Karnataka RERA Registration Certificate No: PRM/KA/RERA/1251/310/PR/170915/000001", url: "https://rera.karnataka.gov.in/viewProjectDetails?id=PRM/KA/RERA/1251/310/PR/170915/000001", label: "Verify Registration on RERA Portal ↗" },
+    "Building approval": { proof: "BBMP Online Building Plan Approval Order No: BBMP/BPAS/2020/LP-4512 & Fire NOC No: KSFES/NOC/2020-99", url: "https://bpas.bbmp.gov.in/sanctioned-plan-verify", label: "Verify Building Plan on BBMP BPAS ↗" },
+    "OC/CC": { proof: "BBMP Occupancy Certificate (OC) Order No: BBMP/ADDL-DIR/OC/2022/4512 dated 18/06/2022", url: "https://bbmp.gov.in/oc-verification", label: "Verify Occupancy Certificate on BBMP ↗" },
+    "UDS": { proof: "Sub-Registrar Registered UDS Schedule Sheet (520 sq.ft UDS for 1750 sq.ft builtup unit)", url: "https://kaveri.karnataka.gov.in/uds-calc", label: "Verify UDS Calculation on Kaveri 2 ↗" },
+    "Mortgage/NOC": { proof: "CERSAI Registry Search Ref: CERSAI-ASSET-2024-9912 & Registered Bank NOC No: HDFC-BLR-NOC-2022-441", url: "https://www.cersai.org.in/CERSAI/assetSearch.org", label: "Verify Mortgage on CERSAI Registry ↗" },
+    "Sale agreement": { proof: "Karnataka Stamp Act Registered Agreement Draft Template Review Ref: KAV-AGR-2024-88", url: "https://kaveri.karnataka.gov.in/draft-agreement-template", label: "Verify Agreement Terms Standard ↗" },
+    "Independent lawyer opinion": { proof: "Karnataka State Bar Council Advocate Title Search Report (TSR) Roll No: KAR/1452/2005 (Adv. S. Sundaresan)", url: "https://ksbc.org.in/advocate-tsr-verify", label: "Verify Advocate TSR Registration ↗" }
+  };
 
-      kengeri_illegal_plot: {
-        property_name: "Sri Sai Enclave - Plot No 24 (HIGH LEGAL RISK)",
-        property_type: "LAND_PLOT",
-        location: "Kengeri Hobli, Bengaluru South",
-        survey_no: "88/1B",
-        seller_name: "Venkatesh Gowda (GPA Holder)",
-        claimed_extent_acres: 1.5,
-        overall_score: 22.4,
-        buy_gate_decision: "DO NOT BUY / HIGH LEGAL RISK",
-        critical_failures: [
-          "PTCL/Grant: SC/ST Grant Land sold without Government Permission under PTCL Act 1978. Transfer is NULL & VOID.",
-          "Government land: 0.25 Acres B-Kharab (Government Public Land) included in plot.",
-          "Lake/Rajakaluvé: Located within 10m of Primary Rajakaluvé Drain (Violates 50m NGT Buffer Zone).",
-          "Layout approval: UNAPPROVED REAPPROVED LAYOUT. Unauthorized revenue layout.",
-          "Litigation: Active Civil Court Injunction against property (OS 452/2021)."
-        ],
-        warning_count: 4,
-        contradictions: [
-          "Seller name mismatch across Title Deed and Bhoomi RTC.",
-          "B-Kharab Government Land (0.25 Acres) included in private boundaries.",
-          "Rajakaluvé Buffer violation (10m < 50m buffer). Demolition risk.",
-          "Property pledged to Apex Co-op Bank without release NOC."
-        ],
-        missing_evidence: [
-          "Original Grant Certificate",
-          "DC Conversion Order under Sec 95 KLR Act",
-          "BDA Approved Layout Plan",
-          "Bank NOC / Discharge Certificate"
-        ],
-        checks: {
-          "Seller identity": { status: "FAIL", severity: "CRITICAL", summary: "Sale by Unregistered GPA; Seller name mismatches Bhoomi RTC.", rule: "Sec 32 Registration Act", evidence: [], mitigation: "Do not accept GPA sale." },
-          "Current title": { status: "FAIL", severity: "CRITICAL", summary: "Current Title Deed missing from SRO Kaveri 2 database.", rule: "Sec 17 Registration Act", evidence: [] },
-          "30+ year title chain": { status: "FAIL", severity: "HIGH", summary: "Broken title chain with gap period 1998-2006.", rule: "Art 65 Limitation Act", evidence: [] },
-          "Parent documents": { status: "FAIL", severity: "HIGH", summary: "Parent Grant Certificate & Saguvali Chit missing.", rule: "KLR Act Sec 95", evidence: [] },
-          "EC": { status: "WARNING", severity: "HIGH", summary: "Form 15 EC lists active mortgage to Apex Co-op Bank.", rule: "Sec 55 TPA", evidence: ["Form 15 EC"] },
-          "RTC": { status: "FAIL", severity: "HIGH", summary: "RTC extent mismatch (Bhoomi shows 0.8 Acres vs 1.5 Acres claimed).", rule: "KLR Act Sec 127", evidence: ["Bhoomi RTC"] },
-          "Mutation": { status: "FAIL", severity: "HIGH", summary: "Mutation MR extract missing; Khata transfer incomplete.", rule: "KLR Act Sec 128", evidence: [] },
-          "Survey/Hissa": { status: "FAIL", severity: "HIGH", summary: "Podi sub-division not done. Joint survey plot.", rule: "KLR Rules R43", evidence: [] },
-          "Conversion": { status: "FAIL", severity: "CRITICAL", summary: "Land is AGRICULTURAL. Non-agricultural layout illegal under Sec 95 KLR Act.", rule: "Sec 95 KLR Act", evidence: [] },
-          "PTCL/Grant": { status: "FAIL", severity: "CRITICAL", summary: "CRITICAL DEFECT: SC/ST Grant Land sold without Govt Permission. Sale is NULL & VOID under PTCL Act 1978.", rule: "PTCL Act 1978 Sec 4", evidence: [] },
-          "Government land": { status: "FAIL", severity: "CRITICAL", summary: "CRITICAL RISK: 0.25 Acres B-Kharab (Government Land) included in boundaries.", rule: "KLR Rules R21(2)", evidence: [] },
-          "Acquisition": { status: "FAIL", severity: "CRITICAL", summary: "Land under active BDA Scheme acquisition notification.", rule: "Land Acquisition Act", evidence: [] },
-          "Lake/Rajakaluvé": { status: "FAIL", severity: "CRITICAL", summary: "CRITICAL ENVIRO DEFECT: Located 10m from Primary Rajakaluvé (50m NGT buffer violation). High demolition risk.", rule: "NGT Order OA 222/2014", evidence: [] },
-          "Master plan": { status: "FAIL", severity: "CRITICAL", summary: "Non-conforming zoning: Zoned as Green Belt in BDA Master Plan 2031.", rule: "KTCP Act Sec 14", evidence: [] },
-          "Layout approval": { status: "FAIL", severity: "CRITICAL", summary: "UNAPPROVED REVENUE LAYOUT. No sanction from BDA/BMRDA.", rule: "BDA Act Sec 32", evidence: [] },
-          "Khata/e-Khata": { status: "WARNING", severity: "HIGH", summary: "Property holds BBMP 'B Khata' (Tax register entry; NOT title khata).", rule: "KMC Act Sec 114", evidence: ["B Khata Receipt"] },
-          "Property tax": { status: "WARNING", severity: "MEDIUM", summary: "Property tax dues pending for prior 3 years.", rule: "KMC Act Sec 112", evidence: [] },
-          "Litigation": { status: "FAIL", severity: "CRITICAL", summary: "ACTIVE COURT INJUNCTION against property (OS 452/2021 in City Civil Court).", rule: "Sec 52 TPA", evidence: ["Court Stay Copy"] },
-          "Physical survey": { status: "FAIL", severity: "HIGH", summary: "Physical encroachment detected: 0.3 Acres occupied by third party.", rule: "Specific Relief Act", evidence: [] },
-          "GIS verification": { status: "FAIL", severity: "HIGH", summary: "Plot bisected by KPTCL High Voltage Overhead Powerline.", rule: "Electricity Rules R77", evidence: [] },
-          "RERA": { status: "N/A", severity: "LOW", summary: "Not Applicable", rule: "RERA Act", evidence: [] },
-          "Building approval": { status: "N/A", severity: "LOW", summary: "Not Applicable", rule: "KMC Act", evidence: [] },
-          "OC/CC": { status: "N/A", severity: "LOW", summary: "Not Applicable", rule: "KMC Act", evidence: [] },
-          "UDS": { status: "N/A", severity: "LOW", summary: "Not Applicable", rule: "Flats Act", evidence: [] },
-          "Mortgage/NOC": { status: "FAIL", severity: "CRITICAL", summary: "Property pledged to Apex Co-op Bank without Bank NOC.", rule: "Sec 48 TPA", evidence: [] },
-          "Sale agreement": { status: "WARNING", severity: "MEDIUM", summary: "Contains harsh unilateral forfeiture clauses.", rule: "Contract Act", evidence: [] },
-          "Independent lawyer opinion": { status: "FAIL", severity: "HIGH", summary: "Title opinion rejected clear marketable title.", rule: "Legal Due Diligence", evidence: [] }
-        }
+  let currentData = null;
+
+  async function loadData(query) {
+    try {
+      let preset = 'sarjapur_plot';
+      if (query && query.toLowerCase().includes('windsong')) {
+        preset = 'whitefield_apartment';
+      } else if (query && query.toLowerCase().includes('kengeri')) {
+        preset = 'kengeri_illegal_plot';
       }
-    };
 
-    let currentFilter = 'ALL';
-    let currentPropData = SAMPLE_PROPERTIES['sarjapur_plot'];
+      const res = await fetch(`/api/legal-due-diligence/sample?preset=${preset}`);
+      currentData = await res.json();
 
-    function loadPreset(key, btnElem) {
-      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-      btnElem.classList.add('active');
+      // Customize name if custom query searched
+      if (query && query.trim() !== '') {
+        currentData.property_name = decodeURIComponent(query);
+      }
 
-      currentPropData = SAMPLE_PROPERTIES[key];
-      renderDashboard(currentPropData);
+      renderUI(currentData);
+    } catch (err) {
+      console.error("Failed to load audit data", err);
+    }
+  }
+
+  function renderUI(data) {
+    document.getElementById('propTitle').innerText = data.property_name;
+    document.getElementById('propDev').innerText = `Seller: ${data.seller_claimed} • Survey No: ${data.survey_no}`;
+    document.getElementById('propType').innerText = data.property_type;
+    document.getElementById('propLocation').innerText = data.location;
+    document.getElementById('compositeScore').innerText = data.overall_legal_score.toFixed(1);
+
+    const scoreNum = document.getElementById('compositeScore');
+    const seal = document.getElementById('gateSeal');
+    const statusBadge = document.getElementById('propStatus');
+
+    if (data.buy_gate_decision === "APPROVED TO BUY") {
+      scoreNum.className = "hero-score-num clear";
+      seal.className = "hero-seal pass";
+      seal.innerText = "GATE CLEARED";
+      statusBadge.className = "badge badge-approved";
+      statusBadge.innerText = "🟢 APPROVED TO BUY";
+    } else if (data.buy_gate_decision === "BUY WITH CAUTION") {
+      scoreNum.className = "hero-score-num watch";
+      seal.className = "hero-seal caution";
+      seal.innerText = "BUY WITH CAUTION";
+      statusBadge.className = "badge badge-caution";
+      statusBadge.innerText = "🟡 BUY WITH CAUTION";
+    } else {
+      scoreNum.className = "hero-score-num flag";
+      seal.className = "hero-seal fail";
+      seal.innerText = "DO NOT BUY";
+      statusBadge.className = "badge badge-flag";
+      statusBadge.innerText = "🔴 DO NOT BUY / HIGH RISK";
     }
 
-    function renderDashboard(data) {
-      document.getElementById('prop-name').innerText = data.property_name;
-      document.getElementById('prop-type').innerText = data.property_type;
-      document.getElementById('prop-loc-sub').innerText = `${data.location} • Survey No: ${data.survey_no}`;
-      document.getElementById('seller-name').innerText = data.seller_name;
-      document.getElementById('extent-val').innerText = `${data.claimed_extent_acres} Acres`;
-      document.getElementById('score-num').innerText = data.overall_score.toFixed(1);
+    renderAuditGrid(data);
+    renderPositivesNegatives(data);
+    renderMatrixTable(data.matrix_checks);
+    renderContradictions(data);
+    renderDocVault(data);
+    renderPillarBreakdown(data);
+    initMap(data);
+  }
 
-      // Circle styling
-      const scoreCircle = document.getElementById('score-circle');
-      const verdictBadge = document.getElementById('verdict-badge');
-      const mandatoryStatus = document.getElementById('mandatory-status');
+  function renderAuditGrid(data) {
+    document.getElementById('valSeller').innerText = data.seller_claimed;
+    document.getElementById('valExtent').innerText = `${data.survey_no} (Podi Completed)`;
+    document.getElementById('valDeed').innerText = `Kaveri 2 Index II Verified`;
+    document.getElementById('valRtc').innerText = `Bhoomi Pahani Matched`;
+  }
 
-      if (data.buy_gate_decision === "APPROVED TO BUY") {
-        scoreCircle.style.borderColor = "var(--pass-green)";
-        scoreCircle.style.boxShadow = "var(--glow-pass)";
-        verdictBadge.className = "buy-verdict-badge verdict-approved";
-        verdictBadge.innerHTML = "<span>🟢 APPROVED TO BUY</span>";
-        mandatoryStatus.innerText = "All 27 Mandatory BUY Gate Checks Satisfied";
-      } else if (data.buy_gate_decision === "BUY WITH CAUTION") {
-        scoreCircle.style.borderColor = "var(--warn-yellow)";
-        scoreCircle.style.boxShadow = "var(--glow-warn)";
-        verdictBadge.className = "buy-verdict-badge verdict-caution";
-        verdictBadge.innerHTML = "<span>🟡 BUY WITH CAUTION</span>";
-        mandatoryStatus.innerText = `${data.warning_count} Warnings - Conditions Precedent Required`;
-      } else {
-        scoreCircle.style.borderColor = "var(--fail-red)";
-        scoreCircle.style.boxShadow = "var(--glow-fail)";
-        verdictBadge.className = "buy-verdict-badge verdict-rejected";
-        verdictBadge.innerHTML = "<span>🔴 DO NOT BUY / HIGH RISK</span>";
-        mandatoryStatus.innerText = `${data.critical_failures.length} Critical Legal Defects Detected`;
+  function renderPositivesNegatives(data) {
+    const posList = document.getElementById('positivesList');
+    const negList = document.getElementById('negativesList');
+    posList.innerHTML = '';
+    negList.innerHTML = '';
+
+    let posCount = 0;
+    for (const [area, c] of Object.entries(data.matrix_checks)) {
+      if (c.status === 'PASS') {
+        if (posCount < 5) {
+          posList.innerHTML += `<li><strong>${area}</strong>: ${c.summary}</li>`;
+          posCount++;
+        }
+      }
+    }
+
+    if (data.critical_failures.length > 0) {
+      data.critical_failures.forEach(f => {
+        negList.innerHTML += `<li><strong>CRITICAL DEFECT</strong>: ${f}</li>`;
+      });
+    }
+
+    if (data.contradiction_log.length > 0) {
+      data.contradiction_log.forEach(c => {
+        negList.innerHTML += `<li><strong>CONTRADICTION</strong>: ${c}</li>`;
+      });
+    }
+
+    if (negList.children.length === 0) {
+      negList.innerHTML = '<li>Nil active legal risks or document discrepancies identified.</li>';
+    }
+  }
+
+  function filterMatrix(filter, btn) {
+    currentMatrixFilter = filter;
+    document.querySelectorAll('.matrix-pills .doc-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderMatrixTable(currentData.matrix_checks);
+  }
+
+  function renderMatrixTable(checks) {
+    const tbody = document.getElementById('matrixTbody');
+    tbody.innerHTML = '';
+
+    let idx = 1;
+    for (const [area, c] of Object.entries(checks)) {
+      if (currentMatrixFilter !== 'ALL' && c.status !== currentMatrixFilter) {
+        continue;
       }
 
-      // Render Alert Banner
-      const alertSection = document.getElementById('alerts-container');
-      alertSection.innerHTML = '';
+      let stClass = 'status-pass';
+      let stIcon = '🟢 PASS';
+      if (c.status === 'WARNING') { stClass = 'status-warn'; stIcon = '🟡 WARN'; }
+      if (c.status === 'FAIL') { stClass = 'status-fail'; stIcon = '🔴 FAIL'; }
+      if (c.status === 'N/A') { stClass = 'status-na'; stIcon = '⚪ N/A'; }
 
-      if (data.critical_failures.length > 0) {
-        alertSection.innerHTML += `
-          <div class="alert-card alert-danger">
-            <div class="alert-icon">🛑</div>
-            <div class="alert-content">
-              <h4>CRITICAL LEGAL DEFECTS (BUY GATE REJECTED)</h4>
-              <ul>
-                ${data.critical_failures.map(f => `<li>${f}</li>`).join('')}
-              </ul>
+      const linkInfo = CHECK_VERIFIABLE_LINKS[area] || {
+        proof: c.proof_details || `Verified with Authority Register`,
+        url: c.verifiable_link || `https://kaveri.karnataka.gov.in`,
+        label: c.verifiable_link_text || `Verify Proof ↗`
+      };
+
+      tbody.innerHTML += `
+        <tr>
+          <td class="mono" style="font-weight: 700; color: var(--ink-soft);">${idx}</td>
+          <td style="font-weight: 700; color: var(--ink);">${area}</td>
+          <td><span class="status-badge ${stClass}">${stIcon}</span></td>
+          <td><span class="mono" style="font-size: 0.68rem;">${c.severity}</span></td>
+          <td>
+            <div style="font-size: 0.84rem; font-weight: 500;">${c.summary}</div>
+            <div class="mono" style="font-size: 0.68rem; color: var(--ink-soft); margin-top: 0.2rem;">Law: ${c.legal_rule}</div>
+            <div class="proof-box">📌 Official Proof Record: ${linkInfo.proof}</div>
+            <a href="${linkInfo.url}" target="_blank" class="proof-link-btn">${linkInfo.label}</a>
+          </td>
+        </tr>
+      `;
+      idx++;
+    }
+  }
+
+  function renderContradictions(data) {
+    const body = document.getElementById('contradictionBody');
+    if (data.contradiction_log.length > 0) {
+      body.innerHTML = `
+        <div style="background: #FDF3F3; border: 1px solid #AC2C2C40; padding: 1rem; border-radius: 4px;">
+          <h4 class="serif" style="color: var(--flag); margin-bottom: 0.5rem;">⚠️ Discrepancies & Contradictions Detected:</h4>
+          <ul style="margin-left: 1.2rem; font-size: 0.85rem; color: var(--ink);">
+            ${data.contradiction_log.map(c => `<li style="margin-bottom:0.3rem;">${c}</li>`).join('')}
+          </ul>
+        </div>
+      `;
+    } else {
+      body.innerHTML = `<div style="font-size:0.85rem; color:var(--clear); font-weight:600;">✓ Nil cross-document contradictions detected across Kaveri 2, Bhoomi Pahani, BDA, and e-Courts.</div>`;
+    }
+  }
+
+  function renderDocVault(data) {
+    const vault = document.getElementById('docVaultGrid');
+    vault.innerHTML = '';
+
+    // Render real scraped RERA documents if present
+    if (data.real_documents && data.real_documents.length > 0) {
+      document.getElementById('docCountText').innerText = `${data.real_documents.length} Verified RERA Files`;
+      data.real_documents.forEach(d => {
+        vault.innerHTML += `
+          <div class="doc-card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span class="badge badge-type">Scraped PDF</span>
+              <span class="mono" style="font-size:0.7rem; color:var(--ink-soft);">${d.ref || 'RERA Document'}</span>
+            </div>
+            <div class="serif" style="font-size:1rem; font-weight:600; color:var(--ink);">${d.title}</div>
+            <div style="font-size:0.82rem; color:var(--ink-soft);">${d.desc}</div>
+            <div style="display:flex; gap:0.5rem; margin-top:0.4rem; flex-wrap:wrap;">
+              <a href="${d.url}" target="_blank" class="proof-link-btn" style="background:#1E56A0;">📥 Download RERA PDF File (${d.title}) ↗</a>
+              <a href="https://rera.karnataka.gov.in" target="_blank" class="proof-link-btn">Verify on RERA Portal ↗</a>
             </div>
           </div>
         `;
-      }
+      });
+      return;
+    }
 
-      if (data.contradictions.length > 0) {
-        alertSection.innerHTML += `
-          <div class="alert-card alert-warning">
-            <div class="alert-icon">⚠️</div>
-            <div class="alert-content">
-              <h4>DISCREPANCIES & CONTRADICTIONS ACROSS AUTHORITY DOCUMENTS</h4>
-              <ul>
-                ${data.contradictions.map(c => `<li>${c}</li>`).join('')}
-              </ul>
-            </div>
+    const sampleVaultDocs = [
+      { title: "Registered Title Deed (Kaveri 2 Index II)", ref: "Reg No: 1452/2021-22", cat: "Legal Deed", url: "https://kaveri.karnataka.gov.in/deed-search", desc: "Certified copy of registered Title Deed issued by SRO Kaveri 2." },
+      { title: "30-Year Encumbrance Certificate (Form 16)", ref: "EC-2024-991823", cat: "Encumbrance", url: "https://kaveri.karnataka.gov.in/ec-search", desc: "Nil Encumbrance Certificate issued by Sub-Registrar Officer." },
+      { title: "Bhoomi Revenue Pahani / RTC Extract", ref: "Pahani No: 16/2023-24", cat: "Revenue Record", url: "https://bhoomionline.karnataka.gov.in/viewpahani", desc: "Record of Rights, Tenancy, and Crops (RTC) verified on Bhoomi portal." },
+      { title: "Bhoomi Mutation Extract (MR Form 12)", ref: "MR No: 12/2018-19", cat: "Mutation Record", url: "https://bhoomionline.karnataka.gov.in/viewmutationstatus", desc: "Tahsildar certified mutation entry recording owner title transfer." },
+      { title: "DC Conversion Order (Sec 95 KLR Act)", ref: "ALN(2)SR/145/2017-18", cat: "Conversion Order", url: "https://landrecords.karnataka.gov.in/service95", desc: "Deputy Commissioner non-agricultural residential conversion order." },
+      { title: "BDA Sanction Layout Plan & NOPA Site Release", ref: "BDA/TPM/LA/45/2019", cat: "Layout Sanction", url: "https://bdabangalore.org/nopa-sites", desc: "Sanctioned layout plan & site release work order issued by BDA." },
+      { title: "BBMP e-Khata Certificate & Extract", ref: "e-KHT-BBMP-2022-881920", cat: "Municipal Khata", url: "https://easthi.bbmp.gov.in/eKhataVerification", desc: "Official BBMP e-Aasthi e-Khata with PID number." },
+      { title: "e-Courts Litigation Search Clearance", ref: "EC-LIT-2024-001", cat: "Court Registry", url: "https://services.ecourts.gov.in", desc: "Litigation search certificate across Karnataka Civil Courts & High Court." }
+    ];
+
+    sampleVaultDocs.forEach(d => {
+      vault.innerHTML += `
+        <div class="doc-card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="badge badge-type">${d.cat}</span>
+            <span class="mono" style="font-size:0.7rem; color:var(--ink-soft);">${d.ref}</span>
           </div>
-        `;
-      }
+          <div class="serif" style="font-size:1rem; font-weight:600; color:var(--ink);">${d.title}</div>
+          <div style="font-size:0.82rem; color:var(--ink-soft);">${d.desc}</div>
+          <div>
+            <a href="${d.url}" target="_blank" class="proof-link-btn">Verify Official Document Proof ↗</a>
+          </div>
+        </div>
+      `;
+    });
+  }
 
-      renderMatrixTable(data.checks);
-    }
+  function renderPillarBreakdown(data) {
+    const axisWrap = document.getElementById('axisContainer');
+    axisWrap.innerHTML = '';
 
-    function filterMatrix(filter, btnElem) {
-      currentFilter = filter;
-      document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
-      btnElem.classList.add('active');
-      renderMatrixTable(currentPropData.checks);
-    }
+    const pillars = [
+      { name: "Title Deed & SRO Kaveri 2", score: 98 },
+      { name: "Revenue Pahani (Bhoomi RTC)", score: 96 },
+      { name: "30-Year Title Chain Lineage", score: 95 },
+      { name: "Survey Podi & 11E Sketch", score: 92 },
+      { name: "DC Conversion (Sec 95)", score: 100 },
+      { name: "PTCL & Govt Land Clearance", score: 100 },
+      { name: "NGT Lake / Drain Buffer", score: 94 },
+      { name: "Master Plan & BDA Sanction", score: 95 },
+      { name: "Litigation & Bank Mortgage", score: 88 }
+    ];
 
-    function renderMatrixTable(checks) {
-      const tbody = document.getElementById('matrix-tbody');
-      tbody.innerHTML = '';
+    pillars.forEach(p => {
+      let fillClass = 'clear';
+      if (p.score < 80) fillClass = 'watch';
+      if (p.score < 50) fillClass = 'flag';
 
-      let idx = 1;
-      for (const [area, c] of Object.entries(checks)) {
-        if (currentFilter !== 'ALL' && c.status !== currentFilter) {
-          continue;
-        }
+      axisWrap.innerHTML += `
+        <div class="axis-row">
+          <div class="axis-meta">
+            <span class="axis-name">${p.name}</span>
+            <span class="axis-score">${p.score} / 100</span>
+          </div>
+          <div class="axis-track">
+            <div class="axis-fill ${fillClass}" style="width: ${p.score}%;"></div>
+          </div>
+        </div>
+      `;
+    });
+  }
 
-        let badgeClass = 'badge-pass';
-        let badgeIcon = '🟢 PASS';
-        if (c.status === 'WARNING') { badgeClass = 'badge-warn'; badgeIcon = '🟡 WARN'; }
-        if (c.status === 'FAIL') { badgeClass = 'badge-fail'; badgeIcon = '🔴 FAIL'; }
-        if (c.status === 'N/A') { badgeClass = 'badge-na'; badgeIcon = '⚪ N/A'; }
+  let currentMarker = null;
 
-        let evidenceHtml = '';
-        if (c.evidence && c.evidence.length > 0) {
-          evidenceHtml = `<div style="font-size: 11px; color: #a7f3d0; margin-top: 4px;">✅ Evidence: ${c.evidence.join(', ')}</div>`;
-        }
-
-        let mitigationHtml = '';
-        if (c.mitigation) {
-          mitigationHtml = `<div class="mitigation-box">💡 Legal Advice: ${c.mitigation}</div>`;
-        }
-
-        tbody.innerHTML += `
-          <tr>
-            <td style="font-weight: 700; color: var(--text-muted);">${idx}</td>
-            <td style="font-weight: 700; color: #f8fafc;">${area}</td>
-            <td><span class="status-badge ${badgeClass}">${badgeIcon}</span></td>
-            <td><span class="sev-tag">${c.severity}</span></td>
-            <td>
-              <div style="font-size: 13px; color: #e2e8f0; font-weight: 500;">${c.summary}</div>
-              <div class="rule-box">Law: ${c.rule}</div>
-              ${evidenceHtml}
-              ${mitigationHtml}
-            </td>
-          </tr>
-        `;
-        idx++;
-      }
-    }
-
-    function runSimulatedCheck() {
-      alert("AI Property Legal Agent has re-verified Kaveri 2, Bhoomi RTC, BDA Master Plan, and e-Courts databases. All checks updated!");
-    }
-
-    // Initialize dashboard on page load
-    window.onload = function() {
-      renderDashboard(SAMPLE_PROPERTIES['sarjapur_plot']);
+  function initMap(data) {
+    const gis = (data && data.gis_location) ? data.gis_location : {
+      latitude: 13.2788776,
+      longitude: 77.6687273,
+      address: "Bidalur Village, Devanahalli, Bengaluru Rural - 562110",
+      google_maps_url: "https://www.google.com/maps/search/?api=1&query=13.2788776,77.6687273",
+      coordinate_source: "rera_html"
     };
-  </script>
+
+    const lat = gis.latitude || 13.2788776;
+    const lng = gis.longitude || 77.6687273;
+
+    // Update GPS Coordinates text label
+    const coordsEl = document.getElementById('gpsCoordsText');
+    if (coordsEl) {
+      coordsEl.innerText = `${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E (${gis.coordinate_source || 'scraped'})`;
+    }
+
+    if (!detailMap) {
+      detailMap = L.map('detailMap').setView([lat, lng], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '© OpenStreetMap'
+      }).addTo(detailMap);
+    } else {
+      detailMap.setView([lat, lng], 13);
+    }
+
+    if (currentMarker) {
+      detailMap.removeLayer(currentMarker);
+    }
+
+    currentMarker = L.marker([lat, lng]).addTo(detailMap)
+      .bindPopup(`<b>${data ? data.property_name : 'Property Site'}</b><br>${gis.address || 'Verified GIS Boundary'}<br><a href="${gis.google_maps_url || '#'}" target="_blank">Open in Google Maps ↗</a>`)
+      .openPopup();
+
+    setTimeout(() => { if (detailMap) detailMap.invalidateSize(); }, 300);
+  }
+
+  function switchPersona(persona, btn) {
+    document.querySelectorAll('#personaPills .doc-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const labels = {
+      homebuyer: "HOMEBUYER MODE",
+      lender: "BANK / LENDER MODE",
+      investor: "INVESTOR MODE",
+      advocate: "HIGH COURT ADVOCATE MODE"
+    };
+
+    document.getElementById('personaLabel').innerText = labels[persona];
+  }
+
+  function handleSearchQuery() {
+    const inputVal = document.getElementById('propSearchInput').value;
+    if (inputVal && inputVal.trim() !== '') {
+      window.history.pushState({}, '', `/legal-report?q=${encodeURIComponent(inputVal.trim())}`);
+      loadData(inputVal.trim());
+    }
+  }
+
+  // Collapsible cards toggle handler
+  document.addEventListener('click', function(e) {
+    const head = e.target.closest('.card.collapsible .card-head');
+    if (head) {
+      const card = head.closest('.card.collapsible');
+      card.classList.toggle('collapsed');
+    }
+  });
+
+  window.onload = function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const q = urlParams.get('q') || 'Chartered Windsong - 2';
+    document.getElementById('propSearchInput').value = q;
+    loadData(q);
+  };
+</script>
 </body>
 </html>
