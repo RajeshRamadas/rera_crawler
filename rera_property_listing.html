@@ -1412,9 +1412,9 @@ try {
               const compDate = p.proposed_completion_date || '';
               const hasCC = !!p.completion_certificate_available;
               const pType = p.project_type || 'Residential/Group Housing';
-              const rawSource = p.coordinate_source || (coords ? (coords.isExact ? 'rera_website' : 'district_centroid') : 'district_centroid');
+              const rawSource = (p.coordinate_source === 'rera_html' || p.coordinate_source === 'rera_website' || hasRealCoords) ? 'rera_website' : (p.coordinate_source || 'district_centroid');
               let sourceLabel = 'District Centroid (Estimated)';
-              if (rawSource === 'rera_website') sourceLabel = 'RERA Official Website';
+              if (rawSource === 'rera_website' || hasRealCoords) sourceLabel = 'RERA Official Coordinates (Exact Site GPS)';
               else if (rawSource === 'osm_nominatim') sourceLabel = 'OpenStreetMap (Exact Property Match)';
               else if (rawSource === 'osm_village') sourceLabel = 'OpenStreetMap (Village/Locality Match)';
 

@@ -415,7 +415,10 @@ def list_projects(
                     COALESCE(data->'project_location'->>'taluk', data->>'taluk', '') as taluk,
                     latitude as latitude,
                     longitude as longitude,
-                    COALESCE(coordinate_source, CASE WHEN latitude IS NOT NULL THEN 'rera_website' ELSE 'district_centroid' END) as coordinate_source,
+                    CASE 
+                        WHEN (coordinate_source IN ('rera_html', 'rera_website')) OR (latitude IS NOT NULL AND latitude != 0) THEN 'rera_website'
+                        ELSE COALESCE(coordinate_source, 'district_centroid')
+                    END as coordinate_source,
                     COALESCE((data->'data_quality'->>'quality_score')::int, 85) as quality_score,
                     COALESCE((data->'data_quality'->>'is_complete')::boolean, true) as is_complete,
                     COALESCE(property_configs, '{{}}') as property_configurations
