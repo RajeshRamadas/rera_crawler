@@ -511,15 +511,8 @@
       </div>
     </a>
 
-    <!-- Property Lookup Search Bar -->
-    <div class="nav-search-wrap">
-      <input type="text" id="propSearchInput" class="nav-search-input" placeholder="Search property name or RERA ID (e.g. Chartered Windsong - 2)..." value="Chartered Windsong - 2" />
-      <button class="btn primary" onclick="handleSearchQuery()">Search Audit</button>
-    </div>
-
     <div class="nav-actions">
       <a href="/register" class="btn ghost-nav">← Register Listing</a>
-      <button class="btn ghost-nav" onclick="window.print();">Print Legal Audit PDF</button>
     </div>
   </header>
 
@@ -1249,7 +1242,9 @@
   }
 
   function handleSearchQuery() {
-    const inputVal = document.getElementById('propSearchInput').value;
+    const el = document.getElementById('propSearchInput');
+    if (!el) return;
+    const inputVal = el.value;
     if (inputVal && inputVal.trim() !== '') {
       window.history.pushState({}, '', `/legal-report?q=${encodeURIComponent(inputVal.trim())}`);
       loadData(inputVal.trim());
@@ -1268,7 +1263,8 @@
   window.onload = function() {
     const urlParams = new URLSearchParams(window.location.search);
     const q = urlParams.get('q') || 'Chartered Windsong - 2';
-    document.getElementById('propSearchInput').value = q;
+    const el = document.getElementById('propSearchInput');
+    if (el) el.value = q;
     loadData(q);
   };
 </script>

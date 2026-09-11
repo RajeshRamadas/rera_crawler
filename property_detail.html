@@ -661,9 +661,8 @@
     </a>
     <div class="nav-actions">
       <a href="/register" class="btn ghost-nav">← Register Listing</a>
-      <a href="/legal-report" id="legalNavBtn" class="btn ghost-nav" style="color:#1e3a8a; font-weight:700;">⚖️ Legal Due-Diligence Report ↗</a>
+      <a href="/legal-report" id="legalNavBtn" class="btn ghost-nav">Legal Due-Diligence Report ↗</a>
       <a href="/compare" id="compareNavBtn" class="btn ghost-nav">Compare 2–3 Properties ↗</a>
-      <button class="btn ghost-nav" onclick="window.print();">Print Audit PDF</button>
     </div>
   </header>
 
@@ -705,12 +704,11 @@
             <div class="hero-score-num clear" id="compositeScore">0</div>
             <div class="mono" style="font-size:0.65rem; color:var(--ink-soft);">COMPOSITE RISK INDEX</div>
             <div class="mono" id="heroPersonaLabel" style="font-size:0.62rem; font-weight:600; color:var(--gold); margin-top:0.15rem; text-transform:uppercase;">HOMEBUYER MODE</div>
-            <a class="hero-seal pass" id="gateSeal" href="/legal-report" target="_blank" style="text-decoration:none;" title="Click to view 27-Check Legal Due-Diligence Report">⚖️ GATE CLEARED ↗</a>
+            <a class="hero-seal pass" id="gateSeal" href="/legal-report" target="_blank" style="text-decoration:none;" title="Click to view 27-Check Legal Due-Diligence Report">GATE CLEARED ↗</a>
           </div>
         </div>
         <a id="heroLegalBanner" href="/legal-report" target="_blank" style="display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1.25rem; margin-top: 1rem; background: #1e3a8a; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-family: 'IBM Plex Sans', sans-serif;">
           <span style="display: flex; align-items: center; gap: 0.5rem;">
-            <span style="font-size: 1.1rem;">⚖️</span>
             <span>Karnataka Property Legal Due-Diligence & 27-Check Title Audit Report</span>
           </span>
           <span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; background: rgba(255,255,255,0.2); padding: 0.25rem 0.6rem; border-radius: 4px;">Open Legal Report ↗</span>
@@ -1669,7 +1667,7 @@
 
     const sealEl = document.getElementById('gateSeal');
     const isGateOK = heroScore >= 50 && overview.status === 'APPROVED';
-    sealEl.textContent = isGateOK ? '⚖️ GATE CLEARED ↗' : '⚖️ GATE FAILED ↗';
+    sealEl.textContent = isGateOK ? 'GATE CLEARED ↗' : 'GATE FAILED ↗';
     sealEl.className = `hero-seal ${isGateOK ? 'pass' : 'fail'}`;
     if (overview.project_name || overview.registration_no) {
       sealEl.href = `/legal-report?q=${encodeURIComponent(overview.project_name || overview.registration_no)}`;
