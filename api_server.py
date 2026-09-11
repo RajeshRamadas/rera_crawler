@@ -117,6 +117,18 @@ def evaluate_property_by_query(q: str = Query("Chartered Windsong - 2", descript
         raise HTTPException(status_code=500, detail=f"Legal Engine Error: {str(exc)}")
 
 
+@app.get("/api/legal-due-diligence/verify-documents", summary="Run RERA AI Document Verification & Inspection Agent")
+def verify_property_documents(q: str = Query("Chartered Windsong - 2", description="Project Name or RERA Registration Number")):
+    """
+    Downloads, inspects, and verifies all uploaded RERA document filings & PDFs for a project.
+    Validates document completeness, statutory compliance, and returns step-by-step verification logs.
+    """
+    try:
+        return legal_agent_instance.verify_project_documents(q)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Document Verification Agent Error: {str(exc)}")
+
+
 @app.post("/api/legal-due-diligence/evaluate", summary="Run AI Property Legal Due-Diligence Assessment")
 def evaluate_property_legal_risk(payload: dict):
     """
