@@ -23,9 +23,11 @@ def get_db_connection():
     return psycopg2.connect(DB_URI, cursor_factory=psycopg2.extras.DictCursor)
 
 
+import difflib
+
 def search_project(query: str, conn=None) -> Optional[Dict[str, Any]]:
     """
-    Search for a project by registration_no or project_name (fuzzy / ILIKE).
+    Search for a project by registration_no or project_name (fuzzy / ILIKE / agentic spell correction).
     Returns the full database record.
     """
     close_conn = False
@@ -36,6 +38,9 @@ def search_project(query: str, conn=None) -> Optional[Dict[str, Any]]:
     try:
         with conn.cursor() as cur:
             clean_q = query.strip()
+            if not clean_q:
+                return None
+
             # 1. Direct match on registration number
             cur.execute(
                 "SELECT registration_no, acknowledgement_no, project_name, firm_name, crawled_at, data FROM rera_projects WHERE registration_no = %s;",
@@ -43,7 +48,10 @@ def search_project(query: str, conn=None) -> Optional[Dict[str, Any]]:
             )
             row = cur.fetchone()
             if row:
-                return dict(row)
+                res = dict(row)
+                res["is_corrected"] = False
+                res["search_term_used"] = clean_q
+                return res
 
             # 2. Match ILIKE on project name
             cur.execute(
@@ -52,7 +60,10 @@ def search_project(query: str, conn=None) -> Optional[Dict[str, Any]]:
             )
             row = cur.fetchone()
             if row:
-                return dict(row)
+                res = dict(row)
+                res["is_corrected"] = False
+                res["search_term_used"] = clean_q
+                return res
 
             # 3. Match ILIKE on firm name / promoter
             cur.execute(
@@ -61,7 +72,50 @@ def search_project(query: str, conn=None) -> Optional[Dict[str, Any]]:
             )
             row = cur.fetchone()
             if row:
-                return dict(row)
+                res = dict(row)
+                res["is_corrected"] = False
+                res["search_term_used"] = clean_q
+                return res
+
+            # 4. Multi-word token search (e.g., 'prestiage windsong' -> try 'windsong')
+            words = [w for w in clean_q.split() if len(w) >= 3]
+            for w in words:
+                cur.execute(
+                    "SELECT registration_no, acknowledgement_no, project_name, firm_name, crawled_at, data FROM rera_projects WHERE project_name ILIKE %s OR firm_name ILIKE %s ORDER BY crawled_at DESC LIMIT 1;",
+                    (f"%{w}%", f"%{w}%")
+                )
+                row = cur.fetchone()
+                if row:
+                    res = dict(row)
+                    res["is_corrected"] = True
+                    res["search_term_used"] = w
+                    return res
+
+            # 5. Fuzzy match across all distinct project names in DB
+            cur.execute("SELECT DISTINCT project_name, firm_name FROM rera_projects;")
+            all_rows = cur.fetchall()
+            all_names = [r["project_name"] for r in all_rows if r["project_name"]] + [r["firm_name"] for r in all_rows if r["firm_name"]]
+
+            matches = difflib.get_close_matches(clean_q, all_names, n=3, cutoff=0.3)
+            if not matches:
+                for w in words:
+                    sub_m = difflib.get_close_matches(w, all_names, n=3, cutoff=0.4)
+                    if sub_m:
+                        matches.extend(sub_m)
+                        break
+
+            if matches:
+                best = matches[0]
+                cur.execute(
+                    "SELECT registration_no, acknowledgement_no, project_name, firm_name, crawled_at, data FROM rera_projects WHERE project_name ILIKE %s OR firm_name ILIKE %s LIMIT 1;",
+                    (f"%{best}%", f"%{best}%")
+                )
+                row = cur.fetchone()
+                if row:
+                    res = dict(row)
+                    res["is_corrected"] = True
+                    res["search_term_used"] = best
+                    return res
 
             return None
     finally:

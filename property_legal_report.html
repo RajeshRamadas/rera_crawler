@@ -539,6 +539,14 @@
       </div>
     </div>
 
+    <!-- Agentic Typo-Correction Notice Banner -->
+    <div id="agenticNoticeBanner" style="display:none; margin-bottom:1.25rem; background:#EBF3FA; border:1px solid #1E56A040; border-left:4px solid #1E56A0; padding:0.85rem 1.25rem; border-radius:4px;">
+      <div style="font-family:'IBM Plex Serif', serif; font-size:0.95rem; font-weight:600; color:#1E56A0; display:flex; align-items:center; gap:0.5rem;">
+        🤖 Agentic Smart Search Notice
+      </div>
+      <div id="agenticNoticeText" style="font-size:0.83rem; color:var(--ink-soft); margin-top:0.25rem;"></div>
+    </div>
+
     <!-- Hero Header Card -->
     <div class="card hero-card">
       <div class="hero-top">
@@ -786,24 +794,29 @@
 
   async function loadData(query) {
     try {
-      let preset = 'sarjapur_plot';
-      if (query && query.toLowerCase().includes('windsong')) {
-        preset = 'whitefield_apartment';
-      } else if (query && query.toLowerCase().includes('kengeri')) {
-        preset = 'kengeri_illegal_plot';
-      }
-
-      const res = await fetch(`/api/legal-due-diligence/sample?preset=${preset}`);
-      currentData = await res.json();
-
-      // Customize name if custom query searched
+      let res;
       if (query && query.trim() !== '') {
-        currentData.property_name = decodeURIComponent(query);
+        res = await fetch(`/api/legal-due-diligence/evaluate-query?q=${encodeURIComponent(query)}`);
+      } else {
+        res = await fetch(`/api/legal-due-diligence/evaluate-query?q=Chartered%20Windsong%20-%202`);
       }
 
+      if (!res.ok) {
+        throw new Error(`API HTTP ${res.status}`);
+      }
+
+      currentData = await res.json();
       renderUI(currentData);
     } catch (err) {
-      console.error("Failed to load audit data", err);
+      console.error("Failed to load real audit data, trying fallback", err);
+      try {
+        const fbRes = await fetch(`/api/legal-due-diligence/sample?preset=whitefield_apartment`);
+        currentData = await fbRes.json();
+        if (query) currentData.property_name = decodeURIComponent(query);
+        renderUI(currentData);
+      } catch (fbErr) {
+        console.error("Fallback failed", fbErr);
+      }
     }
   }
 
@@ -813,6 +826,15 @@
     document.getElementById('propType').innerText = data.property_type;
     document.getElementById('propLocation').innerText = data.location;
     document.getElementById('compositeScore').innerText = data.overall_legal_score.toFixed(1);
+
+    const banner = document.getElementById('agenticNoticeBanner');
+    const bannerText = document.getElementById('agenticNoticeText');
+    if (data.agentic_search_info && data.agentic_search_info.is_corrected) {
+      banner.style.display = 'block';
+      bannerText.innerHTML = `Typo detected in search query <strong>'${data.agentic_search_info.search_term_used}'</strong>. Smart Search Agent corrected typo → matched project <strong>'${data.agentic_search_info.matched_project_name}'</strong> (Reg No: <code>${data.agentic_search_info.registration_no || 'RERA Verified'}</code>). 27 legal checks evaluated.`;
+    } else {
+      banner.style.display = 'none';
+    }
 
     const scoreNum = document.getElementById('compositeScore');
     const seal = document.getElementById('gateSeal');
@@ -1080,18 +1102,150 @@
     setTimeout(() => { if (detailMap) detailMap.invalidateSize(); }, 300);
   }
 
+  let activePersona = 'homebuyer';
+
+  const PERSONA_WEIGHT_MODIFIERS = {
+    homebuyer: {
+      label: "HOMEBUYER MODE",
+      toast: "🏡 Homebuyer Mode Active: Balanced weighting on Possession, OC/CC & Title Clarity",
+      weights: {
+        "OC/CC": 1.5,
+        "Building approval": 1.4,
+        "Layout approval": 1.3,
+        "Sale agreement": 1.3,
+        "Property tax": 1.2,
+        "Litigation": 1.3,
+        "Physical survey": 1.2
+      }
+    },
+    lender: {
+      label: "BANK / LENDER MODE",
+      toast: "🏦 Bank / Lender Mode Active: 2.5x Weighting on 30-yr Title Chain, Bank Mortgage NOC & e-Khata",
+      weights: {
+        "30+ year title chain": 2.5,
+        "Parent documents": 2.2,
+        "Mortgage/NOC": 2.5,
+        "Khata/e-Khata": 2.0,
+        "Current title": 2.0,
+        "EC": 2.0,
+        "Litigation": 2.0,
+        "Property tax": 1.5
+      }
+    },
+    investor: {
+      label: "INVESTOR MODE",
+      toast: "📈 Investor Mode Active: Priority weighting on Master Plan Zoning, DC Conversion & Sanctions",
+      weights: {
+        "Master plan": 2.5,
+        "Layout approval": 2.5,
+        "Conversion": 2.2,
+        "Government land": 2.0,
+        "RERA": 2.0,
+        "Promoter Reputation": 1.8,
+        "Acquisition": 1.8
+      }
+    },
+    advocate: {
+      label: "HIGH COURT ADVOCATE MODE",
+      toast: "⚖️ High Court Advocate Mode Active: Zero-tolerance audit on PTCL, B-Kharab, NGT Buffers & Podi 11E",
+      weights: {
+        "PTCL/Grant": 3.0,
+        "Government land": 3.0,
+        "Lake/Rajakaluvé": 3.0,
+        "Survey/Hissa": 2.5,
+        "Acquisition": 2.5,
+        "30+ year title chain": 2.5,
+        "Parent documents": 2.5,
+        "Independent lawyer opinion": 2.5
+      }
+    }
+  };
+
   function switchPersona(persona, btn) {
+    activePersona = persona;
     document.querySelectorAll('#personaPills .doc-pill').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
 
-    const labels = {
-      homebuyer: "HOMEBUYER MODE",
-      lender: "BANK / LENDER MODE",
-      investor: "INVESTOR MODE",
-      advocate: "HIGH COURT ADVOCATE MODE"
-    };
+    const config = PERSONA_WEIGHT_MODIFIERS[persona] || PERSONA_WEIGHT_MODIFIERS.homebuyer;
+    document.getElementById('personaLabel').innerText = config.label;
 
-    document.getElementById('personaLabel').innerText = labels[persona];
+    if (currentData && currentData.matrix_checks) {
+      recalculatePersonaScore(currentData, persona, config);
+    }
+  }
+
+  function recalculatePersonaScore(data, persona, config) {
+    const weights = config.weights || {};
+    let weightedSum = 0;
+    let totalWeight = 0;
+
+    for (const [area, check] of Object.entries(data.matrix_checks)) {
+      if (check.status === 'N/A') continue;
+      const w = weights[area] || 1.0;
+      let checkScore = 100;
+      if (check.status === 'FAIL') checkScore = 0;
+      else if (check.status === 'WARNING') checkScore = 55;
+
+      weightedSum += checkScore * w;
+      totalWeight += w;
+    }
+
+    const calculatedScore = totalWeight > 0 ? (weightedSum / totalWeight) : data.overall_legal_score;
+    document.getElementById('compositeScore').innerText = calculatedScore.toFixed(1);
+
+    const scoreNum = document.getElementById('compositeScore');
+    const seal = document.getElementById('gateSeal');
+    const statusBadge = document.getElementById('propStatus');
+
+    let decision = data.buy_gate_decision;
+    if (data.critical_failures.length > 0 || (persona === 'advocate' && calculatedScore < 80)) {
+      decision = "DO NOT BUY / HIGH RISK";
+    } else if (calculatedScore < 85 || data.warning_count > 0) {
+      decision = "BUY WITH CAUTION";
+    } else {
+      decision = "APPROVED TO BUY";
+    }
+
+    if (decision === "APPROVED TO BUY") {
+      scoreNum.className = "hero-score-num clear";
+      seal.className = "hero-seal pass";
+      seal.innerText = "GATE CLEARED";
+      statusBadge.className = "badge badge-approved";
+      statusBadge.innerText = "🟢 APPROVED TO BUY";
+    } else if (decision === "BUY WITH CAUTION") {
+      scoreNum.className = "hero-score-num watch";
+      seal.className = "hero-seal caution";
+      seal.innerText = "BUY WITH CAUTION";
+      statusBadge.className = "badge badge-caution";
+      statusBadge.innerText = "🟡 BUY WITH CAUTION";
+    } else {
+      scoreNum.className = "hero-score-num flag";
+      seal.className = "hero-seal fail";
+      seal.innerText = "DO NOT BUY";
+      statusBadge.className = "badge badge-flag";
+      statusBadge.innerText = "🔴 DO NOT BUY / HIGH RISK";
+    }
+
+    renderMatrixTable(data.matrix_checks);
+    showToast(config.toast);
+  }
+
+  function showToast(msg) {
+    let toast = document.getElementById('legalToast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'legalToast';
+      toast.style.cssText = 'position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%); background:#1B1E24; color:#F6F5F1; font-family:"IBM Plex Mono",monospace; font-size:0.75rem; padding:0.6rem 1.2rem; border-radius:4px; border:1px solid #1E56A0; z-index:9999; box-shadow:0 4px 12px rgba(0,0,0,0.3); transition:all 0.3s ease; opacity:0; pointer-events:none;';
+      document.body.appendChild(toast);
+    }
+    toast.innerText = msg;
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateX(-50%) translateY(-5px)';
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(-50%) translateY(0)';
+    }, 2800);
   }
 
   function handleSearchQuery() {

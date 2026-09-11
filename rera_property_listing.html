@@ -404,6 +404,14 @@
     border-radius: 3px;
     white-space: nowrap;
     box-sizing: border-box;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .seal:hover {
+    filter: brightness(0.9);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
   }
   .seal.pass { color: var(--clear); background: var(--clear-tint); border: 1px solid var(--clear); }
   .seal.fail { color: var(--flag); background: var(--flag-tint); border: 1px solid var(--flag); }
@@ -477,7 +485,8 @@
   <header class="masthead">
     <div class="eyebrow">
       <span><span class="dot"></span> RERA Karnataka Intelligence · Property Register</span>
-      <div style="margin-left: auto; display: flex; gap: 1rem;">
+      <div style="margin-left: auto; display: flex; gap: 1rem; align-items: center;">
+        <a href="/legal-report" style="color: #1e3a8a; font-weight: 700; text-decoration: none; border-bottom: 2px solid #1e3a8a; font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; text-transform: uppercase;">⚖️ Legal Due-Diligence Report ↗</a>
         <a href="/compare" style="color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink); font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; text-transform: uppercase;">Compare 2–3 Properties ↗</a>
         <a href="/radar-chart" style="color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink); font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; text-transform: uppercase;">Compare Radar ↗</a>
       </div>
@@ -619,9 +628,10 @@
             <div id="activeCardScoreTag"></div>
           </div>
           <div id="activeCardGps" style="font-family:'IBM Plex Mono',monospace; font-size:0.65rem; margin-top:0.35rem;"></div>
-          <div class="card-actions">
-            <button class="btn ghost btn-sm" id="activeCardJumpBtn" style="flex:1;">Focus in List ↓</button>
-            <a class="btn ghost btn-sm" id="activeCardGmapsBtn" style="flex:1; text-decoration:none;" href="#" target="_blank" rel="noopener noreferrer">Google Maps ↗</a>
+          <div class="card-actions" style="display:flex; gap:0.35rem; flex-wrap:wrap; margin-top:0.5rem;">
+            <a class="btn btn-sm" id="activeCardLegalBtn" style="flex:1; text-decoration:none; background:#1e3a8a; color:#ffffff; font-weight:600; text-align:center; padding:0.25rem 0.4rem;" href="#" target="_blank">⚖️ Legal Report ↗</a>
+            <button class="btn ghost btn-sm" id="activeCardJumpBtn" style="flex:1;">Focus List ↓</button>
+            <a class="btn ghost btn-sm" id="activeCardGmapsBtn" style="flex:1; text-decoration:none;" href="#" target="_blank" rel="noopener noreferrer">Maps ↗</a>
             <a class="btn ghost btn-sm" id="activeCardRadarBtn" style="flex:1; text-decoration:none;" href="#" target="_blank">Radar ↗</a>
           </div>
         </div>
@@ -1036,6 +1046,10 @@ try {
         <span class="score-num ${prop.band.class}" style="font-size:1rem;">${prop.composite}</span>
         <span class="band-tag band-${prop.band.class}" style="margin-left:0.3rem;">${prop.band.label}</span>
       `;
+      const legalCardBtn = document.getElementById('activeCardLegalBtn');
+      if (legalCardBtn) {
+        legalCardBtn.href = `/legal-report?q=${encodeURIComponent(prop.name)}`;
+      }
       document.getElementById('activeCardRadarBtn').href = `/radar-chart?a=${encodeURIComponent(prop.name)}`;
       
       const gmapsBtn = document.getElementById('activeCardGmapsBtn');
@@ -1136,6 +1150,7 @@ try {
               </div>
 
               <div class="prop-actions">
+                <a class="btn btn-sm" style="text-decoration:none; background: #1e3a8a; color: #ffffff; border: 1px solid #1e3a8a; font-weight: 600; padding: 0.28rem 0.65rem;" href="/legal-report?q=${encodeURIComponent(p.name)}" onclick="event.stopPropagation();" target="_blank" title="View 27-Check Legal Due-Diligence Report with Document Evidence & Official Verification Links">⚖️ Legal Report ↗</a>
                 <button class="btn ghost btn-sm btn-map-pin" data-id="${p.id}" title="Focus on Floating Map">Map</button>
                 <a class="btn ghost btn-sm" style="text-decoration:none;" href="/property-detail?q=${encodeURIComponent(p.name)}" onclick="event.stopPropagation();" target="_blank" title="View Detailed Property Audit Page">Full Audit ↗</a>
                 <a class="btn ghost btn-sm" style="text-decoration:none;" href="/radar-chart?a=${encodeURIComponent(p.name)}" onclick="event.stopPropagation();" title="Analyze in Radar Dashboard">Radar ↗</a>
@@ -1144,7 +1159,9 @@ try {
           </div>
 
           <div class="prop-right-col">
-            <span class="seal ${p.gateOK ? 'pass' : 'fail'}">${p.gateOK ? 'Gate Cleared' : 'Gate Failed'}</span>
+            <a class="seal ${p.gateOK ? 'pass' : 'fail'}" href="/legal-report?q=${encodeURIComponent(p.name)}" target="_blank" onclick="event.stopPropagation();" title="Click to view 27-Check Legal Due-Diligence Audit Report">
+              ${p.gateOK ? '⚖️ Gate Cleared ↗' : '⚖️ Gate Failed ↗'}
+            </a>
             <div class="score-block">
               <div class="score-num ${p.band.class}">${p.composite}<span class="score-of"> /100</span></div>
               <div class="band-tag band-${p.band.class}">${p.band.label}</div>
@@ -1191,15 +1208,16 @@ try {
 
           <div class="axis-grid">${axisLines}</div>
           <div class="prop-note"><strong>Regulatory Audit Summary:</strong> ${p.note}</div>
-          <div style="margin-top: 1rem; text-align: right; display: flex; justify-content: flex-end; gap: 0.5rem;">
+          <div style="margin-top: 1rem; text-align: right; display: flex; justify-content: flex-end; gap: 0.5rem; flex-wrap: wrap;">
+            <a class="btn btn-sm" style="text-decoration:none; background: #1e3a8a; color: #ffffff; font-weight: 600;" href="/legal-report?q=${encodeURIComponent(p.registrationNo || p.name)}" target="_blank" onclick="event.stopPropagation();">⚖️ Detailed Legal Risk Report (27 Checks) ↗</a>
             <a class="btn btn-sm ghost" style="text-decoration:none;" href="/compare?p=${encodeURIComponent(p.registrationNo || p.name)}" target="_blank" onclick="event.stopPropagation();">Compare Property ↗</a>
-            <a class="btn btn-sm" style="text-decoration:none;" href="/property-detail?q=${encodeURIComponent(p.registrationNo || p.name)}" target="_blank" onclick="event.stopPropagation();">Open Full Property Audit Page ↗</a>
+            <a class="btn btn-sm ghost" style="text-decoration:none;" href="/property-detail?q=${encodeURIComponent(p.registrationNo || p.name)}" target="_blank" onclick="event.stopPropagation();">Open Full Property Audit Page ↗</a>
           </div>
         </div>
       `;
 
       row.querySelector('[data-toggle]').addEventListener('click', (e) => {
-        if (e.target.closest('.btn')) return;
+        if (e.target.closest('.btn') || e.target.closest('a') || e.target.closest('.seal')) return;
         const willOpen = !row.classList.contains('open');
         document.querySelectorAll('.prop-row.open').forEach(r => r.classList.remove('open'));
         if (willOpen) {

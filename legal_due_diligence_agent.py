@@ -118,6 +118,17 @@ class KarnatakaPropertyLegalAgent:
             "coordinate_source": coord_source
         }
 
+        is_corrected = db_res.get("is_corrected", False)
+        search_term_used = db_res.get("search_term_used", "")
+
+        search_info = {
+            "is_corrected": is_corrected,
+            "search_term_used": search_term_used,
+            "matched_project_name": proj_name,
+            "registration_no": reg_no,
+            "notice": f"Smart Search Agent corrected typo → matched '{proj_name}' (Reg No: {reg_no})." if is_corrected else None
+        }
+
         # Build clean payload for 27 checks
         return {
             "property_name": proj_name,
@@ -130,6 +141,7 @@ class KarnatakaPropertyLegalAgent:
             "certificate_url": cert_url,
             "real_documents": real_docs,
             "gis_location": gis_loc,
+            "agentic_search_info": search_info,
             "seller_identity": { "id_proof_matched": True, "name_in_title_deed": True, "name_in_rtc": True, "name_in_khata": True },
             "current_title": { "deed_registered": True, "kaveri2_matched": True, "original_deed_inspected": True },
             "title_chain_30yr": { "years_covered": 30, "unbroken_chain": True },
@@ -216,6 +228,7 @@ class KarnatakaPropertyLegalAgent:
             "contradiction_log": assessment.contradiction_summary,
             "real_documents": property_data.get("real_documents", []),
             "gis_location": property_data.get("gis_location", default_gis),
+            "agentic_search_info": property_data.get("agentic_search_info", {}),
             "matrix_checks": checks_dict,
             "markdown_report": markdown_report
         }

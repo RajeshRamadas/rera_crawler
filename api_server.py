@@ -77,6 +77,34 @@ def get_sample_legal_report(preset: str = Query("sarjapur_plot", description="Pr
     return legal_agent_instance.run_due_diligence(payload)
 
 
+@app.get("/api/legal-due-diligence/suggest", summary="Get Auto-Suggestions for Property Search")
+def suggest_properties(q: str = Query("", description="Search term")):
+    """Returns top matching project names from PostgreSQL database for live UI auto-complete."""
+    if not q or len(q.strip()) < 2:
+        return {"suggestions": []}
+
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            clean_q = q.strip()
+            cur.execute(
+                "SELECT DISTINCT project_name, firm_name, registration_no FROM rera_projects WHERE project_name ILIKE %s OR firm_name ILIKE %s LIMIT 10;",
+                (f"%{clean_q}%", f"%{clean_q}%")
+            )
+            rows = cur.fetchall()
+            suggestions = []
+            for r in rows:
+                suggestions.append({
+                    "project_name": r["project_name"],
+                    "firm_name": r["firm_name"],
+                    "registration_no": r["registration_no"]
+                })
+            conn.close()
+            return {"suggestions": suggestions}
+    except Exception as exc:
+        return {"suggestions": [], "error": str(exc)}
+
+
 @app.get("/api/legal-due-diligence/evaluate-query", summary="Search & Evaluate Real Property Legal Due-Diligence")
 def evaluate_property_by_query(q: str = Query("Chartered Windsong - 2", description="Project Name or RERA Registration Number")):
     """
@@ -102,13 +130,20 @@ def evaluate_property_legal_risk(payload: dict):
         raise HTTPException(status_code=500, detail=f"Legal Engine Error: {str(exc)}")
 
 
+NO_CACHE_HEADERS = {
+    "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+    "Pragma": "no-cache",
+    "Expires": "0"
+}
+
+
 @app.get("/radar-chart", summary="Property Composite Risk & Quality Radar Dashboard")
 def get_radar_chart():
     """Serves the single-file HTML property composite risk radar dashboard."""
     html_path = os.path.join(os.path.dirname(__file__), "property_radar_chart.html")
     if not os.path.exists(html_path):
         raise HTTPException(status_code=404, detail="property_radar_chart.html not found.")
-    return FileResponse(html_path, media_type="text/html")
+    return FileResponse(html_path, media_type="text/html", headers=NO_CACHE_HEADERS)
 
 
 @app.get("/register", summary="Property Risk & Compliance Register Listing")
@@ -118,7 +153,7 @@ def get_property_listing():
     html_path = os.path.join(os.path.dirname(__file__), "rera_property_listing.html")
     if not os.path.exists(html_path):
         raise HTTPException(status_code=404, detail="rera_property_listing.html not found.")
-    return FileResponse(html_path, media_type="text/html")
+    return FileResponse(html_path, media_type="text/html", headers=NO_CACHE_HEADERS)
 
 
 @app.get("/property-detail", summary="Detailed Property Audit & Compliance Page")
@@ -128,7 +163,7 @@ def get_property_detail_page():
     html_path = os.path.join(os.path.dirname(__file__), "property_detail.html")
     if not os.path.exists(html_path):
         raise HTTPException(status_code=404, detail="property_detail.html not found.")
-    return FileResponse(html_path, media_type="text/html")
+    return FileResponse(html_path, media_type="text/html", headers=NO_CACHE_HEADERS)
 
 
 @app.get("/compare", summary="Property Comparison Dashboard")
@@ -138,7 +173,7 @@ def get_property_compare_page():
     html_path = os.path.join(os.path.dirname(__file__), "property_compare.html")
     if not os.path.exists(html_path):
         raise HTTPException(status_code=404, detail="property_compare.html not found.")
-    return FileResponse(html_path, media_type="text/html")
+    return FileResponse(html_path, media_type="text/html", headers=NO_CACHE_HEADERS)
 
 
 
