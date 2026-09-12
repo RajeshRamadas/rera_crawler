@@ -45,13 +45,13 @@ class TestKarnatakaLegalEngine(unittest.TestCase):
         self.assertFalse(result["mandatory_gate_met"])
         self.assertGreater(len(result["contradiction_log"]), 0)
 
-    def test_all_27_checks_present(self):
-        """Ensure all 27 matrix checks are evaluated in the output."""
+    def test_all_26_checks_present(self):
+        """Ensure all 26 matrix checks are evaluated in the output."""
         payload = SAMPLE_PROPERTIES["sarjapur_plot"]
         result = self.agent.run_due_diligence(payload)
 
         matrix_checks = result["matrix_checks"]
-        self.assertEqual(len(matrix_checks), 27)
+        self.assertEqual(len(matrix_checks), 26)
 
         # Check key Karnataka specific areas exist
         expected_areas = [
@@ -60,7 +60,7 @@ class TestKarnatakaLegalEngine(unittest.TestCase):
             "Government land", "Acquisition", "Lake/Rajakaluvé", "Master plan",
             "Layout approval", "Khata/e-Khata", "Property tax", "Litigation",
             "Physical survey", "GIS verification", "RERA", "Building approval",
-            "OC/CC", "UDS", "Mortgage/NOC", "Sale agreement", "Independent lawyer opinion"
+            "OC/CC", "UDS", "Mortgage/NOC", "Sale agreement"
         ]
         for area in expected_areas:
             self.assertIn(area, matrix_checks)

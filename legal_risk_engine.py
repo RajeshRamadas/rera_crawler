@@ -59,8 +59,7 @@ BUY_GATE_CHECK_AREAS = [
     "OC/CC",
     "UDS",
     "Mortgage/NOC",
-    "Sale agreement",
-    "Independent lawyer opinion"
+    "Sale agreement"
 ]
 
 
@@ -983,38 +982,6 @@ class KarnatakaLegalRiskEngine:
             contradictions=[],
             legal_rule="Indian Contract Act 1872 - Agreement terms must be reciprocal and fair without illegal penalty clauses.",
             mitigation_step="Insert explicit Title Indemnity Clause protecting buyer against future third-party litigation." if not indemnity_included else None
-        )
-
-        # --- 27. Independent lawyer opinion ---
-        opinion_data = payload.get("lawyer_opinion_details", {})
-        opinion_obtained = opinion_data.get("opinion_obtained", True)
-        lawyer_name = opinion_data.get("lawyer_name", "Adv. R. K. High Court Advocate")
-        title_clear = opinion_data.get("title_clear", True)
-
-        if opinion_obtained and title_clear:
-            st = CheckStatus.PASS
-            sev = RiskSeverity.LOW
-            sum_text = f"Formal Title Search Report (TSR) issued by {lawyer_name} certifying marketable title."
-        elif opinion_obtained and not title_clear:
-            st = CheckStatus.WARNING
-            sev = RiskSeverity.HIGH
-            sum_text = f"Lawyer Title Opinion issued by {lawyer_name} with conditional requirements."
-        else:
-            st = CheckStatus.WARNING
-            sev = RiskSeverity.MEDIUM
-            sum_text = "Independent High Court Advocate Title Opinion pending."
-
-        checks["Independent lawyer opinion"] = VerificationCheckResult(
-            area="Independent lawyer opinion",
-            status=st,
-            severity=sev,
-            is_mandatory=True,
-            summary=sum_text,
-            evidence_found=[f"Title Search Report by {lawyer_name}"],
-            missing_evidence=[] if opinion_obtained else ["Signed Title Scrutiny Report"],
-            contradictions=[],
-            legal_rule="Standard Due Diligence Practice - Independent scrutiny by practicing advocate essential before funds release.",
-            mitigation_step="Commission independent verification from High Court practicing advocate." if not opinion_obtained else None
         )
 
         # --- CALCULATE LEGAL RISK SCORE & BUY GATE DECISION ---

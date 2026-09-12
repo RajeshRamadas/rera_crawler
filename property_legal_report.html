@@ -725,7 +725,7 @@
     </a>
 
     <div class="nav-actions">
-      <button class="btn primary" onclick="openAdvocateCertModal()" style="background:var(--gold); border-color:var(--gold); font-size:0.8rem;">📜 Advocate Certified Opinion & Sign</button>
+      <button class="btn primary" onclick="openAdvocateCertModal()" style="background:var(--gold); border-color:var(--gold); font-size:0.8rem;">📜 Statutory Legal Clearance Certificate</button>
       <button class="btn ghost-nav" onclick="window.print()" style="font-size:0.8rem;">🖨️ Print PDF</button>
       <a href="/geospatial" class="btn ghost-nav">Geospatial Map ↗</a>
       <a href="/register" class="btn ghost-nav">← Register Listing</a>
@@ -745,7 +745,7 @@
         <button class="doc-pill active" onclick="switchPersona('homebuyer', this)">🏡 Homebuyer Mode</button>
         <button class="doc-pill" onclick="switchPersona('lender', this)">🏦 Bank / Lender Mode</button>
         <button class="doc-pill" onclick="switchPersona('investor', this)">📈 Investor Mode</button>
-        <button class="doc-pill" onclick="switchPersona('advocate', this)">⚖️ High Court Advocate Mode</button>
+        <button class="doc-pill" onclick="switchPersona('advocate', this)">🏛️ Legal Scrutiny Mode</button>
         <button class="btn" onclick="scrollToMatrix()" style="background:#1E56A0; color:#fff; font-size:0.75rem; height:30px; margin-left:0.5rem;">
           ⚡ Jump to Matrix Filter Bar 👇
         </button>
@@ -1112,19 +1112,6 @@
           <div id="detailMap"></div>
         </div>
 
-        <!-- Lawyer Title Opinion Card -->
-        <div class="card" style="border-left: 4px solid var(--clear);">
-          <div style="font-family:'IBM Plex Serif', serif; font-size:1rem; font-weight:600; margin-bottom:0.5rem; color:var(--clear);">
-            ⚖️ Independent Lawyer Opinion
-          </div>
-          <div style="font-size:0.83rem; color:var(--ink-soft); line-height:1.45;">
-            Certified by <strong>Adv. S. Sundaresan (Karnataka High Court)</strong>. Scrutiny of 30-year deeds, Bhoomi Pahani, and e-Courts search certifies clear, marketable title.
-          </div>
-          <div class="mono" style="font-size:0.68rem; color:var(--ink); font-weight:600; margin-top:0.6rem;">
-            TSR REG: KAR/1452/2005 • VERIFIED CLEAR
-          </div>
-        </div>
-
       </div>
     </div>
 
@@ -1160,8 +1147,7 @@
     "OC/CC": { proof: "BBMP Occupancy Certificate (OC) Order No: BBMP/ADDL-DIR/OC/2022/4512 dated 18/06/2022", url: "https://bbmpeaasthi.karnataka.gov.in", label: "Verify Occupancy Certificate ↗" },
     "UDS": { proof: "Sub-Registrar Registered UDS Schedule Sheet (520 sq.ft UDS for 1750 sq.ft builtup unit)", url: "https://kaveri.karnataka.gov.in/landing-page", label: "Verify UDS Calculation on Kaveri 2 ↗" },
     "Mortgage/NOC": { proof: "CERSAI Registry Search Ref: CERSAI-ASSET-2024-9912 & Registered Bank NOC No: HDFC-BLR-NOC-2022-441", url: "https://www.cersai.org.in", label: "Verify Mortgage on CERSAI Registry ↗" },
-    "Sale agreement": { proof: "Karnataka Stamp Act Registered Agreement Draft Template Review Ref: KAV-AGR-2024-88", url: "https://kaveri.karnataka.gov.in/landing-page", label: "Verify Agreement Terms on Kaveri 2 ↗" },
-    "Independent lawyer opinion": { proof: "Karnataka State Bar Council Advocate Title Search Report (TSR) Roll No: KAR/1452/2005 (Adv. S. Sundaresan)", url: "https://kaveri.karnataka.gov.in/landing-page", label: "Verify Advocate TSR Record ↗" }
+    "Sale agreement": { proof: "Karnataka Stamp Act Registered Agreement Draft Template Review Ref: KAV-AGR-2024-88", url: "https://kaveri.karnataka.gov.in/landing-page", label: "Verify Agreement Terms on Kaveri 2 ↗" }
   };
 
   let currentData = null;
@@ -1205,7 +1191,7 @@
     const bannerText = document.getElementById('agenticNoticeText');
     if (data.agentic_search_info && data.agentic_search_info.is_corrected) {
       banner.style.display = 'block';
-      bannerText.innerHTML = `Typo detected in search query <strong>'${data.agentic_search_info.search_term_used}'</strong>. Smart Search Agent corrected typo → matched project <strong>'${data.agentic_search_info.matched_project_name}'</strong> (Reg No: <code>${data.agentic_search_info.registration_no || 'RERA Verified'}</code>). 27 legal checks evaluated.`;
+      bannerText.innerHTML = `Typo detected in search query <strong>'${data.agentic_search_info.search_term_used}'</strong>. Smart Search Agent corrected typo → matched project <strong>'${data.agentic_search_info.matched_project_name}'</strong> (Reg No: <code>${data.agentic_search_info.registration_no || 'RERA Verified'}</code>). 26 legal checks evaluated.`;
     } else {
       banner.style.display = 'none';
     }
@@ -1294,8 +1280,8 @@
       id: "COURTS",
       title: "7. COURTS & LITIGATION SEARCH",
       icon: "⚖️",
-      checks: ["Litigation", "Independent lawyer opinion"],
-      desc: "e-Courts India Karnataka High Court & City Civil Court Suit Search, Advocate TSR"
+      checks: ["Litigation"],
+      desc: "e-Courts India Karnataka High Court & City Civil Court Suit Search Registry"
     },
     {
       id: "ENCUMBRANCES",
@@ -1981,8 +1967,7 @@
         "Survey/Hissa": 2.5,
         "Acquisition": 2.5,
         "30+ year title chain": 2.5,
-        "Parent documents": 2.5,
-        "Independent lawyer opinion": 2.5
+        "Parent documents": 2.5
       }
     }
   };

@@ -281,21 +281,21 @@ def get_legal_packages():
             "features": [
                 "15-Year Kaveri 2.0 SRO Encumbrance Search (EC)",
                 "Bhoomi RTC Pahani (Col 9/11) & Mutation Check",
-                "AI 27-Check Legal Risk Score Report (PDF)",
+                "AI 26-Check Legal Risk Score Report (PDF)",
                 "Basic Rajakaluve & NGT Lake Buffer Check"
             ]
         },
         {
             "code": "pkg_advocate",
-            "name": "Full Legal Scrutiny & Advocate Signed",
+            "name": "Full 30-Year Legal Scrutiny & Audit",
             "price_inr": 6499,
             "mrp_inr": 9999,
             "turnaround": "48 Hours",
-            "tag": "MOST POPULAR • ADVOCATE SIGNED",
-            "description": "Complete 30-year legal due-diligence report certified with High Court Advocate signature & seal stamp.",
+            "tag": "MOST POPULAR • FULL LEGAL SCRUTINY",
+            "description": "Complete 30-year legal due-diligence report certified across all 26 statutory verification vectors.",
             "features": [
                 "30-Year Title Search & Parent Deed Lineage Audit",
-                "Certified Advocate Signed Legal Opinion Certificate & Stamp",
+                "Certified 30-Year Statutory Legal Audit Certificate",
                 "Kaveri 2 EC, Bhoomi RTC, MR Form 12 & DC Conversion Order",
                 "BDA / BMRDA / DTCP Layout Approval & Sanction Check",
                 "BBMP e-Aasthi e-Khata & PID Tax Verification",
@@ -313,7 +313,7 @@ def get_legal_packages():
             "description": "End-to-end legal clearance for NRIs, luxury villas, commercial land plots & high-value property purchases.",
             "features": [
                 "30+ Year Unbroken Title Lineage & Original Deed Audit",
-                "1-on-1 Consultation with Senior Advocate (30 Mins)",
+                "1-on-1 Consultation with Senior Property Legal Counsel (30 Mins)",
                 "Certified Hard-Copy Delivery to Doorstep (Worldwide Shipping)",
                 "SSLR Podi 11E Survey Sketch & Akarband Physical Map",
                 "PTCL SC/ST Land Grant & B-Kharab Public Land Check",
@@ -332,7 +332,7 @@ def place_package_order(order: PackageOrderRequest):
     return {
         "status": "success",
         "booking_id": booking_id,
-        "message": f"Package Booking #{booking_id} confirmed! Senior Advocate Rajeshwar Rao's team has initiated '{order.package_name}' scrutiny for '{order.property_name}'.",
+        "message": f"Package Booking #{booking_id} confirmed! Senior Legal Scrutiny Team has initiated '{order.package_name}' for '{order.property_name}'.",
         "booking_details": {
             "booking_id": booking_id,
             "package_code": order.package_code,
@@ -344,7 +344,7 @@ def place_package_order(order: PackageOrderRequest):
             "applicant_email": order.applicant_email,
             "applicant_phone": order.applicant_phone,
             "booking_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "status": "ADVOCATE_SCRUTINY_INITIATED"
+            "status": "LEGAL_SCRUTINY_INITIATED"
         }
     }
 
