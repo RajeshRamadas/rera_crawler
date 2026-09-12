@@ -198,6 +198,18 @@ def get_property_compare_page():
     return FileResponse(html_path, media_type="text/html", headers=NO_CACHE_HEADERS)
 
 
+@app.get("/geospatial", summary="Geospatial Location Intelligence Portal")
+@app.get("/geospatial-map", summary="Geospatial Location Intelligence Portal")
+@app.get("/location-intelligence", summary="Geospatial Location Intelligence Portal")
+def get_geospatial_page():
+    """Serves the standalone HTML Geospatial Location Intelligence portal."""
+    html_path = os.path.join(os.path.dirname(__file__), "geospatial_intelligence.html")
+    if not os.path.exists(html_path):
+        raise HTTPException(status_code=404, detail="geospatial_intelligence.html not found.")
+    return FileResponse(html_path, media_type="text/html", headers=NO_CACHE_HEADERS)
+
+
+
 
 
 
