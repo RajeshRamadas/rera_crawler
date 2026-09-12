@@ -57,6 +57,16 @@ app.add_middleware(
 )
 
 
+@app.get("/", summary="RERA Intelligence Home Page")
+@app.get("/home", summary="RERA Intelligence Home Page")
+def get_home_page():
+    """Serves the creative index.html home page."""
+    html_path = os.path.join(os.path.dirname(__file__), "index.html")
+    if not os.path.exists(html_path):
+        raise HTTPException(status_code=404, detail="index.html not found.")
+    return FileResponse(html_path, media_type="text/html", headers=NO_CACHE_HEADERS)
+
+
 @app.get("/legal-report", summary="Karnataka Property Legal Due-Diligence Audit Report Dashboard")
 @app.get("/legal-due-diligence", summary="Karnataka Property Legal Due-Diligence Audit Report Dashboard")
 def get_legal_report_page():
