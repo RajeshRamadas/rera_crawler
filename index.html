@@ -6,10 +6,10 @@
   <title>RERA Intelligence — AI Real Estate Verification & Legal Due-Diligence Engine</title>
   <meta name="description" content="Karnataka's premier AI-powered property legal due-diligence and RERA compliance audit platform cross-verifying Kaveri 2.0, Bhoomi RTC, BDA, BBMP e-Aasthi, and e-Courts registries.">
 
-  <!-- Google Fonts -->
+  <!-- Google Fonts: Plus Jakarta Sans, IBM Plex Serif & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Serif:ital,wght@0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:ital,wght@0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <!-- Leaflet & MarkerCluster CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -22,33 +22,30 @@
 
   <style>
     :root {
-      --paper: #F6F5F1;
-      --paper-raised: #FFFFFF;
-      --paper-soft: #EFECE6;
-      --paper-card: #F9F8F5;
-      --ink: #1B1E24;
-      --ink-soft: #5A6270;
-      --ink-muted: #8A92A0;
-      --brand: #1E56A0;
-      --brand-dark: #10376B;
-      --brand-hover: #16437E;
-      --brand-light: #EFF6FF;
-      --brand-border: #BFDBFE;
-      --border: #E0DDD5;
-      --border-strong: #CFCBC0;
-      --hairline: #ECEAE3;
-      --pass: #2F6E4F;
-      --pass-bg: #F1F8F4;
-      --pass-border: #A7F3D0;
-      --warn: #D97706;
-      --warn-bg: #FFFBEB;
-      --warn-border: #FDE68A;
-      --fail: #DC2626;
-      --fail-bg: #FEF2F2;
-      --fail-border: #FCA5A5;
-      --shadow-sm: 0 2px 8px rgba(27, 30, 36, 0.04);
-      --shadow-md: 0 8px 24px rgba(27, 30, 36, 0.07);
-      --shadow-lg: 0 16px 40px rgba(27, 30, 36, 0.12);
+      --bg-dark: #090D16;
+      --bg-surface: #0F172A;
+      --bg-card: #151F32;
+      --bg-card-hover: #1E293B;
+      --paper-warm: #F6F5F1;
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --text-dim: #64748B;
+      --brand-blue: #2563EB;
+      --brand-cyan: #0EA5E9;
+      --brand-glow: rgba(37, 99, 235, 0.35);
+      --border-dark: rgba(255, 255, 255, 0.08);
+      --border-light: rgba(255, 255, 255, 0.14);
+      --pass: #10B981;
+      --pass-bg: rgba(16, 185, 129, 0.12);
+      --pass-border: rgba(16, 185, 129, 0.3);
+      --warn: #F59E0B;
+      --warn-bg: rgba(245, 158, 11, 0.12);
+      --warn-border: rgba(245, 158, 11, 0.3);
+      --fail: #EF4444;
+      --fail-bg: rgba(239, 68, 68, 0.12);
+      --fail-border: rgba(239, 68, 68, 0.3);
+      --radius-lg: 16px;
+      --radius-md: 10px;
     }
 
     * {
@@ -58,11 +55,26 @@
     }
 
     body {
-      font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-      background-color: var(--paper);
-      color: var(--ink);
-      line-height: 1.5;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      line-height: 1.6;
+      overflow-x: hidden;
       -webkit-font-smoothing: antialiased;
+    }
+
+    /* Ambient Background Glow */
+    body::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 1000px;
+      height: 600px;
+      background: radial-gradient(circle at 50% 20%, rgba(37, 99, 235, 0.18), rgba(14, 165, 233, 0.08) 50%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
     }
 
     .mono {
@@ -78,42 +90,59 @@
       text-decoration: none;
     }
 
-    /* Top Accent Status Bar */
-    .top-status-bar {
-      background: var(--ink);
-      color: #FFFFFF;
+    /* SVG Icon Container */
+    .svg-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Top Announcement Bar */
+    .top-announcement {
+      background: linear-gradient(90deg, #0B1329 0%, #152244 50%, #0B1329 100%);
+      border-bottom: 1px solid var(--border-dark);
       font-size: 0.75rem;
-      padding: 0.4rem 2rem;
+      padding: 0.5rem 2.5rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
       font-family: 'JetBrains Mono', monospace;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
+      color: var(--text-muted);
+      position: relative;
+      z-index: 10;
     }
 
-    .status-indicator {
+    .pulse-indicator {
       display: flex;
       align-items: center;
       gap: 0.5rem;
+      color: var(--text-main);
     }
 
-    .status-dot {
-      width: 7px;
-      height: 7px;
-      background: #10B981;
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--pass);
       border-radius: 50%;
-      box-shadow: 0 0 8px #10B981;
+      box-shadow: 0 0 10px var(--pass);
+      animation: pulseGlow 2s infinite ease-in-out;
     }
 
-    /* Navbar */
+    @keyframes pulseGlow {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.25); opacity: 0.6; }
+    }
+
+    /* Navigation Bar */
     .navbar {
       position: sticky;
       top: 0;
       z-index: 1000;
-      background: rgba(246, 245, 241, 0.94);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
-      padding: 0.85rem 2rem;
+      background: rgba(9, 13, 22, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-dark);
+      padding: 0.9rem 2.5rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -126,181 +155,206 @@
       gap: 0.85rem;
     }
 
-    .brand-icon {
-      width: 42px;
-      height: 42px;
-      background: linear-gradient(135deg, var(--ink) 0%, var(--brand-dark) 100%);
-      color: #fff;
-      border-radius: 8px;
+    .brand-logo-box {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+      color: #FFFFFF;
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
       font-family: 'IBM Plex Serif', serif;
       font-weight: 700;
       font-size: 1.3rem;
-      box-shadow: 0 4px 12px rgba(30, 86, 160, 0.25);
+      box-shadow: 0 0 20px rgba(37, 99, 235, 0.4);
+      border: 1px solid rgba(255,255,255,0.2);
     }
 
     .brand-title {
       font-family: 'IBM Plex Serif', serif;
       font-weight: 700;
       font-size: 1.25rem;
-      color: var(--ink);
+      color: var(--text-main);
       line-height: 1.1;
+      letter-spacing: -0.01em;
     }
 
     .brand-subtitle {
-      font-size: 0.7rem;
-      color: var(--ink-soft);
-      letter-spacing: 0.06em;
+      font-size: 0.68rem;
+      color: var(--brand-cyan);
+      letter-spacing: 0.08em;
       text-transform: uppercase;
       font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
     }
 
     .nav-links {
       display: flex;
       align-items: center;
-      gap: 0.4rem;
+      gap: 0.35rem;
+      background: rgba(255,255,255,0.03);
+      padding: 0.25rem 0.5rem;
+      border-radius: 30px;
+      border: 1px solid var(--border-dark);
     }
 
     .nav-item {
       font-size: 0.84rem;
       font-weight: 600;
-      color: var(--ink-soft);
-      padding: 0.5rem 0.85rem;
-      border-radius: 6px;
-      transition: all 0.15s ease;
+      color: var(--text-muted);
+      padding: 0.45rem 0.95rem;
+      border-radius: 20px;
+      transition: all 0.2s ease;
     }
 
     .nav-item:hover, .nav-item.active {
-      color: var(--brand);
-      background: var(--brand-light);
+      color: var(--text-main);
+      background: rgba(255,255,255,0.08);
     }
 
     .nav-cta {
-      background: var(--brand);
-      color: #ffffff !important;
-      font-weight: 600;
+      background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+      color: #FFFFFF !important;
+      font-weight: 700;
       font-size: 0.85rem;
-      padding: 0.6rem 1.2rem;
-      border-radius: 6px;
-      box-shadow: 0 2px 8px rgba(30, 86, 160, 0.2);
-      transition: all 0.15s ease;
+      padding: 0.6rem 1.3rem;
+      border-radius: 8px;
+      box-shadow: 0 0 20px rgba(37, 99, 235, 0.35);
+      border: 1px solid rgba(255,255,255,0.15);
+      transition: all 0.2s ease;
     }
 
     .nav-cta:hover {
-      background: var(--brand-hover);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(30, 86, 160, 0.3);
+      transform: translateY(-2px);
+      box-shadow: 0 0 30px rgba(37, 99, 235, 0.55);
     }
 
-    /* Hero Section (Hero Grid Layout) */
+    /* Hero Section Dual Panel */
     .hero-container {
-      max-width: 1240px;
+      max-width: 1280px;
       margin: 0 auto;
-      padding: 3.5rem 2rem 3rem;
+      padding: 4rem 2.5rem 3.5rem;
       display: grid;
       grid-template-columns: 1.15fr 0.85fr;
-      gap: 3rem;
+      gap: 3.5rem;
       align-items: center;
+      position: relative;
+      z-index: 1;
     }
 
-    .hero-tag {
+    .hero-badge {
       display: inline-flex;
       align-items: center;
-      gap: 0.5rem;
-      background: var(--paper-raised);
-      border: 1px solid var(--border-strong);
-      padding: 0.35rem 0.9rem;
+      gap: 0.55rem;
+      background: rgba(37, 99, 235, 0.1);
+      border: 1px solid rgba(37, 99, 235, 0.3);
+      padding: 0.4rem 1rem;
       border-radius: 20px;
-      font-size: 0.75rem;
+      font-size: 0.76rem;
       font-weight: 700;
-      color: var(--brand);
+      color: #60A5FA;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
       font-family: 'JetBrains Mono', monospace;
-      margin-bottom: 1.25rem;
-      box-shadow: var(--shadow-sm);
+      margin-bottom: 1.35rem;
     }
 
     .hero-title {
       font-family: 'IBM Plex Serif', serif;
-      font-size: 2.85rem;
+      font-size: 3.1rem;
       font-weight: 700;
-      color: var(--ink);
-      letter-spacing: -0.02em;
-      line-height: 1.18;
-      margin-bottom: 1.1rem;
+      color: var(--text-main);
+      letter-spacing: -0.025em;
+      line-height: 1.15;
+      margin-bottom: 1.25rem;
     }
 
     .hero-title span {
-      color: var(--brand);
+      background: linear-gradient(135deg, #60A5FA 0%, #3B82F6 50%, #93C5FD 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
     .hero-subtitle {
-      font-size: 1.05rem;
-      color: var(--ink-soft);
-      line-height: 1.6;
-      margin-bottom: 2rem;
+      font-size: 1.08rem;
+      color: var(--text-muted);
+      line-height: 1.65;
+      margin-bottom: 2.25rem;
+      font-weight: 400;
     }
 
-    /* Search Box & Autocomplete */
+    /* Spotlight Command Search Bar */
     .search-wrapper {
       position: relative;
-      margin-bottom: 1.25rem;
+      margin-bottom: 1.35rem;
     }
 
     .search-bar {
       display: flex;
       align-items: center;
-      background: var(--paper-raised);
-      border: 2px solid var(--border-strong);
-      border-radius: 10px;
-      padding: 0.35rem 0.5rem 0.35rem 1.1rem;
-      box-shadow: var(--shadow-md);
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      background: rgba(21, 31, 50, 0.85);
+      border: 1px solid var(--border-light);
+      border-radius: 12px;
+      padding: 0.45rem 0.55rem 0.45rem 1.25rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      transition: all 0.2s ease;
     }
 
     .search-bar:focus-within {
-      border-color: var(--brand);
-      box-shadow: 0 0 0 4px rgba(30, 86, 160, 0.15);
+      border-color: var(--brand-blue);
+      box-shadow: 0 0 25px rgba(37, 99, 235, 0.35);
+      background: #151F32;
     }
 
     .search-icon {
-      font-size: 1.15rem;
-      color: var(--ink-soft);
-      margin-right: 0.75rem;
+      margin-right: 0.85rem;
+      display: flex;
+      align-items: center;
     }
 
     .search-input {
       flex: 1;
       border: none;
       background: transparent;
-      font-family: 'IBM Plex Sans', sans-serif;
-      font-size: 1rem;
-      color: var(--ink);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 1.05rem;
+      color: var(--text-main);
       outline: none;
       padding: 0.65rem 0;
     }
 
     .search-input::placeholder {
-      color: var(--ink-muted);
+      color: var(--text-dim);
+    }
+
+    .cmd-badge {
+      background: rgba(255,255,255,0.08);
+      color: var(--text-muted);
+      border: 1px solid var(--border-dark);
+      padding: 0.2rem 0.5rem;
+      border-radius: 5px;
+      font-size: 0.72rem;
+      font-family: 'JetBrains Mono', monospace;
+      margin-right: 0.75rem;
     }
 
     .search-btn {
-      background: var(--ink);
+      background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
       color: #fff;
       border: none;
-      font-weight: 600;
-      font-size: 0.88rem;
-      padding: 0.75rem 1.35rem;
-      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      padding: 0.8rem 1.5rem;
+      border-radius: 8px;
       cursor: pointer;
-      transition: background 0.2s ease;
+      box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+      transition: all 0.2s ease;
     }
 
     .search-btn:hover {
-      background: var(--brand);
+      background: #1D4ED8;
+      transform: translateY(-1px);
     }
 
     .autocomplete-box {
@@ -308,21 +362,21 @@
       top: 100%;
       left: 0;
       right: 0;
-      background: var(--paper-raised);
-      border: 1px solid var(--border-strong);
-      border-radius: 8px;
-      box-shadow: var(--shadow-lg);
-      margin-top: 0.4rem;
-      max-height: 320px;
+      background: #111827;
+      border: 1px solid var(--border-light);
+      border-radius: 10px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+      margin-top: 0.5rem;
+      max-height: 340px;
       overflow-y: auto;
-      z-index: 99;
+      z-index: 999;
       display: none;
       text-align: left;
     }
 
     .suggestion-item {
-      padding: 0.75rem 1.1rem;
-      border-bottom: 1px solid var(--hairline);
+      padding: 0.85rem 1.25rem;
+      border-bottom: 1px solid var(--border-dark);
       cursor: pointer;
       transition: background 0.15s ease;
       display: flex;
@@ -335,241 +389,263 @@
     }
 
     .suggestion-item:hover {
-      background: var(--brand-light);
+      background: rgba(37, 99, 235, 0.15);
     }
 
     .sug-title {
-      font-weight: 600;
-      font-size: 0.9rem;
-      color: var(--ink);
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: var(--text-main);
     }
 
     .sug-firm {
-      font-size: 0.76rem;
-      color: var(--ink-soft);
+      font-size: 0.78rem;
+      color: var(--text-muted);
     }
 
     .sug-reg {
-      font-size: 0.7rem;
-      color: var(--brand);
+      font-size: 0.72rem;
+      color: #60A5FA;
       font-family: 'JetBrains Mono', monospace;
     }
 
     .presets-row {
       display: flex;
       align-items: center;
-      gap: 0.45rem;
+      gap: 0.5rem;
       flex-wrap: wrap;
     }
 
     .preset-label {
-      font-size: 0.78rem;
-      color: var(--ink-soft);
+      font-size: 0.8rem;
+      color: var(--text-muted);
       font-weight: 600;
     }
 
     .preset-chip {
-      background: var(--paper-raised);
-      border: 1px solid var(--border);
-      padding: 0.3rem 0.75rem;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border-dark);
+      padding: 0.35rem 0.85rem;
       border-radius: 20px;
-      font-size: 0.76rem;
+      font-size: 0.78rem;
       font-weight: 600;
-      color: var(--ink);
+      color: var(--text-muted);
       cursor: pointer;
       transition: all 0.15s ease;
     }
 
     .preset-chip:hover {
-      border-color: var(--brand);
-      color: var(--brand);
-      background: var(--brand-light);
+      border-color: var(--brand-blue);
+      color: var(--text-main);
+      background: rgba(37, 99, 235, 0.12);
     }
 
-    /* Terminal Quick Preview Card (Right Column) */
+    /* Live Terminal Console Mockup (Right Column) */
     .terminal-card {
-      background: var(--ink);
-      color: #F8FAFC;
-      border-radius: 12px;
-      padding: 1.5rem;
-      box-shadow: var(--shadow-lg);
-      border: 1px solid rgba(255,255,255,0.1);
-      font-family: 'IBM Plex Sans', sans-serif;
+      background: linear-gradient(145deg, #0F172A 0%, #152035 100%);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+      position: relative;
     }
 
-    .terminal-head {
+    .terminal-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 1px solid rgba(255,255,255,0.12);
-      padding-bottom: 0.85rem;
-      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border-dark);
+      padding-bottom: 1rem;
+      margin-bottom: 1.2rem;
     }
 
     .terminal-dots {
       display: flex;
-      gap: 6px;
+      gap: 7px;
     }
 
-    .terminal-dot {
+    .dot {
       width: 10px;
       height: 10px;
       border-radius: 50%;
     }
 
-    .terminal-title {
+    .terminal-tag {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.74rem;
-      color: #94A3B8;
+      font-size: 0.72rem;
+      color: var(--brand-cyan);
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    .gauge-box {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid var(--pass-border);
+      padding: 0.85rem 1.15rem;
+      border-radius: 10px;
+      margin-bottom: 1.25rem;
+    }
+
+    .gauge-score {
+      font-family: 'IBM Plex Serif', serif;
+      font-size: 2.1rem;
+      font-weight: 700;
+      color: var(--pass);
+      line-height: 1;
+    }
+
+    .gauge-badge {
+      background: var(--pass);
+      color: #000000;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 800;
+      font-size: 0.72rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+    }
+
+    .check-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .check-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border-dark);
+      padding: 0.65rem 0.95rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+    }
+
+    .check-name {
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    .check-ref {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .badge-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    .b-pass { background: var(--pass-bg); color: var(--pass); border: 1px solid var(--pass-border); }
+    .b-warn { background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-border); }
+
+    /* Metrics Strip */
+    .metrics-section {
+      max-width: 1280px;
+      margin: 0 auto 5rem;
+      padding: 0 2.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .metrics-grid {
+      background: rgba(21, 31, 50, 0.7);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 2rem;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+
+    .metric-card {
+      text-align: center;
+      padding: 0.5rem;
+      border-right: 1px solid var(--border-dark);
+    }
+
+    .metric-card:last-child {
+      border-right: none;
+    }
+
+    .metric-val {
+      font-family: 'IBM Plex Serif', serif;
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1;
+      margin-bottom: 0.4rem;
+    }
+
+    .metric-val span {
+      color: #60A5FA;
+    }
+
+    .metric-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
 
-    .terminal-badge {
-      background: rgba(16, 185, 129, 0.2);
-      color: #34D399;
-      border: 1px solid rgba(16, 185, 129, 0.4);
-      padding: 0.2rem 0.5rem;
-      border-radius: 4px;
-      font-size: 0.68rem;
-      font-family: 'JetBrains Mono', monospace;
-      font-weight: 700;
-    }
-
-    .terminal-check-list {
-      display: flex;
-      flex-direction: column;
-      gap: 0.65rem;
-      margin-bottom: 1.2rem;
-    }
-
-    .terminal-check-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: rgba(255,255,255,0.04);
-      padding: 0.55rem 0.85rem;
-      border-radius: 6px;
-      border: 1px solid rgba(255,255,255,0.06);
-      font-size: 0.8rem;
-    }
-
-    .terminal-check-name {
-      color: #E2E8F0;
-      font-weight: 500;
-    }
-
-    .terminal-check-reg {
-      font-size: 0.7rem;
-      color: #94A3B8;
-      font-family: 'JetBrains Mono', monospace;
-    }
-
-    .terminal-check-status {
-      font-size: 0.7rem;
-      font-weight: 700;
-      font-family: 'JetBrains Mono', monospace;
-      padding: 0.15rem 0.45rem;
-      border-radius: 3px;
-    }
-
-    .st-pass { background: rgba(16, 185, 129, 0.2); color: #34D399; }
-    .st-warn { background: rgba(245, 158, 11, 0.2); color: #FBBF24; }
-
-    /* Stats Container Bar */
-    .stats-section {
-      max-width: 1240px;
-      margin: 0 auto 4.5rem;
-      padding: 0 2rem;
-    }
-
-    .stats-container {
-      background: var(--paper-raised);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.5rem 2rem;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1.5rem;
-      box-shadow: var(--shadow-sm);
-    }
-
-    .stat-card {
-      text-align: center;
-      padding: 0.5rem;
-      border-right: 1px solid var(--hairline);
-    }
-
-    .stat-card:last-child {
-      border-right: none;
-    }
-
-    .stat-number {
-      font-family: 'IBM Plex Serif', serif;
-      font-size: 2.2rem;
-      font-weight: 700;
-      color: var(--ink);
-      line-height: 1;
-      margin-bottom: 0.35rem;
-    }
-
-    .stat-number span {
-      color: var(--brand);
-    }
-
-    .stat-title {
-      font-size: 0.8rem;
-      color: var(--ink-soft);
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-
-    /* Section Container Layout */
+    /* Section Layout */
     .section-container {
-      max-width: 1240px;
-      margin: 0 auto 5rem;
-      padding: 0 2rem;
+      max-width: 1280px;
+      margin: 0 auto 5.5rem;
+      padding: 0 2.5rem;
+      position: relative;
+      z-index: 1;
     }
 
     .section-header {
-      margin-bottom: 2.5rem;
+      margin-bottom: 2.75rem;
       text-align: center;
     }
 
     .section-tag {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.74rem;
+      font-size: 0.75rem;
       font-weight: 700;
-      color: var(--brand);
+      color: #60A5FA;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 0.4rem;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.5rem;
     }
 
     .section-title {
       font-family: 'IBM Plex Serif', serif;
-      font-size: 2.15rem;
+      font-size: 2.3rem;
       font-weight: 700;
-      color: var(--ink);
-      letter-spacing: -0.01em;
+      color: var(--text-main);
+      letter-spacing: -0.02em;
     }
 
     .section-subtitle {
-      font-size: 0.95rem;
-      color: var(--ink-soft);
-      max-width: 650px;
-      margin: 0.4rem auto 0;
-      line-height: 1.5;
+      font-size: 0.98rem;
+      color: var(--text-muted);
+      max-width: 680px;
+      margin: 0.5rem auto 0;
+      line-height: 1.6;
     }
 
     /* Map Search Section Container Box */
     .map-section {
-      background: var(--paper-raised);
-      border: 1px solid var(--border);
-      border-radius: 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
       padding: 1.75rem;
-      box-shadow: var(--shadow-md);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
       position: relative;
       overflow: hidden;
     }
@@ -581,29 +657,29 @@
       flex-wrap: wrap;
       gap: 1rem;
       margin-bottom: 1.25rem;
-      border-bottom: 1px solid var(--hairline);
+      border-bottom: 1px solid var(--border-dark);
       padding-bottom: 1rem;
     }
 
     .map-title {
       font-family: 'IBM Plex Serif', serif;
-      font-size: 1.6rem;
+      font-size: 1.65rem;
       font-weight: 700;
-      color: var(--ink);
+      color: var(--text-main);
       display: flex;
       align-items: center;
-      gap: 0.6rem;
+      gap: 0.65rem;
     }
 
     .map-counter-badge {
       font-family: 'JetBrains Mono', monospace;
       font-size: 0.78rem;
       font-weight: 700;
-      padding: 0.4rem 0.85rem;
+      padding: 0.45rem 0.95rem;
       border-radius: 20px;
-      background: var(--brand-light);
-      color: var(--brand);
-      border: 1px solid var(--brand-border);
+      background: rgba(37, 99, 235, 0.15);
+      color: #60A5FA;
+      border: 1px solid rgba(37, 99, 235, 0.3);
     }
 
     .map-pills-row {
@@ -611,35 +687,36 @@
       align-items: center;
       gap: 0.45rem;
       flex-wrap: wrap;
-      margin-bottom: 1rem;
+      margin-bottom: 1.1rem;
     }
 
     .map-zoom-pill {
-      background: var(--paper);
-      border: 1px solid var(--border);
-      padding: 0.35rem 0.85rem;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border-dark);
+      padding: 0.4rem 0.9rem;
       border-radius: 20px;
       font-size: 0.78rem;
       font-weight: 600;
-      color: var(--ink);
+      color: var(--text-muted);
       cursor: pointer;
       transition: all 0.15s ease;
       display: flex;
       align-items: center;
-      gap: 0.3rem;
+      gap: 0.35rem;
     }
 
     .map-zoom-pill:hover, .map-zoom-pill.active {
-      background: var(--ink);
+      background: var(--brand-blue);
       color: #FFFFFF;
-      border-color: var(--ink);
+      border-color: var(--brand-blue);
+      box-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
     }
 
     #mapContainer {
       height: 520px;
       width: 100%;
       border-radius: 10px;
-      border: 1px solid var(--border);
+      border: 1px solid var(--border-dark);
       position: relative;
       z-index: 1;
       overflow: hidden;
@@ -647,75 +724,81 @@
     }
 
     .leaflet-popup-content-wrapper {
-      background: var(--paper-raised);
-      border-radius: 8px;
+      background: #0F172A;
+      color: #F8FAFC;
+      border-radius: 10px;
       padding: 0;
-      box-shadow: var(--shadow-lg);
-      border: 1px solid var(--border);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+      border: 1px solid var(--border-light);
+    }
+
+    .leaflet-popup-tip {
+      background: #0F172A;
     }
 
     .map-popup-card {
-      padding: 0.95rem 1.1rem;
+      padding: 1rem 1.15rem;
       min-width: 240px;
     }
 
     .map-popup-title {
       font-family: 'IBM Plex Serif', serif;
-      font-size: 1rem;
+      font-size: 1.05rem;
       font-weight: 700;
-      color: var(--ink);
+      color: #FFFFFF;
       margin-bottom: 0.25rem;
     }
 
     .map-popup-sub {
       font-size: 0.78rem;
-      color: var(--ink-soft);
-      margin-bottom: 0.65rem;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
     }
 
     .map-popup-btn {
       display: inline-block;
       width: 100%;
       text-align: center;
-      background: var(--brand);
+      background: var(--brand-blue);
       color: #ffffff !important;
-      font-weight: 600;
+      font-weight: 700;
       font-size: 0.78rem;
-      padding: 0.45rem 0.75rem;
-      border-radius: 4px;
+      padding: 0.5rem 0.85rem;
+      border-radius: 6px;
       text-decoration: none;
       transition: background 0.15s ease;
     }
 
     .map-popup-btn:hover {
-      background: var(--brand-hover);
+      background: #1D4ED8;
     }
 
-    /* Tool Suite Launchers Grid (5 Cards) */
+    /* Product Suite Grid (5 Tool Launchers) */
     .tools-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-      gap: 1.5rem;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 1.75rem;
     }
 
     .tool-card {
-      background: var(--paper-raised);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.75rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-dark);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      box-shadow: var(--shadow-sm);
-      transition: all 0.2s ease;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      transition: all 0.25s ease;
       position: relative;
       overflow: hidden;
     }
 
     .tool-card:hover {
-      transform: translateY(-4px);
-      box-shadow: var(--shadow-md);
-      border-color: var(--brand);
+      transform: translateY(-5px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      border-color: var(--brand-blue);
+      background: var(--bg-card-hover);
     }
 
     .tool-card::before {
@@ -724,63 +807,71 @@
       top: 0;
       left: 0;
       right: 0;
-      height: 4px;
-      background: var(--border);
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--border-dark), transparent);
       transition: background 0.2s ease;
     }
 
     .tool-card:hover::before {
-      background: var(--brand);
+      background: linear-gradient(90deg, #2563EB, #60A5FA);
     }
 
     .tool-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 1rem;
+      margin-bottom: 1.1rem;
     }
 
-    .tool-icon {
-      font-size: 2rem;
+    .tool-icon-wrapper {
+      width: 44px;
+      height: 44px;
+      background: rgba(37, 99, 235, 0.12);
+      border: 1px solid rgba(37, 99, 235, 0.25);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .tool-badge {
       font-family: 'JetBrains Mono', monospace;
       font-size: 0.7rem;
       font-weight: 700;
-      padding: 0.25rem 0.65rem;
+      padding: 0.3rem 0.75rem;
       border-radius: 4px;
-      background: var(--paper-soft);
-      color: var(--ink-soft);
+      background: rgba(255,255,255,0.05);
+      color: var(--brand-cyan);
+      border: 1px solid var(--border-dark);
     }
 
     .tool-title {
       font-family: 'IBM Plex Serif', serif;
-      font-size: 1.35rem;
+      font-size: 1.4rem;
       font-weight: 700;
-      color: var(--ink);
-      margin-bottom: 0.5rem;
+      color: var(--text-main);
+      margin-bottom: 0.6rem;
     }
 
     .tool-desc {
-      font-size: 0.88rem;
-      color: var(--ink-soft);
-      line-height: 1.5;
-      margin-bottom: 1.25rem;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+      margin-bottom: 1.35rem;
     }
 
     .tool-features {
       list-style: none;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.75rem;
     }
 
     .tool-features li {
-      font-size: 0.82rem;
-      color: var(--ink);
-      padding: 0.3rem 0;
+      font-size: 0.84rem;
+      color: var(--text-main);
+      padding: 0.35rem 0;
       display: flex;
       align-items: center;
-      gap: 0.4rem;
+      gap: 0.5rem;
     }
 
     .tool-features li::before {
@@ -794,116 +885,128 @@
       align-items: center;
       justify-content: center;
       gap: 0.5rem;
-      background: var(--ink);
+      background: rgba(255,255,255,0.06);
       color: #fff;
-      font-weight: 600;
-      font-size: 0.85rem;
-      padding: 0.75rem 1.25rem;
-      border-radius: 6px;
-      text-decoration: none;
-      transition: background 0.2s ease;
+      font-weight: 700;
+      font-size: 0.88rem;
+      padding: 0.8rem 1.35rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-dark);
+      transition: all 0.2s ease;
     }
 
     .tool-btn:hover {
-      background: var(--brand);
+      background: var(--brand-blue);
+      border-color: var(--brand-blue);
+      box-shadow: 0 0 20px rgba(37, 99, 235, 0.4);
     }
 
-    /* 9-Pillar Legal Grid */
+    /* 9-Pillar Grid */
     .pillar-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 1.2rem;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 1.35rem;
     }
 
     .pillar-card {
-      background: var(--paper-raised);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1.3rem;
-      transition: border-color 0.2s ease, transform 0.15s ease;
+      background: var(--bg-card);
+      border: 1px solid var(--border-dark);
+      border-radius: 12px;
+      padding: 1.35rem;
+      transition: all 0.2s ease;
     }
 
     .pillar-card:hover {
-      border-color: var(--brand);
+      border-color: var(--brand-blue);
       transform: translateY(-2px);
+      background: var(--bg-card-hover);
     }
 
     .pillar-card-head {
       display: flex;
       align-items: center;
-      gap: 0.65rem;
-      margin-bottom: 0.6rem;
+      gap: 0.75rem;
+      margin-bottom: 0.65rem;
     }
 
-    .pillar-icon {
-      font-size: 1.35rem;
+    .pillar-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #60A5FA;
+      background: rgba(37, 99, 235, 0.15);
+      border: 1px solid rgba(37, 99, 235, 0.3);
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
     }
 
     .pillar-name {
       font-family: 'IBM Plex Serif', serif;
       font-weight: 700;
-      font-size: 1.05rem;
-      color: var(--ink);
+      font-size: 1.08rem;
+      color: var(--text-main);
     }
 
     .pillar-desc {
-      font-size: 0.82rem;
-      color: var(--ink-soft);
-      line-height: 1.45;
-      margin-bottom: 0.85rem;
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 0.95rem;
     }
 
     .pillar-statute {
       font-family: 'JetBrains Mono', monospace;
       font-size: 0.7rem;
-      color: var(--brand);
-      background: var(--brand-light);
-      padding: 0.25rem 0.55rem;
+      color: #60A5FA;
+      background: rgba(37, 99, 235, 0.12);
+      padding: 0.25rem 0.6rem;
       border-radius: 4px;
       display: inline-block;
       font-weight: 600;
+      border: 1px solid rgba(37, 99, 235, 0.25);
     }
 
-    /* Live Interactive Sample Simulator */
+    /* Live Interactive Scenario Sandbox */
     .sim-card {
-      background: var(--paper-raised);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 2rem;
-      box-shadow: var(--shadow-md);
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 2.25rem;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.4);
     }
 
     .sim-tabs {
       display: flex;
-      gap: 0.5rem;
-      margin-bottom: 1.5rem;
-      border-bottom: 1px solid var(--hairline);
-      padding-bottom: 0.85rem;
+      gap: 0.6rem;
+      margin-bottom: 1.75rem;
+      border-bottom: 1px solid var(--border-dark);
+      padding-bottom: 1rem;
       flex-wrap: wrap;
     }
 
     .sim-tab {
-      background: var(--paper);
-      border: 1px solid var(--border);
-      padding: 0.55rem 1.1rem;
-      border-radius: 6px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--ink-soft);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border-dark);
+      padding: 0.6rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: var(--text-muted);
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: all 0.2s ease;
     }
 
     .sim-tab.active {
-      background: var(--brand);
-      color: #fff;
-      border-color: var(--brand);
+      background: var(--brand-blue);
+      color: #FFFFFF;
+      border-color: var(--brand-blue);
+      box-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
     }
 
     .sim-result-box {
-      background: var(--paper-card);
-      border: 1px solid var(--border);
-      border-radius: 10px;
+      background: #090D16;
+      border: 1px solid var(--border-dark);
+      border-radius: 12px;
       padding: 1.75rem;
     }
 
@@ -911,29 +1014,29 @@
     .registry-table {
       width: 100%;
       border-collapse: collapse;
-      background: var(--paper-raised);
-      border: 1px solid var(--border);
-      border-radius: 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-dark);
+      border-radius: 12px;
       overflow: hidden;
-      box-shadow: var(--shadow-sm);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
     }
 
     .registry-table th {
-      background: var(--paper-soft);
+      background: rgba(255,255,255,0.04);
       font-family: 'IBM Plex Serif', serif;
       font-weight: 700;
-      font-size: 0.85rem;
-      color: var(--ink);
+      font-size: 0.88rem;
+      color: var(--text-main);
       text-align: left;
-      padding: 0.95rem 1.25rem;
-      border-bottom: 1px solid var(--border);
+      padding: 1rem 1.35rem;
+      border-bottom: 1px solid var(--border-dark);
     }
 
     .registry-table td {
-      padding: 0.95rem 1.25rem;
-      font-size: 0.86rem;
-      border-bottom: 1px solid var(--hairline);
-      color: var(--ink);
+      padding: 1rem 1.35rem;
+      font-size: 0.88rem;
+      border-bottom: 1px solid var(--border-dark);
+      color: var(--text-main);
     }
 
     .registry-table tr:last-child td {
@@ -941,8 +1044,8 @@
     }
 
     .portal-link {
-      font-weight: 600;
-      color: var(--brand);
+      font-weight: 700;
+      color: #60A5FA;
       text-decoration: none;
       display: inline-flex;
       align-items: center;
@@ -955,14 +1058,14 @@
 
     /* Footer */
     .footer {
-      background: var(--ink);
+      background: #05080E;
       color: #FFFFFF;
-      padding: 4.5rem 2rem 2.5rem;
-      border-top: 1px solid rgba(255,255,255,0.1);
+      padding: 4.5rem 2.5rem 2.5rem;
+      border-top: 1px solid var(--border-dark);
     }
 
     .footer-container {
-      max-width: 1240px;
+      max-width: 1280px;
       margin: 0 auto;
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -972,23 +1075,23 @@
 
     .footer-brand {
       font-family: 'IBM Plex Serif', serif;
-      font-size: 1.35rem;
+      font-size: 1.4rem;
       font-weight: 700;
       margin-bottom: 0.75rem;
     }
 
     .footer-desc {
-      font-size: 0.82rem;
-      color: #A0AEC0;
-      line-height: 1.6;
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      line-height: 1.65;
     }
 
     .footer-title {
       font-family: 'IBM Plex Serif', serif;
       font-weight: 700;
-      font-size: 0.95rem;
+      font-size: 0.98rem;
       margin-bottom: 1.1rem;
-      color: #E2E8F0;
+      color: var(--text-main);
     }
 
     .footer-links {
@@ -1000,8 +1103,8 @@
     }
 
     .footer-links a {
-      font-size: 0.82rem;
-      color: #CBD5E0;
+      font-size: 0.84rem;
+      color: var(--text-muted);
       transition: color 0.15s ease;
     }
 
@@ -1010,15 +1113,15 @@
     }
 
     .footer-bottom {
-      max-width: 1240px;
+      max-width: 1280px;
       margin: 0 auto;
       padding-top: 2rem;
-      border-top: 1px solid rgba(255,255,255,0.1);
+      border-top: 1px solid var(--border-dark);
       display: flex;
       justify-content: space-between;
       align-items: center;
       font-size: 0.78rem;
-      color: #A0AEC0;
+      color: var(--text-dim);
       flex-wrap: wrap;
       gap: 1rem;
     }
@@ -1027,86 +1130,152 @@
       .hero-container {
         grid-template-columns: 1fr;
         gap: 2.5rem;
-        padding-top: 2.5rem;
+        padding-top: 2rem;
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
       }
-      .stat-card {
+      .section-container, .metrics-section {
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+      }
+      .metric-card {
         border-right: none;
-        border-bottom: 1px solid var(--hairline);
+        border-bottom: 1px solid var(--border-dark);
         padding-bottom: 1rem;
       }
-      .stat-card:last-child {
+      .metric-card:last-child {
         border-bottom: none;
       }
     }
 
     @media (max-width: 768px) {
+      .top-announcement {
+        flex-direction: column;
+        gap: 0.3rem;
+        text-align: center;
+        padding: 0.4rem 1rem;
+      }
       .hero-title {
-        font-size: 2.2rem;
+        font-size: 2.1rem;
       }
       .navbar {
-        padding: 0.85rem 1rem;
+        padding: 0.75rem 1rem;
+        flex-wrap: wrap;
       }
       .nav-links {
+        display: flex;
+        overflow-x: auto;
+        white-space: nowrap;
+        max-width: 100%;
+        -webkit-overflow-scrolling: touch;
+        padding: 0.35rem 0.5rem;
+        order: 3;
+        width: 100%;
+        margin-top: 0.5rem;
+      }
+      .nav-item {
+        font-size: 0.78rem;
+        padding: 0.35rem 0.75rem;
+      }
+      .metrics-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        padding: 1.25rem;
+      }
+      .metric-val {
+        font-size: 1.8rem;
+      }
+      .tools-grid, .pillar-grid {
+        grid-template-columns: 1fr;
+      }
+      .search-bar {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        padding: 0.5rem;
+      }
+      .search-btn {
+        width: 100%;
+      }
+      .cmd-badge {
         display: none;
       }
-      .stats-container {
-        grid-template-columns: 1fr 1fr;
+      #mapContainer {
+        height: 380px;
+      }
+      .registry-table th, .registry-table td {
+        padding: 0.75rem 0.85rem;
+        font-size: 0.78rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .hero-title {
+        font-size: 1.75rem;
+      }
+      .metrics-grid {
+        grid-template-columns: 1fr;
+      }
+      .sim-card {
+        padding: 1.25rem;
       }
     }
   </style>
 </head>
 <body>
 
-  <!-- Top Accent Status Bar -->
-  <div class="top-status-bar">
-    <div class="status-indicator">
-      <div class="status-dot"></div>
-      <span>KARNATAKA RERA SYSTEM OPERATIONAL • 1,240+ POSTGRES REPOSITORIES ACTIVE</span>
+  <!-- Top Announcement Bar -->
+  <div class="top-announcement">
+    <div class="pulse-indicator">
+      <div class="pulse-dot"></div>
+      <span>KARNATAKA RERA LEGAL ENGINE LIVE • 1,240+ POSTGRES RECORDS OPERATIONAL</span>
     </div>
     <div>CROSS-VERIFYING KAVERI 2.0 • BHOOMI RTC • BDA • BBMP • E-COURTS</div>
   </div>
 
-  <!-- Sticky Navbar -->
+  <!-- Glassmorphic Navbar -->
   <header class="navbar">
     <a href="/" class="nav-brand">
-      <div class="brand-icon">R</div>
+      <div class="brand-logo-box">R</div>
       <div>
         <div class="brand-title">RERA Intelligence</div>
-        <div class="brand-subtitle">AI Property Verification Engine</div>
+        <div class="brand-subtitle">AI Property Verification</div>
       </div>
     </a>
 
     <nav class="nav-links">
-      <a href="/legal-report?q=CASAGRAND%20MOONDANCE" class="nav-item">📜 Legal Due-Diligence</a>
-      <a href="/register" class="nav-item">📋 Risk Register</a>
-      <a href="/radar-chart" class="nav-item">🎯 Composite Radar</a>
-      <a href="/compare" class="nav-item">⚖️ Compare Projects</a>
-      <a href="/detail?q=CASAGRAND%20MOONDANCE" class="nav-item">🔍 Audit Profile</a>
+      <a href="/legal-report?q=CASAGRAND%20MOONDANCE" class="nav-item">Legal Due-Diligence</a>
+      <a href="/register" class="nav-item">Compliance Register</a>
+      <a href="/radar-chart" class="nav-item">Composite Radar</a>
+      <a href="/compare" class="nav-item">Compare Projects</a>
+      <a href="/detail?q=CASAGRAND%20MOONDANCE" class="nav-item">Audit Profile</a>
     </nav>
 
     <a href="/legal-report?q=CASAGRAND%20MOONDANCE" class="nav-cta">Launch Legal Audit ↗</a>
   </header>
 
-  <!-- Hero Grid Container -->
+  <!-- Hero Section -->
   <section class="hero-container">
     <div>
-      <div class="hero-tag">
-        <span>●</span> State Government Registry Integration Engine
+      <div class="hero-badge">
+        <span>STATEWIDE REGISTRY INTEGRATION ENGINE</span>
       </div>
 
       <h1 class="hero-title">
-        Karnataka's AI Real Estate <span>Legal Due-Diligence</span> Audit Portal
+        Karnataka's Premier <span>Legal Verification & Audit</span> Platform
       </h1>
 
       <p class="hero-subtitle">
-        Instantly audit property title lineage, revenue Pahani extracts, DC land conversion orders, BDA layout sanctions, and High Court litigation across <strong>Kaveri 2.0, Bhoomi RTC, BDA, BBMP e-Aasthi, and e-Courts</strong> before you sign.
+        Cross-verify exact Survey Numbers, 30+ year title deeds, Bhoomi RTC Pahani extracts, DC land conversion orders, BDA layout sanctions, and e-Courts litigation before you sign.
       </p>
 
-      <!-- Search Box with Autocomplete -->
+      <!-- Spotlight Search Bar -->
       <div class="search-wrapper">
         <form action="/legal-report" method="GET" class="search-bar" id="searchForm">
-          <span class="search-icon">🔍</span>
-          <input type="text" name="q" id="heroSearchInput" class="search-input" placeholder="Search project name or RERA registration number (e.g. Casagrand Moondance, Chartered Windsong)..." autocomplete="off">
+          <span class="search-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          </span>
+          <input type="text" name="q" id="heroSearchInput" class="search-input" placeholder="Search project name or RERA registration number..." autocomplete="off">
+          <span class="cmd-badge">⌘K</span>
           <button type="submit" class="search-btn">Evaluate Legal Risk ↗</button>
         </form>
 
@@ -1117,7 +1286,7 @@
 
       <!-- Presets Launcher -->
       <div class="presets-row">
-        <span class="preset-label">⚡ Try Sample Evaluations:</span>
+        <span class="preset-label">Sample Scenarios:</span>
         <span class="preset-chip" onclick="searchPreset('CASAGRAND MOONDANCE')">Casagrand Moondance</span>
         <span class="preset-chip" onclick="searchPreset('Chartered Windsong - 2')">Chartered Windsong - 2</span>
         <span class="preset-chip" onclick="searchPreset('Prestige Falcon City')">Prestige Falcon City</span>
@@ -1125,83 +1294,90 @@
       </div>
     </div>
 
-    <!-- Live Terminal Preview Card -->
+    <!-- Live Terminal Console Mockup -->
     <div class="terminal-card">
-      <div class="terminal-head">
+      <div class="terminal-header">
         <div class="terminal-dots">
-          <div class="terminal-dot" style="background:#EF4444;"></div>
-          <div class="terminal-dot" style="background:#F59E0B;"></div>
-          <div class="terminal-dot" style="background:#10B981;"></div>
+          <div class="dot" style="background:#EF4444;"></div>
+          <div class="dot" style="background:#F59E0B;"></div>
+          <div class="dot" style="background:#10B981;"></div>
         </div>
-        <div class="terminal-title">LIVE VERIFICATION TERMINAL</div>
-        <div class="terminal-badge">PASSED BUY GATE</div>
+        <div class="terminal-tag">LIVE AUDIT ENGINE CONSOLE</div>
       </div>
 
-      <div style="font-family:'IBM Plex Serif', serif; font-size:1.1rem; font-weight:700; color:#FFFFFF; margin-bottom:0.25rem;">
+      <div class="gauge-box">
+        <div>
+          <div style="font-size:0.75rem; color:var(--text-muted);" class="mono">LEGAL RISK SCORE</div>
+          <div class="gauge-score">92/100</div>
+        </div>
+        <span class="gauge-badge">PASSED BUY GATE</span>
+      </div>
+
+      <div style="font-family:'IBM Plex Serif', serif; font-size:1.15rem; font-weight:700; color:#FFFFFF; margin-bottom:0.25rem;">
         Casagrand Moondance
       </div>
-      <div style="font-size:0.75rem; color:#94A3B8; margin-bottom:1rem;" class="mono">
+      <div style="font-size:0.76rem; color:var(--text-muted); margin-bottom:1rem;" class="mono">
         Survey No: 44/2 & 45/1 • District: Bengaluru Urban
       </div>
 
-      <div class="terminal-check-list">
-        <div class="terminal-check-item">
+      <div class="check-list">
+        <div class="check-item">
           <div>
-            <div class="terminal-check-name">1. Kaveri 2.0 SRO Executant ID</div>
-            <div class="terminal-check-reg">Ref: KAV-ID-99412 • Book I Deed 1452</div>
+            <div class="check-name">1. Kaveri 2.0 SRO Executant ID</div>
+            <div class="check-ref">Ref: KAV-ID-99412 • Book I Deed 1452</div>
           </div>
-          <span class="terminal-check-status st-pass">🟢 PASS</span>
+          <span class="badge-pill b-pass">PASS</span>
         </div>
 
-        <div class="terminal-check-item">
+        <div class="check-item">
           <div>
-            <div class="terminal-check-name">2. Bhoomi RTC Pahani Col 9/11</div>
-            <div class="terminal-check-reg">MR Form 12 • Podi 11E Sketch Matched</div>
+            <div class="check-name">2. Bhoomi RTC Pahani Col 9/11</div>
+            <div class="check-ref">MR Form 12 • Podi 11E Sketch Matched</div>
           </div>
-          <span class="terminal-check-status st-pass">🟢 PASS</span>
+          <span class="badge-pill b-pass">PASS</span>
         </div>
 
-        <div class="terminal-check-item">
+        <div class="check-item">
           <div>
-            <div class="terminal-check-name">3. BDA Sanctioned Layout Plan</div>
-            <div class="terminal-check-reg">BDA Master Plan 2031 Zoning Release</div>
+            <div class="check-name">3. BDA Sanctioned Layout Plan</div>
+            <div class="check-ref">BDA Master Plan 2031 Zoning Release</div>
           </div>
-          <span class="terminal-check-status st-warn">🟡 CAUTION</span>
+          <span class="badge-pill b-warn">CAUTION</span>
         </div>
 
-        <div class="terminal-check-item">
+        <div class="check-item">
           <div>
-            <div class="terminal-check-name">4. e-Courts Karnataka Litigation</div>
-            <div class="terminal-check-reg">City Civil & High Court Suit Search</div>
+            <div class="check-name">4. e-Courts Karnataka Litigation</div>
+            <div class="check-ref">City Civil & High Court Suit Search</div>
           </div>
-          <span class="terminal-check-status st-pass">🟢 PASS</span>
+          <span class="badge-pill b-pass">PASS</span>
         </div>
       </div>
 
-      <a href="/legal-report?q=CASAGRAND%20MOONDANCE" style="display:block; text-align:center; background:#1E56A0; color:#FFFFFF; padding:0.6rem; border-radius:6px; font-weight:600; font-size:0.8rem;">
+      <a href="/legal-report?q=CASAGRAND%20MOONDANCE" style="display:block; text-align:center; background:linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%); color:#FFFFFF; padding:0.7rem; border-radius:8px; font-weight:700; font-size:0.82rem; box-shadow:0 0 20px rgba(37,99,235,0.4);">
         View Full 27-Check Legal Audit Matrix ↗
       </a>
     </div>
   </section>
 
-  <!-- Metrics Counter Bar -->
-  <section class="stats-section">
-    <div class="stats-container">
-      <div class="stat-card">
-        <div class="stat-number" id="statProjects">1,240<span>+</span></div>
-        <div class="stat-title">PostgreSQL RERA Projects</div>
+  <!-- Metrics Bar -->
+  <section class="metrics-section">
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-val" id="statProjects">1,240<span>+</span></div>
+        <div class="metric-label">Scraped RERA Projects</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-number">27<span>/27</span></div>
-        <div class="stat-title">Legal BUY Gate Checks</div>
+      <div class="metric-card">
+        <div class="metric-val">27<span>/27</span></div>
+        <div class="metric-label">Legal BUY Gate Checks</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-number">5<span> Regs</span></div>
-        <div class="stat-title">Government Integrations</div>
+      <div class="metric-card">
+        <div class="metric-val">5<span> Regs</span></div>
+        <div class="metric-label">State Government Integrations</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-number">100<span>%</span></div>
-        <div class="stat-title">Offline Proof Guarantee</div>
+      <div class="metric-card">
+        <div class="metric-val">100<span>%</span></div>
+        <div class="metric-label">Offline Proof Guarantee</div>
       </div>
     </div>
   </section>
@@ -1211,25 +1387,46 @@
     <div class="map-section">
       <div class="map-header">
         <div>
-          <div class="section-tag">Interactive Geospatial Radar</div>
-          <h2 class="map-title">🗺️ Statewide RERA Property Map Search</h2>
+          <div class="section-tag">Geospatial Intelligence</div>
+          <h2 class="map-title">
+            <span class="svg-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            </span>
+            Statewide RERA Property Map Search
+          </h2>
         </div>
         <div class="map-counter-badge" id="mapVisibleBadge">
-          📍 Loading Map Properties...
+          Loading Map Properties...
+        </div>
+      </div>
+
+      <!-- Map Live Property Search & Autocomplete Bar -->
+      <div style="position:relative; margin-bottom:1rem;">
+        <div style="display:flex; align-items:center; background:rgba(15, 23, 42, 0.9); border:1px solid var(--border-light); border-radius:10px; padding:0.35rem 0.85rem; box-shadow:0 4px 15px rgba(0,0,0,0.3);">
+          <span style="color:var(--text-muted); margin-right:0.65rem; display:flex;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          </span>
+          <input type="text" id="mapSearchInput" style="flex:1; background:transparent; border:none; color:var(--text-main); font-family:'Plus Jakarta Sans', sans-serif; font-size:0.92rem; outline:none; padding:0.45rem 0;" placeholder="Search any property or developer on map (e.g. Casagrand, Prestige, Assetz, Godrej)..." autocomplete="off" />
+          <button id="clearMapSearchBtn" onclick="clearMapSearch()" style="display:none; background:none; border:none; color:var(--text-muted); font-size:1.1rem; cursor:pointer; padding:0 0.4rem;">&times;</button>
+        </div>
+
+        <!-- Live Map Search Suggestions Dropdown -->
+        <div id="mapSuggestionsBox" style="display:none; position:absolute; top:100%; left:0; right:0; background:#0F172A; border:1px solid var(--border-light); border-radius:10px; box-shadow:0 20px 40px rgba(0,0,0,0.6); margin-top:0.4rem; max-height:280px; overflow-y:auto; z-index:999;">
+          <!-- Autocomplete results populated by JS -->
         </div>
       </div>
 
       <!-- Area-Wise Zoom Presets -->
       <div class="map-pills-row">
-        <span class="preset-label">🔍 Zoom to Area:</span>
-        <button class="map-zoom-pill active" onclick="zoomToRegion([12.9716, 77.5946], 10, this)">🏙️ All Karnataka</button>
-        <button class="map-zoom-pill" onclick="zoomToRegion([12.9716, 77.5946], 12, this)">📍 Bangalore Central</button>
-        <button class="map-zoom-pill" onclick="zoomToRegion([12.925, 77.72], 13, this)">🌴 East Bangalore (Sarjapur / Whitefield)</button>
-        <button class="map-zoom-pill" onclick="zoomToRegion([13.15, 77.63], 12, this)">🛫 North Bangalore (Yelahanka / Devanahalli)</button>
-        <button class="map-zoom-pill" onclick="zoomToRegion([12.86, 77.65], 13, this)">🏢 South Bangalore (Electronic City)</button>
-        <button class="map-zoom-pill" onclick="zoomToRegion([12.3, 76.65], 12, this)">🏰 Mysore</button>
-        <button class="map-zoom-pill" onclick="zoomToRegion([12.87, 74.84], 12, this)">🌊 Mangaluru</button>
-        <button class="map-zoom-pill" onclick="zoomToRegion([15.36, 75.12], 12, this)">🏭 Hubballi-Dharwad</button>
+        <span class="preset-label">Zoom Area:</span>
+        <button class="map-zoom-pill active" onclick="zoomToRegion([12.9716, 77.5946], 10, this)">All Karnataka</button>
+        <button class="map-zoom-pill" onclick="zoomToRegion([12.9716, 77.5946], 12, this)">Bangalore Central</button>
+        <button class="map-zoom-pill" onclick="zoomToRegion([12.925, 77.72], 13, this)">East Bangalore (Sarjapur / Whitefield)</button>
+        <button class="map-zoom-pill" onclick="zoomToRegion([13.15, 77.63], 12, this)">North Bangalore (Yelahanka)</button>
+        <button class="map-zoom-pill" onclick="zoomToRegion([12.86, 77.65], 13, this)">South Bangalore (Electronic City)</button>
+        <button class="map-zoom-pill" onclick="zoomToRegion([12.3, 76.65], 12, this)">Mysore</button>
+        <button class="map-zoom-pill" onclick="zoomToRegion([12.87, 74.84], 12, this)">Mangaluru</button>
+        <button class="map-zoom-pill" onclick="zoomToRegion([15.36, 75.12], 12, this)">Hubballi-Dharwad</button>
       </div>
 
       <!-- Leaflet Map Canvas -->
@@ -1237,12 +1434,12 @@
     </div>
   </section>
 
-  <!-- Core 5 Tool Launchers Showcase -->
+  <!-- Core 5 Product Launchers -->
   <section class="section-container">
     <div class="section-header">
-      <div class="section-tag">AI Tool Suite</div>
-      <h2 class="section-title">5 Specialized Intelligence Dashboards</h2>
-      <p class="section-subtitle">Complete end-to-end legal, financial, and physical due-diligence for home buyers, lawyers, and financial institutions.</p>
+      <div class="section-tag">AI Intelligence Suite</div>
+      <h2 class="section-title">5 Purpose-Built Due-Diligence Dashboards</h2>
+      <p class="section-subtitle">Complete end-to-end legal, financial, and structural due-diligence for home buyers, legal auditors, and institutional lenders.</p>
     </div>
 
     <div class="tools-grid">
@@ -1250,11 +1447,13 @@
       <div class="tool-card">
         <div>
           <div class="tool-header">
-            <span class="tool-icon">📜</span>
+            <div class="tool-icon-wrapper">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+            </div>
             <span class="tool-badge">27-CHECK BUY GATE</span>
           </div>
           <h3 class="tool-title">Legal Due-Diligence Audit</h3>
-          <p class="tool-desc">Full legal risk matrix evaluating title deeds, Bhoomi RTC columns 9/11, DC conversion orders, NGT lake buffer zones, and e-Courts litigation.</p>
+          <p class="tool-desc">Full legal risk matrix cross-checking registered title deeds, Bhoomi RTC columns 9/11, DC conversion orders, NGT lake buffer zones, and e-Courts suit filings.</p>
           <ul class="tool-features">
             <li>27-Check BUY / PAUSE / REJECT Gate</li>
             <li>9-Pillar Legal Verification Matrix</li>
@@ -1262,14 +1461,16 @@
             <li>Cross-source discrepancy detector</li>
           </ul>
         </div>
-        <a href="/legal-report?q=CASAGRAND%20MOONDANCE" class="tool-btn">Launch Legal Report ↗</a>
+        <a href="/legal-report?q=CASAGRAND%20MOONDANCE" class="tool-btn">Launch Legal Audit ↗</a>
       </div>
 
       <!-- Tool 2: Risk Register -->
       <div class="tool-card">
         <div>
           <div class="tool-header">
-            <span class="tool-icon">📋</span>
+            <div class="tool-icon-wrapper">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
+            </div>
             <span class="tool-badge">STATEWIDE SEARCH</span>
           </div>
           <h3 class="tool-title">RERA Compliance Register</h3>
@@ -1288,7 +1489,9 @@
       <div class="tool-card">
         <div>
           <div class="tool-header">
-            <span class="tool-icon">🎯</span>
+            <div class="tool-icon-wrapper">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><path d="M12 2v20"/><path d="M2 12h20"/></svg>
+            </div>
             <span class="tool-badge">5-AXIS SPIDER RADAR</span>
           </div>
           <h3 class="tool-title">Composite Risk & Quality Radar</h3>
@@ -1307,7 +1510,9 @@
       <div class="tool-card">
         <div>
           <div class="tool-header">
-            <span class="tool-icon">⚖️</span>
+            <div class="tool-icon-wrapper">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="6" height="18" rx="1"/><rect x="14" y="3" width="6" height="18" rx="1"/></svg>
+            </div>
             <span class="tool-badge">SIDE-BY-SIDE AUDIT</span>
           </div>
           <h3 class="tool-title">Project Comparison Matrix</h3>
@@ -1326,7 +1531,9 @@
       <div class="tool-card">
         <div>
           <div class="tool-header">
-            <span class="tool-icon">🔍</span>
+            <div class="tool-icon-wrapper">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><circle cx="11.5" cy="14.5" r="2.5"/><path d="M13.25 16.25 16.5 19.5"/></svg>
+            </div>
             <span class="tool-badge">DEEP FILE AUDIT</span>
           </div>
           <h3 class="tool-title">In-Depth Audit Profile</h3>
@@ -1343,40 +1550,40 @@
     </div>
   </section>
 
-  <!-- Interactive Sample Legal Simulator -->
+  <!-- Live Scenario Sandbox -->
   <section class="section-container">
     <div class="section-header">
-      <div class="section-tag">Live Demonstration</div>
+      <div class="section-tag">Interactive Demonstration</div>
       <h2 class="section-title">Test AI Legal Assessment Live</h2>
-      <p class="section-subtitle">Select a scenario preset below to simulate instant real-time due-diligence evaluation.</p>
+      <p class="section-subtitle">Select a real-world project preset below to simulate instant 27-check due-diligence evaluation.</p>
     </div>
 
     <div class="sim-card">
       <div class="sim-tabs">
-        <button class="sim-tab active" onclick="loadSim('sarjapur_plot', this)">🌾 Sarjapur Plot (Action Caution)</button>
-        <button class="sim-tab" onclick="loadSim('whitefield_apartment', this)">🏢 Whitefield Apartment (Passed BUY Gate)</button>
-        <button class="sim-tab" onclick="loadSim('kengeri_illegal_plot', this)">🔴 Kengeri Illegal Plot (Critical Defect)</button>
+        <button class="sim-tab active" onclick="loadSim('sarjapur_plot', this)">Sarjapur Plot (Action Caution)</button>
+        <button class="sim-tab" onclick="loadSim('whitefield_apartment', this)">Whitefield Apartment (Passed BUY Gate)</button>
+        <button class="sim-tab" onclick="loadSim('kengeri_illegal_plot', this)">Kengeri Plot (Critical Defect)</button>
       </div>
 
       <div id="simResult" class="sim-result-box">
-        <!-- Populated dynamically via JS -->
+        <!-- Dynamic content via JS -->
       </div>
     </div>
   </section>
 
-  <!-- 9-Pillar Legal Framework Showcase -->
+  <!-- 9-Pillar Architecture Showcase -->
   <section class="section-container">
     <div class="section-header">
-      <div class="section-tag">Verification Standard</div>
-      <h2 class="section-title">The 9-Pillar Legal Due-Diligence Architecture</h2>
-      <p class="section-subtitle">Every project is cross-checked against Karnataka land legislation, municipal rules, and court precedents.</p>
+      <div class="section-tag">Audit Framework</div>
+      <h2 class="section-title">The 9-Pillar Legal Verification Matrix</h2>
+      <p class="section-subtitle">Every property audit evaluates compliance against Karnataka land laws, municipal regulations, and statutory registers.</p>
     </div>
 
     <div class="pillar-grid">
       <div class="pillar-card">
         <div class="pillar-card-head">
-          <span class="pillar-icon">📜</span>
-          <span class="pillar-name">1. Title & Ownership Chain</span>
+          <span class="pillar-num">01</span>
+          <span class="pillar-name">Title & Ownership Chain</span>
         </div>
         <p class="pillar-desc">Continuous 30+ year registered title chain, Form 16 Encumbrance Certificate, Executant ID verification at SRO.</p>
         <span class="pillar-statute">Sec 17, 32 & 34 Registration Act 1908</span>
@@ -1384,8 +1591,8 @@
 
       <div class="pillar-card">
         <div class="pillar-card-head">
-          <span class="pillar-icon">🌾</span>
-          <span class="pillar-name">2. Revenue & Land Records</span>
+          <span class="pillar-num">02</span>
+          <span class="pillar-name">Revenue & Land Records</span>
         </div>
         <p class="pillar-desc">Bhoomi Pahani Col 9/11 owner match, Mutation Register MR Form 12, SSLR Podi 11E sketch, Akarband.</p>
         <span class="pillar-statute">Sec 128 & 129 Karnataka Land Revenue Act</span>
@@ -1393,8 +1600,8 @@
 
       <div class="pillar-card">
         <div class="pillar-card-head">
-          <span class="pillar-icon">🏗️</span>
-          <span class="pillar-name">3. Land Conversion & Extent</span>
+          <span class="pillar-num">03</span>
+          <span class="pillar-name">Land Conversion & Extent</span>
         </div>
         <p class="pillar-desc">Deputy Commissioner Non-Agricultural Use Conversion Order, converted acreage vs claimed site extent match.</p>
         <span class="pillar-statute">Sec 95 Karnataka Land Revenue Act 1964</span>
@@ -1402,8 +1609,8 @@
 
       <div class="pillar-card">
         <div class="pillar-card-head">
-          <span class="pillar-icon">📐</span>
-          <span class="pillar-name">4. Layout & Planning Sanction</span>
+          <span class="pillar-num">04</span>
+          <span class="pillar-name">Layout & Planning Sanction</span>
         </div>
         <p class="pillar-desc">BDA / BMRDA / DTCP Sanctioned Layout Plan, NOPA Site Release Certificate, BDA Master Plan 2031 zoning.</p>
         <span class="pillar-statute">Sec 15 & 17 KTCP Act 1961 / BDA Act 1976</span>
@@ -1411,8 +1618,8 @@
 
       <div class="pillar-card">
         <div class="pillar-card-head">
-          <span class="pillar-icon">🏢</span>
-          <span class="pillar-name">5. RERA Compliance & Filings</span>
+          <span class="pillar-num">05</span>
+          <span class="pillar-name">RERA Compliance & Filings</span>
         </div>
         <p class="pillar-desc">RERA Registration Certificate validity, Form B Promoter Declaration, Bank Escrow Affidavit, CA Form 3 audit.</p>
         <span class="pillar-statute">Sec 4(2)(l) RERA Act 2016</span>
@@ -1420,8 +1627,8 @@
 
       <div class="pillar-card">
         <div class="pillar-card-head">
-          <span class="pillar-icon">🏛️</span>
-          <span class="pillar-name">6. Municipal Khata & Tax</span>
+          <span class="pillar-num">06</span>
+          <span class="pillar-name">Municipal Khata & Tax</span>
         </div>
         <p class="pillar-desc">BBMP e-Aasthi e-Khata status, active PID number, Self-Assessment Scheme (SAS) property tax paid receipts.</p>
         <span class="pillar-statute">Sec 114 & 115 KMC Act / BBMP Act 2020</span>
@@ -1429,8 +1636,8 @@
 
       <div class="pillar-card">
         <div class="pillar-card-head">
-          <span class="pillar-icon">⚖️</span>
-          <span class="pillar-name">7. Courts & Litigation Search</span>
+          <span class="pillar-num">07</span>
+          <span class="pillar-name">Courts & Litigation Search</span>
         </div>
         <p class="pillar-desc">e-Courts suit search across Karnataka High Court & City Civil Courts, Advocate Title Search Report (TSR).</p>
         <span class="pillar-statute">Order XXXIX CPC & Lis Pendens Sec 52 TPA</span>
@@ -1438,8 +1645,8 @@
 
       <div class="pillar-card">
         <div class="pillar-card-head">
-          <span class="pillar-icon">🏦</span>
-          <span class="pillar-name">8. Encumbrances & Mortgages</span>
+          <span class="pillar-num">08</span>
+          <span class="pillar-name">Encumbrances & Mortgages</span>
         </div>
         <p class="pillar-desc">CERSAI security registry mortgage search, Bank Mortgage NOC, lender project escrow charge check.</p>
         <span class="pillar-statute">Sec 26D SARFAESI Act 2002</span>
@@ -1447,8 +1654,8 @@
 
       <div class="pillar-card">
         <div class="pillar-card-head">
-          <span class="pillar-icon">🚫</span>
-          <span class="pillar-name">9. Restricted & Special Land</span>
+          <span class="pillar-num">09</span>
+          <span class="pillar-name">Restricted & Special Land</span>
         </div>
         <p class="pillar-desc">B-Kharab Govt Public Land, PTCL SC/ST Grant Act non-alienation, NGT 75m lake buffer zone, GIS satellite check.</p>
         <span class="pillar-statute">PTCL Act 1978 & NGT OA 222/2014 Buffer</span>
@@ -1456,12 +1663,12 @@
     </div>
   </section>
 
-  <!-- Official Government Registry Directory -->
+  <!-- Official Government Registries -->
   <section class="section-container">
     <div class="section-header">
-      <div class="section-tag">Official Sources</div>
-      <h2 class="section-title">State Government Registry Entry Points</h2>
-      <p class="section-subtitle">RERA Intelligence cross-verifies data directly from Karnataka's official government web portals.</p>
+      <div class="section-tag">Authority Registries</div>
+      <h2 class="section-title">Official Karnataka Government Web Portals</h2>
+      <p class="section-subtitle">RERA Intelligence cross-verifies data directly from state government portals.</p>
     </div>
 
     <table class="registry-table">
@@ -1527,11 +1734,11 @@
       <div>
         <div class="footer-title">Tools & Dashboards</div>
         <ul class="footer-links">
-          <li><a href="/legal-report?q=CASAGRAND%20MOONDANCE">📜 AI Legal Due-Diligence Report</a></li>
-          <li><a href="/register">📋 RERA Compliance Register</a></li>
-          <li><a href="/radar-chart">🎯 Composite Risk & Quality Radar</a></li>
-          <li><a href="/compare">⚖️ Side-by-Side Project Comparison</a></li>
-          <li><a href="/detail?q=CASAGRAND%20MOONDANCE">🔍 Detailed Audit Dossier</a></li>
+          <li><a href="/legal-report?q=CASAGRAND%20MOONDANCE">AI Legal Due-Diligence Report</a></li>
+          <li><a href="/register">RERA Compliance Register</a></li>
+          <li><a href="/radar-chart">Composite Risk & Quality Radar</a></li>
+          <li><a href="/compare">Side-by-Side Project Comparison</a></li>
+          <li><a href="/detail?q=CASAGRAND%20MOONDANCE">Detailed Audit Dossier</a></li>
         </ul>
       </div>
 
@@ -1626,23 +1833,23 @@
       if (btn) btn.classList.add('active');
 
       const simBox = document.getElementById('simResult');
-      simBox.innerHTML = `<div style="padding:1.5rem; text-align:center; color:var(--ink-soft);">Evaluating legal risk...</div>`;
+      simBox.innerHTML = `<div style="padding:1.5rem; text-align:center; color:var(--text-muted);">Evaluating legal risk...</div>`;
 
       fetch(`/api/legal-due-diligence/sample?preset=${presetKey}`)
         .then(res => res.json())
         .then(data => {
-          let stBadge = '🟢 PASSED BUY GATE';
+          let stBadge = 'PASSED BUY GATE';
           let stBg = 'var(--pass-bg)';
           let borderCol = 'var(--pass-border)';
           let badgeColor = 'var(--pass)';
 
           if (data.overall_legal_risk_score < 70) {
-            stBadge = '🔴 CRITICAL DEFECT — REJECT';
+            stBadge = 'CRITICAL DEFECT — REJECT';
             stBg = 'var(--fail-bg)';
             borderCol = 'var(--fail-border)';
             badgeColor = 'var(--fail)';
           } else if (data.overall_legal_risk_score < 90) {
-            stBadge = '🟡 ACTION CAUTION';
+            stBadge = 'ACTION CAUTION';
             stBg = 'var(--warn-bg)';
             borderCol = 'var(--warn-border)';
             badgeColor = 'var(--warn)';
@@ -1651,52 +1858,52 @@
           let warningsHtml = '';
           if (data.action_cautions && data.action_cautions.length > 0) {
             warningsHtml = `
-              <div style="margin-top:0.75rem; padding:0.75rem; background:#FFFBEB; border-left:4px solid #D97706; border-radius:4px; font-size:0.83rem; color:#92400E;">
-                <strong>⚠️ Flagged Caution:</strong> ${data.action_cautions[0]}
+              <div style="margin-top:0.85rem; padding:0.85rem; background:rgba(245, 158, 11, 0.1); border-left:4px solid #F59E0B; border-radius:6px; font-size:0.85rem; color:#FCD34D;">
+                <strong>Flagged Caution:</strong> ${data.action_cautions[0]}
               </div>
             `;
           }
 
           if (data.critical_failures && data.critical_failures.length > 0) {
             warningsHtml += `
-              <div style="margin-top:0.75rem; padding:0.75rem; background:#FEF2F2; border-left:4px solid #DC2626; border-radius:4px; font-size:0.83rem; color:#991B1B;">
-                <strong>🔴 Critical Failure:</strong> ${data.critical_failures[0]}
+              <div style="margin-top:0.85rem; padding:0.85rem; background:rgba(239, 68, 68, 0.1); border-left:4px solid #EF4444; border-radius:6px; font-size:0.85rem; color:#FCA5A5;">
+                <strong>Critical Failure:</strong> ${data.critical_failures[0]}
               </div>
             `;
           }
 
           simBox.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; border-bottom:1px solid var(--hairline); padding-bottom:1rem; margin-bottom:1rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; border-bottom:1px solid var(--border-dark); padding-bottom:1rem; margin-bottom:1.2rem;">
               <div>
-                <span class="mono" style="font-size:0.72rem; color:var(--ink-soft);">SIMULATION EVALUATION</span>
-                <h3 style="font-family:'IBM Plex Serif', serif; font-size:1.25rem; font-weight:700; color:var(--ink);">${data.project_name}</h3>
-                <div style="font-size:0.82rem; color:var(--ink-soft);">Survey No: ${data.survey_no} • Seller: ${data.seller_claimed}</div>
+                <span class="mono" style="font-size:0.72rem; color:var(--text-muted);">SIMULATION EVALUATION</span>
+                <h3 style="font-family:'IBM Plex Serif', serif; font-size:1.35rem; font-weight:700; color:#FFFFFF;">${data.project_name}</h3>
+                <div style="font-size:0.82rem; color:var(--text-muted);">Survey No: ${data.survey_no} • Seller: ${data.seller_claimed}</div>
               </div>
               <div style="text-align:right;">
-                <div style="font-family:'IBM Plex Serif', serif; font-size:1.8rem; font-weight:700; color:${badgeColor};">${data.overall_legal_risk_score}/100</div>
-                <span class="mono" style="font-size:0.7rem; font-weight:700; padding:0.25rem 0.6rem; border-radius:4px; background:${stBg}; color:${badgeColor}; border:1px solid ${borderCol};">${stBadge}</span>
+                <div style="font-family:'IBM Plex Serif', serif; font-size:2rem; font-weight:700; color:${badgeColor};">${data.overall_legal_risk_score}/100</div>
+                <span class="mono" style="font-size:0.72rem; font-weight:700; padding:0.25rem 0.65rem; border-radius:4px; background:${stBg}; color:${badgeColor}; border:1px solid ${borderCol};">${stBadge}</span>
               </div>
             </div>
 
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:0.75rem; margin-bottom:1rem;">
-              <div style="background:var(--paper-raised); padding:0.65rem; border-radius:6px; border:1px solid var(--border);">
-                <div class="mono" style="font-size:0.68rem; color:var(--ink-soft);">PASSED CHECKS</div>
-                <div style="font-size:1.1rem; font-weight:700; color:var(--pass);">${data.pass_count} / 27</div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:0.85rem; margin-bottom:1.2rem;">
+              <div style="background:rgba(255,255,255,0.03); padding:0.85rem; border-radius:8px; border:1px solid var(--border-dark);">
+                <div class="mono" style="font-size:0.68rem; color:var(--text-muted);">PASSED CHECKS</div>
+                <div style="font-size:1.2rem; font-weight:700; color:var(--pass);">${data.pass_count} / 27</div>
               </div>
-              <div style="background:var(--paper-raised); padding:0.65rem; border-radius:6px; border:1px solid var(--border);">
-                <div class="mono" style="font-size:0.68rem; color:var(--ink-soft);">CAUTION WARNS</div>
-                <div style="font-size:1.1rem; font-weight:700; color:var(--warn);">${data.warning_count}</div>
+              <div style="background:rgba(255,255,255,0.03); padding:0.85rem; border-radius:8px; border:1px solid var(--border-dark);">
+                <div class="mono" style="font-size:0.68rem; color:var(--text-muted);">CAUTION WARNS</div>
+                <div style="font-size:1.2rem; font-weight:700; color:var(--warn);">${data.warning_count}</div>
               </div>
-              <div style="background:var(--paper-raised); padding:0.65rem; border-radius:6px; border:1px solid var(--border);">
-                <div class="mono" style="font-size:0.68rem; color:var(--ink-soft);">FAIL DEFECTS</div>
-                <div style="font-size:1.1rem; font-weight:700; color:var(--fail);">${data.fail_count}</div>
+              <div style="background:rgba(255,255,255,0.03); padding:0.85rem; border-radius:8px; border:1px solid var(--border-dark);">
+                <div class="mono" style="font-size:0.68rem; color:var(--text-muted);">FAIL DEFECTS</div>
+                <div style="font-size:1.2rem; font-weight:700; color:var(--fail);">${data.fail_count}</div>
               </div>
             </div>
 
             ${warningsHtml}
 
-            <div style="margin-top:1.2rem; display:flex; justify-content:flex-end;">
-              <a href="/legal-report?q=${encodeURIComponent(data.project_name)}" class="tool-btn" style="padding:0.5rem 1rem; font-size:0.8rem;">
+            <div style="margin-top:1.35rem; display:flex; justify-content:flex-end;">
+              <a href="/legal-report?q=${encodeURIComponent(data.project_name)}" class="tool-btn" style="padding:0.6rem 1.15rem; font-size:0.82rem;">
                 Open Full 27-Check Report Matrix ↗
               </a>
             </div>
@@ -1724,7 +1931,7 @@
         scrollWheelZoom: false
       }).setView([12.9716, 77.5946], 10);
 
-      // Add OpenStreetMap tile layer
+      // Add tile layer
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; OpenStreetMap contributors | RERA Intelligence'
@@ -1763,7 +1970,7 @@
       if (!markersClusterGroup) return;
       markersClusterGroup.clearLayers();
 
-      features.forEach(f => {
+      features.forEach((f, idx) => {
         if (!f.geometry || !f.geometry.coordinates) return;
         const [lng, lat] = f.geometry.coordinates;
         if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
@@ -1775,25 +1982,47 @@
         const district = p.district || 'Karnataka';
         const score = p.quality_score || 85;
 
-        let scoreBadge = '🟢 90+ Score';
-        if (score < 80) scoreBadge = '🟡 75+ Caution';
+        let scoreBadge = '90+ Score';
+        let triColor1 = "#34D399";
+        let triColor2 = "#059669";
+        let shadowColor = "rgba(16, 185, 129, 0.7)";
+
+        if (score < 80) {
+          scoreBadge = '75+ Caution';
+          triColor1 = "#FBBF24";
+          triColor2 = "#D97706";
+          shadowColor = "rgba(245, 158, 11, 0.7)";
+        }
 
         const customIcon = L.divIcon({
-          className: 'custom-map-pin',
-          html: `<div style="background:#1E56A0; color:#fff; border:2px solid #fff; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:0.65rem; font-weight:bold; box-shadow:0 2px 6px rgba(0,0,0,0.35);">R</div>`,
-          iconSize: [24, 24],
-          iconAnchor: [12, 12]
+          className: 'custom-triangle-pin',
+          html: `
+            <div style="filter: drop-shadow(0 0 6px ${shadowColor}); display:flex; align-items:center; justify-content:center;">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <polygon points="10,2 2,18 18,18" fill="url(#greenTri_${idx})" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round" />
+                <defs>
+                  <linearGradient id="greenTri_${idx}" x1="10" y1="2" x2="10" y2="18" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="${triColor1}"/>
+                    <stop offset="1" stop-color="${triColor2}"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+          `,
+          iconSize: [20, 20],
+          iconAnchor: [10, 18],
+          popupAnchor: [0, -18]
         });
 
         const marker = L.marker([lat, lng], { icon: customIcon });
 
         const popupContent = `
           <div class="map-popup-card">
-            <span class="mono" style="font-size:0.68rem; color:var(--brand); font-weight:700; text-transform:uppercase;">${district} • ${scoreBadge}</span>
+            <span class="mono" style="font-size:0.68rem; color:#60A5FA; font-weight:700; text-transform:uppercase;">${district} • ${scoreBadge}</span>
             <div class="map-popup-title">${projName}</div>
-            <div class="map-popup-sub">👷 ${promoterName}</div>
+            <div class="map-popup-sub">Developer: ${promoterName}</div>
             <a href="/legal-report?q=${encodeURIComponent(projName)}" class="map-popup-btn">
-              📜 Evaluate Legal Risk ↗
+              Evaluate Legal Risk ↗
             </a>
           </div>
         `;
@@ -1829,8 +2058,144 @@
 
       const badge = document.getElementById('mapVisibleBadge');
       if (badge) {
-        badge.innerHTML = `📍 <strong>${count.toLocaleString()}</strong> Verified Projects in Visible Map Area`;
+        badge.innerHTML = `<strong>${count.toLocaleString()}</strong> Verified Projects in Visible Map Area`;
       }
+    }
+
+    // Fuzzy search score helper (handles exact match, prefix match, word match, or minor typos)
+    function scoreFuzzyMatch(query, text) {
+      if (!query || !text) return 0;
+      const q = query.toLowerCase().trim();
+      const t = text.toLowerCase().trim();
+
+      if (t === q) return 100;
+      if (t.startsWith(q)) return 90;
+      if (t.includes(q)) return 80;
+
+      const qWords = q.split(/\s+/);
+      const tWords = t.split(/\s+/);
+      let matchCount = 0;
+      qWords.forEach(qw => {
+        if (tWords.some(tw => tw.startsWith(qw) || tw.includes(qw))) {
+          matchCount++;
+        }
+      });
+      if (matchCount > 0) {
+        return 50 + (matchCount / qWords.length) * 25;
+      }
+
+      if (q.length >= 4) {
+        const qSub = q.substring(0, Math.min(q.length, 5));
+        if (t.includes(qSub)) return 40;
+      }
+
+      return 0;
+    }
+
+    // Map Search Autocomplete Listener
+    const mapSearchInput = document.getElementById('mapSearchInput');
+    const mapSuggestionsBox = document.getElementById('mapSuggestionsBox');
+    const clearMapSearchBtn = document.getElementById('clearMapSearchBtn');
+    let mapSearchTimer = null;
+
+    if (mapSearchInput) {
+      mapSearchInput.addEventListener('input', function() {
+        clearTimeout(mapSearchTimer);
+        const val = this.value.trim();
+        if (clearMapSearchBtn) clearMapSearchBtn.style.display = val.length > 0 ? 'inline-block' : 'none';
+
+        if (val.length < 2) {
+          if (mapSuggestionsBox) mapSuggestionsBox.style.display = 'none';
+          renderMapMarkers(allGeoJsonFeatures);
+          updateVisibleCount();
+          return;
+        }
+
+        mapSearchTimer = setTimeout(() => {
+          const scored = [];
+          allGeoJsonFeatures.forEach(f => {
+            const p = f.properties || {};
+            const projName = p.project_name || '';
+            const promoterName = p.promoter_name || '';
+            const regNo = p.registration_no || '';
+            
+            const s1 = scoreFuzzyMatch(val, projName);
+            const s2 = scoreFuzzyMatch(val, promoterName);
+            const s3 = scoreFuzzyMatch(val, regNo);
+            const maxScore = Math.max(s1, s2, s3);
+
+            if (maxScore > 0) {
+              scored.push({ feature: f, score: maxScore });
+            }
+          });
+
+          scored.sort((a, b) => b.score - a.score);
+          const filteredFeatures = scored.map(s => s.feature);
+
+          if (scored.length > 0) {
+            mapSuggestionsBox.innerHTML = scored.slice(0, 8).map(item => {
+              const p = item.feature.properties || {};
+              const [lng, lat] = item.feature.geometry.coordinates || [0, 0];
+              const safeName = (p.project_name || '').replace(/'/g, "\\'");
+              return `
+                <div class="suggestion-item" onclick="selectMapProperty('${safeName}', ${lat}, ${lng})">
+                  <div>
+                    <div class="sug-title">${highlightMapMatch(p.project_name, val)}</div>
+                    <div class="sug-firm">Developer: ${p.promoter_name || 'N/A'} • ${p.district || 'Karnataka'}</div>
+                  </div>
+                  <div class="sug-reg" style="font-weight:700; color:#60A5FA;">Fly to Pin ↗</div>
+                </div>
+              `;
+            }).join('');
+            mapSuggestionsBox.style.display = 'block';
+          } else {
+            mapSuggestionsBox.innerHTML = '<div style="padding:0.85rem 1.25rem; font-size:0.82rem; color:var(--text-muted);">No exact property found. Type full name or developer.</div>';
+            mapSuggestionsBox.style.display = 'block';
+          }
+
+          renderMapMarkers(filteredFeatures);
+          updateVisibleCount(filteredFeatures.length);
+        }, 150);
+      });
+    }
+
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('#mapSearchInput') && !e.target.closest('#mapSuggestionsBox')) {
+        if (mapSuggestionsBox) mapSuggestionsBox.style.display = 'none';
+      }
+    });
+
+    function selectMapProperty(name, lat, lng) {
+      if (mapSearchInput) mapSearchInput.value = name;
+      if (mapSuggestionsBox) mapSuggestionsBox.style.display = 'none';
+
+      if (reraMap && lat && lng) {
+        reraMap.flyTo([lat, lng], 15, { duration: 1.4 });
+
+        setTimeout(() => {
+          if (markersClusterGroup) {
+            markersClusterGroup.eachLayer(layer => {
+              if (layer.getLatLng && Math.abs(layer.getLatLng().lat - lat) < 0.0001 && Math.abs(layer.getLatLng().lng - lng) < 0.0001) {
+                layer.openPopup();
+              }
+            });
+          }
+        }, 1500);
+      }
+    }
+
+    function clearMapSearch() {
+      if (mapSearchInput) mapSearchInput.value = '';
+      if (clearMapSearchBtn) clearMapSearchBtn.style.display = 'none';
+      if (mapSuggestionsBox) mapSuggestionsBox.style.display = 'none';
+      renderMapMarkers(allGeoJsonFeatures);
+      updateVisibleCount();
+    }
+
+    function highlightMapMatch(text, query) {
+      if (!query || !text) return text;
+      const reg = new RegExp(`(${query})`, 'gi');
+      return text.replace(reg, '<span style="color:#60A5FA; text-decoration:underline;">$1</span>');
     }
 
     // Load Map after window finishes rendering
