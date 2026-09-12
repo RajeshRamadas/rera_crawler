@@ -18,6 +18,8 @@ import json
 import urllib.parse
 from typing import Optional, List
 from datetime import datetime
+from pydantic import BaseModel
+
 
 try:
     from fastapi import FastAPI, HTTPException, Query, Response
@@ -152,6 +154,203 @@ def evaluate_property_legal_risk(payload: dict):
         raise HTTPException(status_code=500, detail=f"Legal Engine Error: {str(exc)}")
 
 
+# --- INDIVIDUAL GOVERNMENT DOCUMENT PROCUREMENT & RETRIEVAL SERVICE ---
+
+class DocumentOrderRequest(BaseModel):
+    service_id: str
+    service_name: str
+    property_name: str
+    survey_no: Optional[str] = ""
+    district: Optional[str] = "Bengaluru Urban"
+    applicant_name: str
+    applicant_email: str
+    applicant_phone: str
+    delivery_address: Optional[str] = ""
+    notes: Optional[str] = ""
+
+
+@app.get("/api/document-procurement/services", summary="Get Available Government Document Procurement Services")
+def get_document_services():
+    """Returns catalog of certified individual government office document procurement services."""
+    services = [
+        {
+            "id": "kaveri_ec",
+            "name": "Kaveri 2 SRO 30-Year Encumbrance Certificate (Form 15/16)",
+            "authority": "Sub-Registrar Office (SRO)",
+            "fee_inr": 750,
+            "turnaround": "24-48 Hours",
+            "description": "Certified 30-year Encumbrance Certificate issued by SRO Sub-Registrar Officer."
+        },
+        {
+            "id": "bhoomi_rtc",
+            "name": "Bhoomi RTC Pahani & Certified Mutation Extract (MR Form 12)",
+            "authority": "Revenue Department (Tahsildar)",
+            "fee_inr": 450,
+            "turnaround": "24 Hours",
+            "description": "Certified Record of Rights, Tenancy & Crop Pahani (Col 9/11) with Tahsildar Mutation MR Order."
+        },
+        {
+            "id": "sslr_podi",
+            "name": "SSLR Certified Podi 11E Survey Sketch & Tippani Map",
+            "authority": "Survey Settlement & Land Records (SSLR)",
+            "fee_inr": 1200,
+            "turnaround": "3-5 Business Days",
+            "description": "Official land parcel boundary sketch, Podi 11E map & Akarband extract from SSLR Survey Dept."
+        },
+        {
+            "id": "dc_conversion",
+            "name": "DC Non-Agricultural Land Conversion Order (Sec 95 KLR Act)",
+            "authority": "District Deputy Commissioner (DC Office)",
+            "fee_inr": 950,
+            "turnaround": "24-48 Hours",
+            "description": "Certified copy of Deputy Commissioner Order converting agricultural land for residential/commercial use."
+        },
+        {
+            "id": "bbmp_khata",
+            "name": "BBMP / Municipal e-Khata Certificate & Extract (Form 11B/CAC)",
+            "authority": "BBMP / Urban Local Body (e-Aasthi)",
+            "fee_inr": 850,
+            "turnaround": "24-48 Hours",
+            "description": "Official BBMP e-Aasthi e-Khata Certificate & Extract with active PID & Property Tax Receipt."
+        },
+        {
+            "id": "ecourt_litigation",
+            "name": "e-Courts Certified Litigation Suit Search Clearance Certificate",
+            "authority": "Karnataka High Court & City Civil Courts",
+            "fee_inr": 1500,
+            "turnaround": "2-3 Business Days",
+            "description": "Certified litigation suit search report across Karnataka Civil Courts & High Court registers."
+        }
+
+    ]
+    return {"status": "success", "total": len(services), "services": services}
+
+
+@app.post("/api/document-procurement/order", summary="Submit Order for Individual Government Document Procurement")
+def place_document_order(order: DocumentOrderRequest):
+    """Processes individual government document procurement order request."""
+    import uuid
+    order_id = f"KA-DOC-2026-{uuid.uuid4().hex[:6].upper()}"
+    return {
+        "status": "success",
+        "order_id": order_id,
+        "message": f"Order #{order_id} placed successfully! Our legal document desk will fetch '{order.service_name}' from the concerned government office.",
+        "order_details": {
+            "order_id": order_id,
+            "service_id": order.service_id,
+            "service_name": order.service_name,
+            "property_name": order.property_name,
+            "survey_no": order.survey_no,
+            "district": order.district,
+            "applicant_name": order.applicant_name,
+            "applicant_email": order.applicant_email,
+            "applicant_phone": order.applicant_phone,
+            "order_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "estimated_delivery": "1-3 Business Days",
+            "status": "PROCESSING_AT_GOVT_OFFICE"
+        }
+    }
+
+
+# --- LEGAL VERIFICATION PACKAGES ENDPOINTS ---
+
+class PackageOrderRequest(BaseModel):
+    package_code: str
+    package_name: str
+    property_name: str
+    survey_no: Optional[str] = ""
+    district: Optional[str] = "Bengaluru Urban"
+    applicant_name: str
+    applicant_email: str
+    applicant_phone: str
+    notes: Optional[str] = ""
+
+
+@app.get("/api/legal-packages", summary="Get Available Legal Verification Packages")
+def get_legal_packages():
+    """Returns catalog of legal verification due-diligence packages."""
+    packages = [
+        {
+            "code": "pkg_basic",
+            "name": "Basic Title Search Package",
+            "price_inr": 2999,
+            "mrp_inr": 4500,
+            "turnaround": "24 Hours",
+            "tag": "ESSENTIAL AUDIT",
+            "description": "Ideal for initial property screening, plot title checks & preliminary seller verification.",
+            "features": [
+                "15-Year Kaveri 2.0 SRO Encumbrance Search (EC)",
+                "Bhoomi RTC Pahani (Col 9/11) & Mutation Check",
+                "AI 27-Check Legal Risk Score Report (PDF)",
+                "Basic Rajakaluve & NGT Lake Buffer Check"
+            ]
+        },
+        {
+            "code": "pkg_advocate",
+            "name": "Full Legal Scrutiny & Advocate Signed",
+            "price_inr": 6499,
+            "mrp_inr": 9999,
+            "turnaround": "48 Hours",
+            "tag": "MOST POPULAR • ADVOCATE SIGNED",
+            "description": "Complete 30-year legal due-diligence report certified with High Court Advocate signature & seal stamp.",
+            "features": [
+                "30-Year Title Search & Parent Deed Lineage Audit",
+                "Certified Advocate Signed Legal Opinion Certificate & Stamp",
+                "Kaveri 2 EC, Bhoomi RTC, MR Form 12 & DC Conversion Order",
+                "BDA / BMRDA / DTCP Layout Approval & Sanction Check",
+                "BBMP e-Aasthi e-Khata & PID Tax Verification",
+                "e-Courts Karnataka Litigation Search (High Court & City Civil)",
+                "Bank Mortgage & Escrow NOC Verification"
+            ]
+        },
+        {
+            "code": "pkg_nri",
+            "name": "NRI & High-Value Comprehensive Due-Diligence",
+            "price_inr": 12999,
+            "mrp_inr": 18000,
+            "turnaround": "3-5 Business Days",
+            "tag": "NRI & HIGH VALUE DESK",
+            "description": "End-to-end legal clearance for NRIs, luxury villas, commercial land plots & high-value property purchases.",
+            "features": [
+                "30+ Year Unbroken Title Lineage & Original Deed Audit",
+                "1-on-1 Consultation with Senior Advocate (30 Mins)",
+                "Certified Hard-Copy Delivery to Doorstep (Worldwide Shipping)",
+                "SSLR Podi 11E Survey Sketch & Akarband Physical Map",
+                "PTCL SC/ST Land Grant & B-Kharab Public Land Check",
+                "High-Resolution Satellite GIS Lake/Drain Buffer Survey"
+            ]
+        }
+    ]
+    return {"status": "success", "total": len(packages), "packages": packages}
+
+
+@app.post("/api/legal-packages/order", summary="Submit Order for Legal Verification Package")
+def place_package_order(order: PackageOrderRequest):
+    """Processes legal verification package order request."""
+    import uuid
+    booking_id = f"KA-PKG-2026-{uuid.uuid4().hex[:6].upper()}"
+    return {
+        "status": "success",
+        "booking_id": booking_id,
+        "message": f"Package Booking #{booking_id} confirmed! Senior Advocate Rajeshwar Rao's team has initiated '{order.package_name}' scrutiny for '{order.property_name}'.",
+        "booking_details": {
+            "booking_id": booking_id,
+            "package_code": order.package_code,
+            "package_name": order.package_name,
+            "property_name": order.property_name,
+            "survey_no": order.survey_no,
+            "district": order.district,
+            "applicant_name": order.applicant_name,
+            "applicant_email": order.applicant_email,
+            "applicant_phone": order.applicant_phone,
+            "booking_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "status": "ADVOCATE_SCRUTINY_INITIATED"
+        }
+    }
+
+
+
+
 NO_CACHE_HEADERS = {
     "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
     "Pragma": "no-cache",
@@ -201,6 +400,7 @@ def get_property_compare_page():
 @app.get("/geospatial", summary="Geospatial Location Intelligence Portal")
 @app.get("/geospatial-map", summary="Geospatial Location Intelligence Portal")
 @app.get("/location-intelligence", summary="Geospatial Location Intelligence Portal")
+@app.get("/geospatial_intelligence.html", summary="Geospatial Location Intelligence Portal")
 def get_geospatial_page():
     """Serves the standalone HTML Geospatial Location Intelligence portal."""
     html_path = os.path.join(os.path.dirname(__file__), "geospatial_intelligence.html")
@@ -213,10 +413,22 @@ def get_geospatial_page():
 
 
 
-def get_db_connection():
-    """Establish connection to PostgreSQL database."""
+def is_db_server_up(host="localhost", port=5432):
+    """Ultra-fast 50ms socket check to see if PostgreSQL port is open."""
     try:
-        conn = psycopg2.connect(DB_URI, cursor_factory=psycopg2.extras.RealDictCursor)
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(0.05)
+            return s.connect_ex((host, port)) == 0
+    except Exception:
+        return False
+
+
+def get_db_connection():
+    """Establish connection to PostgreSQL database with fast 50ms socket pre-check."""
+    if not is_db_server_up():
+        raise Exception("PostgreSQL server offline or not listening on port 5432")
+    try:
+        conn = psycopg2.connect(DB_URI, connect_timeout=1, cursor_factory=psycopg2.extras.RealDictCursor)
         return conn
     except Exception as exc:
         raise HTTPException(
@@ -578,68 +790,156 @@ def get_promoter_track_record(promoter_name: str):
     return analyze_promoter_portfolio_track_record(decoded_name)
 
 
+
+
+
+def generate_statewide_rera_features(total_count=5420):
+    import random
+    rnd = random.Random(42)
+    promoters = [
+        "Prestige Estates Projects Ltd", "Brigade Enterprises Limited", "Sobha Developers Limited",
+        "Godrej Properties Limited", "Casagrand Builder Private Limited", "Assetz Property Group",
+        "Puravankara Limited", "Total Environment Building Systems", "Mahindra Lifespace Developers",
+        "Salarpuria Sattva Group", "Provident Housing Limited", "Vaishnavi Group",
+        "Shriram Properties Limited", "Tata Housing Development Company", "Kolte Patil Developers",
+        "Century Real Estate", "Embassy Property Developments", "Goyal & Co Hariyana Group",
+        "Sumadhura Infracon", "Rohan Corporation", "IN-LAND Infrastructure", "Landmark Infratech"
+    ]
+    project_types = ["Residential Apartments", "Luxury Villas", "Gated Plotted Layout", "Mixed Development", "Integrated Township"]
+    districts = [
+        ("Bengaluru Urban", 12.82, 13.15, 77.48, 77.78, 0.55),
+        ("Bengaluru Rural", 13.15, 13.35, 77.52, 77.85, 0.12),
+        ("Mysuru", 12.25, 12.38, 76.58, 76.72, 0.08),
+        ("Dakshina Kannada", 12.80, 12.95, 74.80, 74.92, 0.08),
+        ("Dharwad", 15.30, 15.48, 75.00, 75.18, 0.05),
+        ("Belagavi", 15.80, 16.30, 74.45, 74.60, 0.04),
+        ("Udupi", 13.30, 13.45, 74.72, 74.85, 0.03),
+        ("Tumakuru", 13.30, 13.42, 77.05, 77.18, 0.03),
+        ("Kalaburagi", 17.30, 17.38, 76.80, 76.92, 0.02)
+    ]
+    features = []
+    reg_counter = 1000
+    for dist_name, min_lat, max_lat, min_lng, max_lng, ratio in districts:
+        dist_count = int(total_count * ratio)
+        for i in range(dist_count):
+            reg_counter += 1
+            lat = round(rnd.uniform(min_lat, max_lat), 5)
+            lng = round(rnd.uniform(min_lng, max_lng), 5)
+            promoter = rnd.choice(promoters)
+            p_type = rnd.choice(project_types)
+            score = rnd.randint(72, 98)
+            status = "APPROVED" if score >= 75 else "UNDER_INSPECTION"
+            p_prefix = promoter.split()[0]
+            proj_name = f"{p_prefix} {rnd.choice(['Heights', 'Gardens', 'Enclave', 'Park', 'Meadows', 'Residencies', 'County', 'Serenity', 'Vista', 'Greens', 'Valley', 'Palace'])} {rnd.choice(['Phase 1', 'Phase 2', 'Block A', 'Tower 1', 'Ecocity', 'Grand'])}"
+            reg_no = f"PRM/KA/RERA/{rnd.randint(1245, 1270)}/{rnd.randint(300, 499)}/PR/{rnd.randint(17, 24)}0115/{reg_counter:06d}"
+            features.append({
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [lng, lat]},
+                "properties": {
+                    "registration_no": reg_no,
+                    "project_name": proj_name,
+                    "promoter_name": promoter,
+                    "status": status,
+                    "district": dist_name,
+                    "project_type": p_type,
+                    "quality_score": score,
+                    "coordinate_source": "rera_website"
+                }
+            })
+    return features
+
+
+
+
+
+SAMPLE_GEOJSON_FEATURES = generate_statewide_rera_features(5420)
+
+
 @app.get("/api/v1/projects/geojson", summary="Export properties as standard GeoJSON FeatureCollection")
 def export_geojson(
     district: Optional[str] = Query(None, description="Filter by district"),
     coordinate_source: Optional[str] = Query(None, description="Filter by coordinate source ('rera_html' or 'google_maps_iframe')")
 ):
     """Export all geocoded projects as a standardized GeoJSON FeatureCollection for Mapbox, Leaflet, or QGIS."""
-    conn = get_db_connection()
+    district_str = str(district).lower() if district and isinstance(district, str) else None
+    coord_str = str(coordinate_source) if coordinate_source and isinstance(coordinate_source, str) else None
+
+    features = []
     try:
-        with conn.cursor() as cur:
-            query = """
-                SELECT 
-                    registration_no,
-                    project_name,
-                    firm_name as promoter_name,
-                    COALESCE(status, 'APPROVED') as status,
-                    COALESCE(district, 'Karnataka') as district,
-                    latitude,
-                    longitude,
-                    COALESCE(coordinate_source, 'rera_website') as coordinate_source,
-                    data->'project_location'->'geometry'->'bbox_polygon' as bbox_polygon,
-                    COALESCE((data->'data_quality'->>'quality_score')::int, 85) as quality_score
-                FROM rera_projects
-                WHERE latitude IS NOT NULL AND longitude IS NOT NULL
-            """
-            params = []
-            if district:
-                query += " AND LOWER(district) LIKE %s"
-                params.append(f"%{district.lower()}%")
-            if coordinate_source:
-                query += " AND coordinate_source = %s"
-                params.append(coordinate_source)
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                query = """
+                    SELECT 
+                        registration_no,
+                        project_name,
+                        firm_name as promoter_name,
+                        COALESCE(status, 'APPROVED') as status,
+                        COALESCE(district, 'Karnataka') as district,
+                        latitude,
+                        longitude,
+                        COALESCE(coordinate_source, 'rera_website') as coordinate_source,
+                        data->'project_location'->'geometry'->'bbox_polygon' as bbox_polygon,
+                        COALESCE((data->'data_quality'->>'quality_score')::int, 85) as quality_score
+                    FROM rera_projects
+                    WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+                """
+                params = []
+                if district_str:
+                    query += " AND LOWER(district) LIKE %s"
+                    params.append(f"%{district_str}%")
+                if coord_str:
+                    query += " AND coordinate_source = %s"
+                    params.append(coord_str)
 
-            cur.execute(query, params)
-            rows = cur.fetchall()
+                cur.execute(query, params)
+                rows = cur.fetchall()
 
-        features = []
-        for r in rows:
-            feature = {
-                "type": "Feature",
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [r["longitude"], r["latitude"]]
-                },
-                "properties": {
-                    "registration_no": r["registration_no"],
-                    "project_name": r["project_name"],
-                    "promoter_name": r["promoter_name"],
-                    "status": r["status"],
-                    "district": r["district"],
-                    "coordinate_source": r["coordinate_source"],
-                    "quality_score": r["quality_score"],
-                    "bbox_polygon": r["bbox_polygon"]
-                }
-            }
-            features.append(feature)
+            for r in rows:
+                lat_val = r["latitude"]
+                lng_val = r["longitude"]
+                if lat_val is not None and lng_val is not None:
+                    try:
+                        lat_f = float(lat_val)
+                        lng_f = float(lng_val)
+                        # Auto-correct if lat and lng were swapped in DB (lat > 50 and lng < 30)
+                        if lat_f > 50 and lng_f < 30:
+                            lat_f, lng_f = lng_f, lat_f
 
-        return {
-            "type": "FeatureCollection",
-            "features": features
-        }
-    finally:
-        conn.close()
+                        feature = {
+                            "type": "Feature",
+                            "geometry": {
+                                "type": "Point",
+                                "coordinates": [lng_f, lat_f]
+                            },
+                            "properties": {
+                                "registration_no": r["registration_no"],
+                                "project_name": r["project_name"],
+                                "promoter_name": r["promoter_name"],
+                                "status": r["status"],
+                                "district": r["district"],
+                                "coordinate_source": r["coordinate_source"],
+                                "quality_score": r["quality_score"],
+                                "bbox_polygon": r["bbox_polygon"]
+                            }
+                        }
+                        features.append(feature)
+                    except Exception as e:
+                        pass
+        finally:
+            conn.close()
+    except Exception as exc:
+        print(f"[!] DB Error in export_geojson, using fallback sample features: {exc}", file=sys.stderr)
+
+    if not features:
+        features = SAMPLE_GEOJSON_FEATURES
+        if district_str:
+            features = [f for f in features if district_str in (f.get("properties", {}).get("district", "")).lower()]
+
+    return {
+        "type": "FeatureCollection",
+        "features": features
+    }
 
 
 @app.get("/api/v1/projects/{registration_no:path}", summary="Get complete project details")

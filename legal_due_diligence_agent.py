@@ -328,9 +328,11 @@ class KarnatakaPropertyLegalAgent:
             "real_documents": property_data.get("real_documents", []),
             "gis_location": property_data.get("gis_location", default_gis),
             "agentic_search_info": property_data.get("agentic_search_info", {}),
+            "advocate_certificate": assessment.advocate_certificate,
             "matrix_checks": checks_dict,
             "markdown_report": markdown_report
         }
+
 
     def generate_markdown_report(self, assessment: LegalAssessmentResult) -> str:
         """Generates comprehensive Github-flavored Markdown legal due-diligence report."""
