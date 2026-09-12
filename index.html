@@ -9,7 +9,16 @@
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Serif:ital,wght@0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Leaflet & MarkerCluster CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+
+  <!-- Leaflet & MarkerCluster JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
   <style>
     :root {
@@ -21,10 +30,12 @@
       --ink-soft: #5A6270;
       --ink-muted: #8A92A0;
       --brand: #1E56A0;
+      --brand-dark: #10376B;
       --brand-hover: #16437E;
       --brand-light: #EFF6FF;
       --brand-border: #BFDBFE;
       --border: #E0DDD5;
+      --border-strong: #CFCBC0;
       --hairline: #ECEAE3;
       --pass: #2F6E4F;
       --pass-bg: #F1F8F4;
@@ -35,8 +46,8 @@
       --fail: #DC2626;
       --fail-bg: #FEF2F2;
       --fail-border: #FCA5A5;
-      --shadow-sm: 0 2px 6px rgba(27, 30, 36, 0.04);
-      --shadow-md: 0 8px 24px rgba(27, 30, 36, 0.08);
+      --shadow-sm: 0 2px 8px rgba(27, 30, 36, 0.04);
+      --shadow-md: 0 8px 24px rgba(27, 30, 36, 0.07);
       --shadow-lg: 0 16px 40px rgba(27, 30, 36, 0.12);
     }
 
@@ -67,12 +78,39 @@
       text-decoration: none;
     }
 
-    /* Header Navbar */
+    /* Top Accent Status Bar */
+    .top-status-bar {
+      background: var(--ink);
+      color: #FFFFFF;
+      font-size: 0.75rem;
+      padding: 0.4rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'JetBrains Mono', monospace;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      background: #10B981;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #10B981;
+    }
+
+    /* Navbar */
     .navbar {
       position: sticky;
       top: 0;
       z-index: 1000;
-      background: rgba(246, 245, 241, 0.92);
+      background: rgba(246, 245, 241, 0.94);
       backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
       padding: 0.85rem 2rem;
@@ -85,14 +123,13 @@
     .nav-brand {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      text-decoration: none;
+      gap: 0.85rem;
     }
 
     .brand-icon {
-      width: 40px;
-      height: 40px;
-      background: var(--ink);
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, var(--ink) 0%, var(--brand-dark) 100%);
       color: #fff;
       border-radius: 8px;
       display: flex;
@@ -100,22 +137,22 @@
       justify-content: center;
       font-family: 'IBM Plex Serif', serif;
       font-weight: 700;
-      font-size: 1.25rem;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+      font-size: 1.3rem;
+      box-shadow: 0 4px 12px rgba(30, 86, 160, 0.25);
     }
 
     .brand-title {
       font-family: 'IBM Plex Serif', serif;
       font-weight: 700;
-      font-size: 1.2rem;
+      font-size: 1.25rem;
       color: var(--ink);
       line-height: 1.1;
     }
 
     .brand-subtitle {
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       color: var(--ink-soft);
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
       font-family: 'JetBrains Mono', monospace;
     }
@@ -123,11 +160,11 @@
     .nav-links {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.4rem;
     }
 
     .nav-item {
-      font-size: 0.85rem;
+      font-size: 0.84rem;
       font-weight: 600;
       color: var(--ink-soft);
       padding: 0.5rem 0.85rem;
@@ -144,79 +181,82 @@
       background: var(--brand);
       color: #ffffff !important;
       font-weight: 600;
-      padding: 0.55rem 1.1rem;
+      font-size: 0.85rem;
+      padding: 0.6rem 1.2rem;
       border-radius: 6px;
-      transition: background 0.2s ease, transform 0.15s ease;
+      box-shadow: 0 2px 8px rgba(30, 86, 160, 0.2);
+      transition: all 0.15s ease;
     }
 
     .nav-cta:hover {
       background: var(--brand-hover);
       transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(30, 86, 160, 0.3);
     }
 
-    /* Hero Banner */
-    .hero-section {
-      position: relative;
-      padding: 4.5rem 2rem 4rem;
+    /* Hero Section (Hero Grid Layout) */
+    .hero-container {
       max-width: 1240px;
       margin: 0 auto;
-      text-align: center;
+      padding: 3.5rem 2rem 3rem;
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 3rem;
+      align-items: center;
     }
 
-    .hero-badge {
+    .hero-tag {
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      background: #FFFFFF;
-      border: 1px solid var(--border);
-      padding: 0.4rem 1rem;
+      background: var(--paper-raised);
+      border: 1px solid var(--border-strong);
+      padding: 0.35rem 0.9rem;
       border-radius: 20px;
-      font-size: 0.78rem;
-      font-weight: 600;
+      font-size: 0.75rem;
+      font-weight: 700;
       color: var(--brand);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 1.25rem;
       box-shadow: var(--shadow-sm);
-      margin-bottom: 1.5rem;
     }
 
     .hero-title {
       font-family: 'IBM Plex Serif', serif;
-      font-size: 3rem;
+      font-size: 2.85rem;
       font-weight: 700;
       color: var(--ink);
       letter-spacing: -0.02em;
       line-height: 1.18;
-      max-width: 900px;
-      margin: 0 auto 1.25rem;
+      margin-bottom: 1.1rem;
     }
 
     .hero-title span {
       color: var(--brand);
-      position: relative;
-      display: inline-block;
     }
 
     .hero-subtitle {
-      font-size: 1.12rem;
+      font-size: 1.05rem;
       color: var(--ink-soft);
-      max-width: 760px;
-      margin: 0 auto 2.5rem;
       line-height: 1.6;
+      margin-bottom: 2rem;
     }
 
     /* Search Box & Autocomplete */
     .search-wrapper {
       position: relative;
-      max-width: 720px;
-      margin: 0 auto 1.5rem;
+      margin-bottom: 1.25rem;
     }
 
     .search-bar {
       display: flex;
       align-items: center;
       background: var(--paper-raised);
-      border: 2px solid var(--border);
+      border: 2px solid var(--border-strong);
       border-radius: 10px;
-      padding: 0.35rem 0.5rem 0.35rem 1.2rem;
+      padding: 0.35rem 0.5rem 0.35rem 1.1rem;
       box-shadow: var(--shadow-md);
       transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
@@ -227,7 +267,7 @@
     }
 
     .search-icon {
-      font-size: 1.2rem;
+      font-size: 1.15rem;
       color: var(--ink-soft);
       margin-right: 0.75rem;
     }
@@ -237,10 +277,10 @@
       border: none;
       background: transparent;
       font-family: 'IBM Plex Sans', sans-serif;
-      font-size: 1.05rem;
+      font-size: 1rem;
       color: var(--ink);
       outline: none;
-      padding: 0.6rem 0;
+      padding: 0.65rem 0;
     }
 
     .search-input::placeholder {
@@ -252,8 +292,8 @@
       color: #fff;
       border: none;
       font-weight: 600;
-      font-size: 0.92rem;
-      padding: 0.75rem 1.5rem;
+      font-size: 0.88rem;
+      padding: 0.75rem 1.35rem;
       border-radius: 6px;
       cursor: pointer;
       transition: background 0.2s ease;
@@ -269,19 +309,19 @@
       left: 0;
       right: 0;
       background: var(--paper-raised);
-      border: 1px solid var(--border);
+      border: 1px solid var(--border-strong);
       border-radius: 8px;
       box-shadow: var(--shadow-lg);
       margin-top: 0.4rem;
       max-height: 320px;
-      overflow-y:auto;
+      overflow-y: auto;
       z-index: 99;
       display: none;
       text-align: left;
     }
 
     .suggestion-item {
-      padding: 0.75rem 1.2rem;
+      padding: 0.75rem 1.1rem;
       border-bottom: 1px solid var(--hairline);
       cursor: pointer;
       transition: background 0.15s ease;
@@ -300,12 +340,12 @@
 
     .sug-title {
       font-weight: 600;
-      font-size: 0.92rem;
+      font-size: 0.9rem;
       color: var(--ink);
     }
 
     .sug-firm {
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       color: var(--ink-soft);
     }
 
@@ -315,18 +355,15 @@
       font-family: 'JetBrains Mono', monospace;
     }
 
-    /* Preset Launcher Pills */
     .presets-row {
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
+      gap: 0.45rem;
       flex-wrap: wrap;
-      margin-bottom: 3.5rem;
     }
 
     .preset-label {
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       color: var(--ink-soft);
       font-weight: 600;
     }
@@ -334,9 +371,9 @@
     .preset-chip {
       background: var(--paper-raised);
       border: 1px solid var(--border);
-      padding: 0.35rem 0.85rem;
+      padding: 0.3rem 0.75rem;
       border-radius: 20px;
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       font-weight: 600;
       color: var(--ink);
       cursor: pointer;
@@ -349,10 +386,104 @@
       background: var(--brand-light);
     }
 
-    /* Stats Banner */
+    /* Terminal Quick Preview Card (Right Column) */
+    .terminal-card {
+      background: var(--ink);
+      color: #F8FAFC;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid rgba(255,255,255,0.1);
+      font-family: 'IBM Plex Sans', sans-serif;
+    }
+
+    .terminal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+      padding-bottom: 0.85rem;
+      margin-bottom: 1rem;
+    }
+
+    .terminal-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .terminal-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .terminal-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.74rem;
+      color: #94A3B8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .terminal-badge {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34D399;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+    }
+
+    .terminal-check-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .terminal-check-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255,255,255,0.04);
+      padding: 0.55rem 0.85rem;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.06);
+      font-size: 0.8rem;
+    }
+
+    .terminal-check-name {
+      color: #E2E8F0;
+      font-weight: 500;
+    }
+
+    .terminal-check-reg {
+      font-size: 0.7rem;
+      color: #94A3B8;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .terminal-check-status {
+      font-size: 0.7rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 0.15rem 0.45rem;
+      border-radius: 3px;
+    }
+
+    .st-pass { background: rgba(16, 185, 129, 0.2); color: #34D399; }
+    .st-warn { background: rgba(245, 158, 11, 0.2); color: #FBBF24; }
+
+    /* Stats Container Bar */
+    .stats-section {
+      max-width: 1240px;
+      margin: 0 auto 4.5rem;
+      padding: 0 2rem;
+    }
+
     .stats-container {
-      max-width: 1100px;
-      margin: 0 auto 5rem;
       background: var(--paper-raised);
       border: 1px solid var(--border);
       border-radius: 12px;
@@ -366,6 +497,11 @@
     .stat-card {
       text-align: center;
       padding: 0.5rem;
+      border-right: 1px solid var(--hairline);
+    }
+
+    .stat-card:last-child {
+      border-right: none;
     }
 
     .stat-number {
@@ -382,14 +518,14 @@
     }
 
     .stat-title {
-      font-size: 0.82rem;
+      font-size: 0.8rem;
       color: var(--ink-soft);
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.03em;
+      letter-spacing: 0.04em;
     }
 
-    /* Section Layout */
+    /* Section Container Layout */
     .section-container {
       max-width: 1240px;
       margin: 0 auto 5rem;
@@ -403,7 +539,7 @@
 
     .section-tag {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.75rem;
+      font-size: 0.74rem;
       font-weight: 700;
       color: var(--brand);
       text-transform: uppercase;
@@ -413,7 +549,7 @@
 
     .section-title {
       font-family: 'IBM Plex Serif', serif;
-      font-size: 2.1rem;
+      font-size: 2.15rem;
       font-weight: 700;
       color: var(--ink);
       letter-spacing: -0.01em;
@@ -424,6 +560,135 @@
       color: var(--ink-soft);
       max-width: 650px;
       margin: 0.4rem auto 0;
+      line-height: 1.5;
+    }
+
+    /* Map Search Section Container Box */
+    .map-section {
+      background: var(--paper-raised);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.75rem;
+      box-shadow: var(--shadow-md);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .map-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+      border-bottom: 1px solid var(--hairline);
+      padding-bottom: 1rem;
+    }
+
+    .map-title {
+      font-family: 'IBM Plex Serif', serif;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .map-counter-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 0.4rem 0.85rem;
+      border-radius: 20px;
+      background: var(--brand-light);
+      color: var(--brand);
+      border: 1px solid var(--brand-border);
+    }
+
+    .map-pills-row {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .map-zoom-pill {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      padding: 0.35rem 0.85rem;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--ink);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .map-zoom-pill:hover, .map-zoom-pill.active {
+      background: var(--ink);
+      color: #FFFFFF;
+      border-color: var(--ink);
+    }
+
+    #mapContainer {
+      height: 520px;
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      position: relative;
+      z-index: 1;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    .leaflet-popup-content-wrapper {
+      background: var(--paper-raised);
+      border-radius: 8px;
+      padding: 0;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+    }
+
+    .map-popup-card {
+      padding: 0.95rem 1.1rem;
+      min-width: 240px;
+    }
+
+    .map-popup-title {
+      font-family: 'IBM Plex Serif', serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 0.25rem;
+    }
+
+    .map-popup-sub {
+      font-size: 0.78rem;
+      color: var(--ink-soft);
+      margin-bottom: 0.65rem;
+    }
+
+    .map-popup-btn {
+      display: inline-block;
+      width: 100%;
+      text-align: center;
+      background: var(--brand);
+      color: #ffffff !important;
+      font-weight: 600;
+      font-size: 0.78rem;
+      padding: 0.45rem 0.75rem;
+      border-radius: 4px;
+      text-decoration: none;
+      transition: background 0.15s ease;
+    }
+
+    .map-popup-btn:hover {
+      background: var(--brand-hover);
     }
 
     /* Tool Suite Launchers Grid (5 Cards) */
@@ -554,37 +819,38 @@
       background: var(--paper-raised);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 1.2rem;
-      transition: border-color 0.2s ease;
+      padding: 1.3rem;
+      transition: border-color 0.2s ease, transform 0.15s ease;
     }
 
     .pillar-card:hover {
       border-color: var(--brand);
+      transform: translateY(-2px);
     }
 
     .pillar-card-head {
       display: flex;
       align-items: center;
-      gap: 0.6rem;
-      margin-bottom: 0.5rem;
+      gap: 0.65rem;
+      margin-bottom: 0.6rem;
     }
 
     .pillar-icon {
-      font-size: 1.3rem;
+      font-size: 1.35rem;
     }
 
     .pillar-name {
       font-family: 'IBM Plex Serif', serif;
       font-weight: 700;
-      font-size: 1rem;
+      font-size: 1.05rem;
       color: var(--ink);
     }
 
     .pillar-desc {
-      font-size: 0.8rem;
+      font-size: 0.82rem;
       color: var(--ink-soft);
-      line-height: 1.4;
-      margin-bottom: 0.75rem;
+      line-height: 1.45;
+      margin-bottom: 0.85rem;
     }
 
     .pillar-statute {
@@ -592,16 +858,17 @@
       font-size: 0.7rem;
       color: var(--brand);
       background: var(--brand-light);
-      padding: 0.25rem 0.5rem;
+      padding: 0.25rem 0.55rem;
       border-radius: 4px;
       display: inline-block;
+      font-weight: 600;
     }
 
     /* Live Interactive Sample Simulator */
     .sim-card {
       background: var(--paper-raised);
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 14px;
       padding: 2rem;
       box-shadow: var(--shadow-md);
     }
@@ -611,14 +878,14 @@
       gap: 0.5rem;
       margin-bottom: 1.5rem;
       border-bottom: 1px solid var(--hairline);
-      padding-bottom: 0.75rem;
+      padding-bottom: 0.85rem;
       flex-wrap: wrap;
     }
 
     .sim-tab {
       background: var(--paper);
       border: 1px solid var(--border);
-      padding: 0.5rem 1rem;
+      padding: 0.55rem 1.1rem;
       border-radius: 6px;
       font-size: 0.85rem;
       font-weight: 600;
@@ -636,8 +903,8 @@
     .sim-result-box {
       background: var(--paper-card);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1.5rem;
+      border-radius: 10px;
+      padding: 1.75rem;
     }
 
     /* Registry Master Table */
@@ -646,7 +913,7 @@
       border-collapse: collapse;
       background: var(--paper-raised);
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 10px;
       overflow: hidden;
       box-shadow: var(--shadow-sm);
     }
@@ -658,13 +925,13 @@
       font-size: 0.85rem;
       color: var(--ink);
       text-align: left;
-      padding: 0.85rem 1.2rem;
+      padding: 0.95rem 1.25rem;
       border-bottom: 1px solid var(--border);
     }
 
     .registry-table td {
-      padding: 0.85rem 1.2rem;
-      font-size: 0.85rem;
+      padding: 0.95rem 1.25rem;
+      font-size: 0.86rem;
       border-bottom: 1px solid var(--hairline);
       color: var(--ink);
     }
@@ -690,7 +957,7 @@
     .footer {
       background: var(--ink);
       color: #FFFFFF;
-      padding: 4rem 2rem 2rem;
+      padding: 4.5rem 2rem 2.5rem;
       border-top: 1px solid rgba(255,255,255,0.1);
     }
 
@@ -700,12 +967,12 @@
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 2.5rem;
-      margin-bottom: 3rem;
+      margin-bottom: 3.5rem;
     }
 
     .footer-brand {
       font-family: 'IBM Plex Serif', serif;
-      font-size: 1.3rem;
+      font-size: 1.35rem;
       font-weight: 700;
       margin-bottom: 0.75rem;
     }
@@ -720,7 +987,7 @@
       font-family: 'IBM Plex Serif', serif;
       font-weight: 700;
       font-size: 0.95rem;
-      margin-bottom: 1rem;
+      margin-bottom: 1.1rem;
       color: #E2E8F0;
     }
 
@@ -729,7 +996,7 @@
     }
 
     .footer-links li {
-      margin-bottom: 0.6rem;
+      margin-bottom: 0.65rem;
     }
 
     .footer-links a {
@@ -756,9 +1023,25 @@
       gap: 1rem;
     }
 
+    @media (max-width: 992px) {
+      .hero-container {
+        grid-template-columns: 1fr;
+        gap: 2.5rem;
+        padding-top: 2.5rem;
+      }
+      .stat-card {
+        border-right: none;
+        border-bottom: 1px solid var(--hairline);
+        padding-bottom: 1rem;
+      }
+      .stat-card:last-child {
+        border-bottom: none;
+      }
+    }
+
     @media (max-width: 768px) {
       .hero-title {
-        font-size: 2.1rem;
+        font-size: 2.2rem;
       }
       .navbar {
         padding: 0.85rem 1rem;
@@ -774,13 +1057,22 @@
 </head>
 <body>
 
+  <!-- Top Accent Status Bar -->
+  <div class="top-status-bar">
+    <div class="status-indicator">
+      <div class="status-dot"></div>
+      <span>KARNATAKA RERA SYSTEM OPERATIONAL • 1,240+ POSTGRES REPOSITORIES ACTIVE</span>
+    </div>
+    <div>CROSS-VERIFYING KAVERI 2.0 • BHOOMI RTC • BDA • BBMP • E-COURTS</div>
+  </div>
+
   <!-- Sticky Navbar -->
   <header class="navbar">
     <a href="/" class="nav-brand">
       <div class="brand-icon">R</div>
       <div>
         <div class="brand-title">RERA Intelligence</div>
-        <div class="brand-subtitle">AI Property Verification</div>
+        <div class="brand-subtitle">AI Property Verification Engine</div>
       </div>
     </a>
 
@@ -792,47 +1084,108 @@
       <a href="/detail?q=CASAGRAND%20MOONDANCE" class="nav-item">🔍 Audit Profile</a>
     </nav>
 
-    <a href="/legal-report?q=CASAGRAND%20MOONDANCE" class="nav-cta">Launch Legal Report ↗</a>
+    <a href="/legal-report?q=CASAGRAND%20MOONDANCE" class="nav-cta">Launch Legal Audit ↗</a>
   </header>
 
-  <!-- Hero Banner -->
-  <section class="hero-section">
-    <div class="hero-badge">
-      <span style="display:inline-block; width:8px; height:8px; background:var(--pass); border-radius:50%;"></span>
-      Cross-Verifying 5 State Government Registries Live
-    </div>
+  <!-- Hero Grid Container -->
+  <section class="hero-container">
+    <div>
+      <div class="hero-tag">
+        <span>●</span> State Government Registry Integration Engine
+      </div>
 
-    <h1 class="hero-title">
-      Karnataka's AI Real Estate <span>Legal Due-Diligence</span> & Compliance Engine
-    </h1>
+      <h1 class="hero-title">
+        Karnataka's AI Real Estate <span>Legal Due-Diligence</span> Audit Portal
+      </h1>
 
-    <p class="hero-subtitle">
-      Instantly audit property title lineage, revenue records, land conversion orders, layout sanctions, and court litigation across <strong>Kaveri 2.0, Bhoomi RTC, BDA, BBMP e-Aasthi, and e-Courts</strong> before you buy.
-    </p>
+      <p class="hero-subtitle">
+        Instantly audit property title lineage, revenue Pahani extracts, DC land conversion orders, BDA layout sanctions, and High Court litigation across <strong>Kaveri 2.0, Bhoomi RTC, BDA, BBMP e-Aasthi, and e-Courts</strong> before you sign.
+      </p>
 
-    <!-- Search Box with Autocomplete -->
-    <div class="search-wrapper">
-      <form action="/legal-report" method="GET" class="search-bar" id="searchForm">
-        <span class="search-icon">🔍</span>
-        <input type="text" name="q" id="heroSearchInput" class="search-input" placeholder="Search project name or RERA reg number (e.g. Casagrand Moondance, Chartered Windsong)..." autocomplete="off">
-        <button type="submit" class="search-btn">Evaluate Legal Risk ↗</button>
-      </form>
+      <!-- Search Box with Autocomplete -->
+      <div class="search-wrapper">
+        <form action="/legal-report" method="GET" class="search-bar" id="searchForm">
+          <span class="search-icon">🔍</span>
+          <input type="text" name="q" id="heroSearchInput" class="search-input" placeholder="Search project name or RERA registration number (e.g. Casagrand Moondance, Chartered Windsong)..." autocomplete="off">
+          <button type="submit" class="search-btn">Evaluate Legal Risk ↗</button>
+        </form>
 
-      <div id="autocompleteBox" class="autocomplete-box">
-        <!-- Live suggestions populated by JS -->
+        <div id="autocompleteBox" class="autocomplete-box">
+          <!-- Live suggestions populated by JS -->
+        </div>
+      </div>
+
+      <!-- Presets Launcher -->
+      <div class="presets-row">
+        <span class="preset-label">⚡ Try Sample Evaluations:</span>
+        <span class="preset-chip" onclick="searchPreset('CASAGRAND MOONDANCE')">Casagrand Moondance</span>
+        <span class="preset-chip" onclick="searchPreset('Chartered Windsong - 2')">Chartered Windsong - 2</span>
+        <span class="preset-chip" onclick="searchPreset('Prestige Falcon City')">Prestige Falcon City</span>
+        <span class="preset-chip" onclick="searchPreset('Godrej Ananda')">Godrej Ananda</span>
       </div>
     </div>
 
-    <!-- Presets Launcher -->
-    <div class="presets-row">
-      <span class="preset-label">⚡ Try Sample Evaluations:</span>
-      <span class="preset-chip" onclick="searchPreset('CASAGRAND MOONDANCE')">Casagrand Moondance</span>
-      <span class="preset-chip" onclick="searchPreset('Chartered Windsong - 2')">Chartered Windsong - 2</span>
-      <span class="preset-chip" onclick="searchPreset('Prestige Falcon City')">Prestige Falcon City</span>
-      <span class="preset-chip" onclick="searchPreset('Godrej Ananda')">Godrej Ananda</span>
-    </div>
+    <!-- Live Terminal Preview Card -->
+    <div class="terminal-card">
+      <div class="terminal-head">
+        <div class="terminal-dots">
+          <div class="terminal-dot" style="background:#EF4444;"></div>
+          <div class="terminal-dot" style="background:#F59E0B;"></div>
+          <div class="terminal-dot" style="background:#10B981;"></div>
+        </div>
+        <div class="terminal-title">LIVE VERIFICATION TERMINAL</div>
+        <div class="terminal-badge">PASSED BUY GATE</div>
+      </div>
 
-    <!-- Live Metrics Counter Bar -->
+      <div style="font-family:'IBM Plex Serif', serif; font-size:1.1rem; font-weight:700; color:#FFFFFF; margin-bottom:0.25rem;">
+        Casagrand Moondance
+      </div>
+      <div style="font-size:0.75rem; color:#94A3B8; margin-bottom:1rem;" class="mono">
+        Survey No: 44/2 & 45/1 • District: Bengaluru Urban
+      </div>
+
+      <div class="terminal-check-list">
+        <div class="terminal-check-item">
+          <div>
+            <div class="terminal-check-name">1. Kaveri 2.0 SRO Executant ID</div>
+            <div class="terminal-check-reg">Ref: KAV-ID-99412 • Book I Deed 1452</div>
+          </div>
+          <span class="terminal-check-status st-pass">🟢 PASS</span>
+        </div>
+
+        <div class="terminal-check-item">
+          <div>
+            <div class="terminal-check-name">2. Bhoomi RTC Pahani Col 9/11</div>
+            <div class="terminal-check-reg">MR Form 12 • Podi 11E Sketch Matched</div>
+          </div>
+          <span class="terminal-check-status st-pass">🟢 PASS</span>
+        </div>
+
+        <div class="terminal-check-item">
+          <div>
+            <div class="terminal-check-name">3. BDA Sanctioned Layout Plan</div>
+            <div class="terminal-check-reg">BDA Master Plan 2031 Zoning Release</div>
+          </div>
+          <span class="terminal-check-status st-warn">🟡 CAUTION</span>
+        </div>
+
+        <div class="terminal-check-item">
+          <div>
+            <div class="terminal-check-name">4. e-Courts Karnataka Litigation</div>
+            <div class="terminal-check-reg">City Civil & High Court Suit Search</div>
+          </div>
+          <span class="terminal-check-status st-pass">🟢 PASS</span>
+        </div>
+      </div>
+
+      <a href="/legal-report?q=CASAGRAND%20MOONDANCE" style="display:block; text-align:center; background:#1E56A0; color:#FFFFFF; padding:0.6rem; border-radius:6px; font-weight:600; font-size:0.8rem;">
+        View Full 27-Check Legal Audit Matrix ↗
+      </a>
+    </div>
+  </section>
+
+  <!-- Metrics Counter Bar -->
+  <section class="stats-section">
     <div class="stats-container">
       <div class="stat-card">
         <div class="stat-number" id="statProjects">1,240<span>+</span></div>
@@ -850,6 +1203,37 @@
         <div class="stat-number">100<span>%</span></div>
         <div class="stat-title">Offline Proof Guarantee</div>
       </div>
+    </div>
+  </section>
+
+  <!-- Statewide Map Search Section (Area-Wise Zoom & Verification) -->
+  <section class="section-container">
+    <div class="map-section">
+      <div class="map-header">
+        <div>
+          <div class="section-tag">Interactive Geospatial Radar</div>
+          <h2 class="map-title">🗺️ Statewide RERA Property Map Search</h2>
+        </div>
+        <div class="map-counter-badge" id="mapVisibleBadge">
+          📍 Loading Map Properties...
+        </div>
+      </div>
+
+      <!-- Area-Wise Zoom Presets -->
+      <div class="map-pills-row">
+        <span class="preset-label">🔍 Zoom to Area:</span>
+        <button class="map-zoom-pill active" onclick="zoomToRegion([12.9716, 77.5946], 10, this)">🏙️ All Karnataka</button>
+        <button class="map-zoom-pill" onclick="zoomToRegion([12.9716, 77.5946], 12, this)">📍 Bangalore Central</button>
+        <button class="map-zoom-pill" onclick="zoomToRegion([12.925, 77.72], 13, this)">🌴 East Bangalore (Sarjapur / Whitefield)</button>
+        <button class="map-zoom-pill" onclick="zoomToRegion([13.15, 77.63], 12, this)">🛫 North Bangalore (Yelahanka / Devanahalli)</button>
+        <button class="map-zoom-pill" onclick="zoomToRegion([12.86, 77.65], 13, this)">🏢 South Bangalore (Electronic City)</button>
+        <button class="map-zoom-pill" onclick="zoomToRegion([12.3, 76.65], 12, this)">🏰 Mysore</button>
+        <button class="map-zoom-pill" onclick="zoomToRegion([12.87, 74.84], 12, this)">🌊 Mangaluru</button>
+        <button class="map-zoom-pill" onclick="zoomToRegion([15.36, 75.12], 12, this)">🏭 Hubballi-Dharwad</button>
+      </div>
+
+      <!-- Leaflet Map Canvas -->
+      <div id="mapContainer"></div>
     </div>
   </section>
 
@@ -1325,6 +1709,132 @@
 
     // Initialize default simulation on page load
     loadSim('sarjapur_plot', null);
+
+    // Leaflet Geospatial Map Logic
+    let reraMap = null;
+    let markersClusterGroup = null;
+    let allGeoJsonFeatures = [];
+
+    function initReraMap() {
+      const mapEl = document.getElementById('mapContainer');
+      if (!mapEl) return;
+
+      // Initialize Leaflet Map centered on Bangalore
+      reraMap = L.map('mapContainer', {
+        scrollWheelZoom: false
+      }).setView([12.9716, 77.5946], 10);
+
+      // Add OpenStreetMap tile layer
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors | RERA Intelligence'
+      }).addTo(reraMap);
+
+      // Add MarkerCluster Group
+      if (typeof L.markerClusterGroup === 'function') {
+        markersClusterGroup = L.markerClusterGroup({
+          chunkedLoading: true,
+          maxClusterRadius: 45
+        });
+      } else {
+        markersClusterGroup = L.layerGroup();
+      }
+
+      // Fetch GeoJSON features from API
+      fetch('/api/v1/projects/geojson')
+        .then(res => res.json())
+        .then(data => {
+          if (!data || !data.features) return;
+          allGeoJsonFeatures = data.features;
+          renderMapMarkers(allGeoJsonFeatures);
+          updateVisibleCount();
+        })
+        .catch(err => console.error("GeoJSON Fetch Error:", err));
+
+      reraMap.on('moveend', updateVisibleCount);
+      reraMap.on('zoomend', updateVisibleCount);
+
+      setTimeout(() => {
+        if (reraMap) reraMap.invalidateSize();
+      }, 300);
+    }
+
+    function renderMapMarkers(features) {
+      if (!markersClusterGroup) return;
+      markersClusterGroup.clearLayers();
+
+      features.forEach(f => {
+        if (!f.geometry || !f.geometry.coordinates) return;
+        const [lng, lat] = f.geometry.coordinates;
+        if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
+        if (lat < 8 || lat > 20 || lng < 70 || lng > 82) return; // Karnataka bounds check
+
+        const p = f.properties || {};
+        const projName = p.project_name || 'RERA Property';
+        const promoterName = p.promoter_name || 'Developer';
+        const district = p.district || 'Karnataka';
+        const score = p.quality_score || 85;
+
+        let scoreBadge = '🟢 90+ Score';
+        if (score < 80) scoreBadge = '🟡 75+ Caution';
+
+        const customIcon = L.divIcon({
+          className: 'custom-map-pin',
+          html: `<div style="background:#1E56A0; color:#fff; border:2px solid #fff; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:0.65rem; font-weight:bold; box-shadow:0 2px 6px rgba(0,0,0,0.35);">R</div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+
+        const marker = L.marker([lat, lng], { icon: customIcon });
+
+        const popupContent = `
+          <div class="map-popup-card">
+            <span class="mono" style="font-size:0.68rem; color:var(--brand); font-weight:700; text-transform:uppercase;">${district} • ${scoreBadge}</span>
+            <div class="map-popup-title">${projName}</div>
+            <div class="map-popup-sub">👷 ${promoterName}</div>
+            <a href="/legal-report?q=${encodeURIComponent(projName)}" class="map-popup-btn">
+              📜 Evaluate Legal Risk ↗
+            </a>
+          </div>
+        `;
+
+        marker.bindPopup(popupContent);
+        markersClusterGroup.addLayer(marker);
+      });
+
+      reraMap.addLayer(markersClusterGroup);
+    }
+
+    function zoomToRegion(center, zoomLevel, btn) {
+      if (btn) {
+        document.querySelectorAll('.map-zoom-pill').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      }
+      if (reraMap) {
+        reraMap.flyTo(center, zoomLevel, { duration: 1.2 });
+      }
+    }
+
+    function updateVisibleCount() {
+      if (!reraMap || !allGeoJsonFeatures) return;
+      const bounds = reraMap.getBounds();
+      let count = 0;
+      allGeoJsonFeatures.forEach(f => {
+        if (!f.geometry || !f.geometry.coordinates) return;
+        const [lng, lat] = f.geometry.coordinates;
+        if (lat && lng && bounds.contains([lat, lng])) {
+          count++;
+        }
+      });
+
+      const badge = document.getElementById('mapVisibleBadge');
+      if (badge) {
+        badge.innerHTML = `📍 <strong>${count.toLocaleString()}</strong> Verified Projects in Visible Map Area`;
+      }
+    }
+
+    // Load Map after window finishes rendering
+    window.addEventListener('load', initReraMap);
   </script>
 </body>
 </html>
