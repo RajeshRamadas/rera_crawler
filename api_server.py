@@ -36,8 +36,10 @@ import urllib.request
 from fastapi.responses import FileResponse, StreamingResponse
 from project_analyzer import search_project, analyze_project_data, analyze_by_name_or_reg
 from legal_due_diligence_agent import KarnatakaPropertyLegalAgent, SAMPLE_PROPERTIES
+from document_verification_agent import DocumentDownloadAndVerifyAgent
 
 legal_agent_instance = KarnatakaPropertyLegalAgent()
+doc_verify_agent = DocumentDownloadAndVerifyAgent()
 
 DB_URI = os.getenv("DATABASE_URL", "postgresql://rera_user:rera_password@localhost:5432/rera_db")
 
@@ -127,6 +129,53 @@ def evaluate_property_by_query(q: str = Query("Chartered Windsong - 2", descript
         return legal_agent_instance.evaluate_project_query(q)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Legal Engine Error: {str(exc)}")
+
+
+# ============================================================
+# AI DOCUMENT DOWNLOAD & LEGAL VERIFICATION AGENT ENDPOINTS
+# ============================================================
+
+@app.get("/api/v1/agent/download-and-verify", summary="AI Document Download & Legal Verification Agent")
+def agent_download_and_verify(
+    q: str = Query("CASAGRAND MOONDANCE", description="Project name or RERA registration number")
+):
+    """
+    Full AI agent pipeline:
+    1. Resolves all downloadable PDF document URLs for the project from RERA DB
+    2. Downloads every PDF (RERA Registration Cert, Title Deeds, EC, RTC, Khata, CA/Arch/Eng Forms, Plans)
+    3. Extracts text via pdfplumber / PyMuPDF
+    4. Classifies each document type and extracts structured legal entities
+    5. Cross-verifies entities across all documents (name continuity, survey match, encumbrance, PTCL)
+    6. Returns complete legal verification report with PASS / CAUTION / FAIL verdict
+    """
+    try:
+        return doc_verify_agent.run(q)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Document Verification Agent Error: {str(exc)}")
+
+
+@app.get("/api/v1/agent/download-and-verify/stream", summary="AI Document Verification Agent — Live SSE Stream")
+def agent_download_and_verify_stream(
+    q: str = Query("CASAGRAND MOONDANCE", description="Project name or RERA registration number")
+):
+    """
+    Same as /api/v1/agent/download-and-verify but streams step-by-step agent logs
+    as Server-Sent Events (SSE) in real time.
+    Each SSE event is a JSON object: {type: 'log'|'report'|'error', message, data, ts}
+    """
+    try:
+        fresh_agent = DocumentDownloadAndVerifyAgent()
+        return StreamingResponse(
+            fresh_agent.run_streaming(q),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+                "Access-Control-Allow-Origin": "*",
+            }
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Stream Agent Error: {str(exc)}")
 
 
 @app.get("/api/legal-due-diligence/verify-documents", summary="Run RERA AI Document Verification & Inspection Agent")

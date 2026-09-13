@@ -1581,8 +1581,8 @@
                     Scrapes, downloads, and inspects uploaded RERA PDF document filings, bank affidavits, layout sanctions & CA certificates.
                   </div>
                 </div>
-                <button class="btn" id="runDocAgentBtn" onclick="runDocumentAgent()" style="background: #1E56A0; color: #ffffff; font-weight: 600; font-size: 0.78rem;">
-                  ⚡ Run Live Document Verification Agent
+                <button class="btn" id="runDocAgentBtn" onclick="runDocumentAgent()" style="background: linear-gradient(135deg, #1E56A0 0%, #2563EB 100%); color: #ffffff; font-weight: 600; font-size: 0.78rem; border: none; padding: 0.65rem 1.2rem; border-radius: 6px; cursor: pointer; box-shadow: 0 0 16px rgba(37,99,235,0.4);">
+                  🤖 Run AI Verification Agent
                 </button>
               </div>
 
@@ -2615,43 +2615,212 @@
     const scoreText = document.getElementById('docAgentScoreText');
 
     if (btn) {
-      btn.innerText = "⏳ Running Verification Agent...";
+      btn.innerHTML = '<span style="display:inline-block;animation:spin 1s linear infinite;">⏳</span>&nbsp; AI Agent Running — Downloading & Verifying PDFs...';
       btn.disabled = true;
     }
 
-    try {
-      const q = currentData ? (currentData.property_name || 'Chartered Windsong - 2') : 'Chartered Windsong - 2';
-      const res = await fetch(`/api/legal-due-diligence/verify-documents?q=${encodeURIComponent(q)}`);
-      const data = await res.json();
-
-      if (resBox) resBox.style.display = 'block';
-      if (verdictBadge) verdictBadge.innerText = `${data.verdict_badge} ${data.final_verdict}`;
-      if (scoreText) scoreText.innerText = `Verified ${data.verified_count} / ${data.total_documents_scanned} PDFs (Score: ${data.document_score}/100)`;
-
-      if (catGrid) {
-        catGrid.innerHTML = data.statutory_category_checks.map(c => `
-          <div style="background: #ffffff; padding: 0.55rem 0.8rem; border-radius: 4px; border: 1px solid var(--hairline-strong); display: flex; align-items: center; justify-content: space-between;">
-            <span style="font-size: 0.75rem; font-weight: 500;">${c.category}</span>
-            <span class="mono" style="font-size: 0.68rem; font-weight: 600;">${c.badge}</span>
+    // Show results area with live log terminal immediately
+    if (resBox) {
+      resBox.style.display = 'block';
+      resBox.innerHTML = `
+        <div id="agentLivePanel" style="display:flex;flex-direction:column;gap:1rem;">
+          <!-- Live Log Terminal -->
+          <div style="background:#0D1117;border:1px solid #30363D;border-radius:8px;overflow:hidden;">
+            <div style="background:#161B22;padding:0.5rem 1rem;display:flex;align-items:center;gap:0.5rem;border-bottom:1px solid #30363D;">
+              <span style="width:10px;height:10px;background:#FF5F57;border-radius:50%;display:inline-block;"></span>
+              <span style="width:10px;height:10px;background:#FFBD2E;border-radius:50%;display:inline-block;"></span>
+              <span style="width:10px;height:10px;background:#28CA41;border-radius:50%;display:inline-block;"></span>
+              <span class="mono" style="font-size:0.72rem;color:#8B949E;margin-left:0.5rem;">AI Document Verification Agent — Live Terminal</span>
+            </div>
+            <div id="agentLiveLog" style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:#58A6FF;padding:0.85rem 1rem;max-height:220px;overflow-y:auto;line-height:1.6;"></div>
           </div>
-        `).join('');
-      }
+          <!-- Verdict placeholder -->
+          <div id="agentVerdictSection" style="display:none;"></div>
+          <!-- Entity map placeholder -->
+          <div id="agentEntityMap" style="display:none;"></div>
+          <!-- Per-doc results placeholder -->
+          <div id="agentDocCards" style="display:none;"></div>
+          <!-- Cross-verification placeholder -->
+          <div id="agentCrossVerify" style="display:none;"></div>
+        </div>`;
+    }
 
-      if (logsBox) {
-        logsBox.innerHTML = data.verification_logs.join('<br/>');
-      }
+    const q = currentData ? (currentData.property_name || 'Chartered Windsong - 2') : 'Chartered Windsong - 2';
+    const logEl = document.getElementById('agentLiveLog');
 
-      if (btn) {
-        btn.innerText = "✅ Verification Agent Complete";
-        btn.disabled = false;
-      }
-      showToast(`Document Agent: Scanned & Verified ${data.verified_count} PDF Files`);
+    function appendLog(msg, color) {
+      if (!logEl) return;
+      const line = document.createElement('div');
+      const ts = new Date().toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      line.style.color = color || '#58A6FF';
+      line.textContent = `[${ts}] ${msg}`;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function renderVerdictBanner(report) {
+      const el = document.getElementById('agentVerdictSection');
+      if (!el) return;
+      const badge = report.verdict_badge || '';
+      const verdict = report.final_verdict || '';
+      const score = report.legal_risk_score || 0;
+      const isFail = badge.includes('NOT') || badge.includes('FAIL') || verdict.includes('FAIL');
+      const isCaution = badge.includes('CAUTION') || verdict.includes('CAUTION');
+      const bgColor = isFail ? 'linear-gradient(135deg,#3D0000,#6B0000)' : isCaution ? 'linear-gradient(135deg,#2D1A00,#4D3000)' : 'linear-gradient(135deg,#003D1A,#006B30)';
+      const borderColor = isFail ? '#FF4444' : isCaution ? '#FFA500' : '#22C55E';
+      const icon = isFail ? '🔴' : isCaution ? '🟡' : '🟢';
+      el.style.display = 'block';
+      el.innerHTML = `
+        <div style="background:${bgColor};border:2px solid ${borderColor};border-radius:12px;padding:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+          <div>
+            <div style="font-size:0.72rem;font-family:'IBM Plex Mono',monospace;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.3rem;">AI Legal Verification — Final Verdict</div>
+            <div style="font-family:'IBM Plex Serif',serif;font-size:1.4rem;font-weight:700;color:#fff;">${icon} ${badge}</div>
+            <div style="font-size:0.85rem;color:rgba(255,255,255,0.75);margin-top:0.25rem;">${verdict}</div>
+            <div style="margin-top:0.75rem;display:flex;gap:1rem;flex-wrap:wrap;">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:rgba(255,255,255,0.6);">📄 ${report.summary?.total_documents||0} docs scanned</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:#22C55E;">✅ ${report.summary?.verified||0} verified</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:#FFA500;">🟡 ${report.summary?.scanned_pdf||0} scanned PDFs</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:#FF4444;">❌ ${report.summary?.download_failed||0} download failed</span>
+            </div>
+          </div>
+          <div style="text-align:center;min-width:90px;">
+            <div style="font-size:3rem;font-weight:800;color:#fff;font-family:'IBM Plex Serif',serif;">${score}</div>
+            <div style="font-size:0.68rem;font-family:'IBM Plex Mono',monospace;color:rgba(255,255,255,0.5);">LEGAL RISK SCORE / 100</div>
+          </div>
+        </div>`;
+    }
+
+    function renderEntityMap(entityMap) {
+      if (!entityMap || !Object.keys(entityMap).filter(k => entityMap[k]).length) return;
+      const el = document.getElementById('agentEntityMap');
+      if (!el) return;
+      el.style.display = 'block';
+      const rows = Object.entries(entityMap).filter(([k,v]) => v).map(([k,v]) => {
+        const label = k.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+        return `<tr><td style="font-size:0.75rem;font-weight:600;color:var(--ink);padding:0.4rem 0.6rem;white-space:nowrap;">${label}</td><td style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:var(--ink-soft);padding:0.4rem 0.6rem;">${v}</td></tr>`;
+      }).join('');
+      el.innerHTML = `
+        <div style="background:var(--paper-raised);border:1px solid var(--hairline-strong);border-radius:8px;overflow:hidden;">
+          <div style="padding:0.75rem 1rem;border-bottom:1px solid var(--hairline);font-family:'IBM Plex Serif',serif;font-size:0.95rem;font-weight:700;color:var(--ink);">🗺️ Extracted Cross-Document Entity Map</div>
+          <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">${rows}</table></div>
+        </div>`;
+    }
+
+    function renderCrossVerify(cv) {
+      const el = document.getElementById('agentCrossVerify');
+      if (!el) return;
+      el.style.display = 'block';
+      const critCards = (cv.critical_flags||[]).map(f => `
+        <div style="background:#2D0000;border-left:4px solid #FF4444;border-radius:4px;padding:0.65rem 0.85rem;display:flex;gap:0.5rem;align-items:flex-start;">
+          <span style="font-size:1rem;flex-shrink:0;">🔴</span>
+          <span style="font-size:0.78rem;color:#FFB3B3;font-weight:500;">${f}</span>
+        </div>`).join('');
+      const warnCards = (cv.warnings||[]).map(w => `
+        <div style="background:#2D1A00;border-left:4px solid #FFA500;border-radius:4px;padding:0.65rem 0.85rem;display:flex;gap:0.5rem;align-items:flex-start;">
+          <span style="font-size:1rem;flex-shrink:0;">🟡</span>
+          <span style="font-size:0.78rem;color:#FFD999;font-weight:500;">${w}</span>
+        </div>`).join('');
+      const passCards = (cv.passed||[]).map(p => `
+        <div style="background:#002D12;border-left:4px solid #22C55E;border-radius:4px;padding:0.55rem 0.85rem;display:flex;gap:0.5rem;align-items:center;">
+          <span style="font-size:0.9rem;flex-shrink:0;">🟢</span>
+          <span style="font-size:0.75rem;color:#86EFAC;">${p}</span>
+        </div>`).join('');
+      el.innerHTML = `
+        <div style="background:var(--paper-raised);border:1px solid var(--hairline-strong);border-radius:8px;overflow:hidden;">
+          <div style="padding:0.75rem 1rem;border-bottom:1px solid var(--hairline);font-family:'IBM Plex Serif',serif;font-size:0.95rem;font-weight:700;color:var(--ink);">⚖️ Cross-Document Legal Verification Matrix</div>
+          <div style="padding:0.85rem 1rem;display:flex;flex-direction:column;gap:0.5rem;">
+            ${critCards}${warnCards}${passCards}
+          </div>
+        </div>`;
+    }
+
+    function renderDocCards(docs) {
+      const el = document.getElementById('agentDocCards');
+      if (!el || !docs || !docs.length) return;
+      el.style.display = 'block';
+      const statusColors = {
+        'VERIFIED': { bg:'#002D12', border:'#22C55E', text:'#86EFAC', icon:'✅' },
+        'CAUTION':  { bg:'#2D1A00', border:'#FFA500', text:'#FFD999', icon:'⚠️' },
+        'CRITICAL': { bg:'#2D0000', border:'#FF4444', text:'#FFB3B3', icon:'🔴' },
+        'SCANNED_PDF': { bg:'#1A1A2D', border:'#818CF8', text:'#C7D2FE', icon:'🖼️' },
+        'DOWNLOAD_FAILED': { bg:'#1A0A0A', border:'#6B0000', text:'#FECACA', icon:'❌' },
+      };
+      const cards = docs.map(doc => {
+        const st = statusColors[doc.status] || statusColors['CAUTION'];
+        const entities = doc.entities || {};
+        const issues = doc.issues || [];
+        const entityRows = Object.entries(entities)
+          .filter(([k,v]) => v !== null && v !== undefined && k !== 'char_count' && k !== 'text_status' && k !== 'download_status')
+          .slice(0,8)
+          .map(([k,v]) => {
+            const label = k.replace(/_/g,' ');
+            const val = typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v).slice(0,80);
+            return `<div style="display:flex;gap:0.5rem;font-size:0.7rem;"><span style="color:#94A3B8;min-width:120px;flex-shrink:0;">${label}:</span><span style="color:#E2E8F0;word-break:break-all;">${val}</span></div>`;
+          }).join('');
+        const issueHtml = issues.length ? `<div style="margin-top:0.5rem;display:flex;flex-direction:column;gap:0.25rem;">${issues.map(i=>`<div style="font-size:0.7rem;color:${st.text};padding:0.2rem 0.4rem;background:${st.bg};border-radius:3px;">⚠ ${i}</div>`).join('')}</div>` : '';
+        return `
+          <div style="background:#0F172A;border:1px solid ${st.border};border-radius:8px;overflow:hidden;min-width:260px;">
+            <div style="background:${st.bg};padding:0.6rem 0.85rem;display:flex;align-items:center;justify-content:space-between;gap:0.5rem;border-bottom:1px solid ${st.border}40;">
+              <div style="font-size:0.75rem;font-weight:600;color:#F8FAFC;line-height:1.3;max-width:200px;">${st.icon} ${(doc.title||'').slice(0,50)}</div>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:0.62rem;color:${st.text};white-space:nowrap;background:${st.bg};padding:0.15rem 0.4rem;border-radius:3px;border:1px solid ${st.border}60;">${doc.doc_type_label||doc.doc_type||'OTHER'}</span>
+            </div>
+            <div style="padding:0.6rem 0.85rem;">
+              ${entityRows || '<div style="font-size:0.7rem;color:#475569;">No entities extracted</div>'}
+              ${issueHtml}
+              <div style="margin-top:0.4rem;font-family:\'IBM Plex Mono\',monospace;font-size:0.62rem;color:#475569;">${doc.pages||0} pages • ${doc.extraction_method||'none'}</div>
+            </div>
+          </div>`;
+      }).join('');
+      el.innerHTML = `
+        <div style="background:var(--paper-raised);border:1px solid var(--hairline-strong);border-radius:8px;overflow:hidden;">
+          <div style="padding:0.75rem 1rem;border-bottom:1px solid var(--hairline);font-family:'IBM Plex Serif',serif;font-size:0.95rem;font-weight:700;color:var(--ink);">📄 Per-Document Verification Results (${docs.length} documents)</div>
+          <div style="padding:0.85rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:0.75rem;">${cards}</div>
+        </div>`;
+    }
+
+    try {
+      const evtSource = new EventSource(`/api/v1/agent/download-and-verify/stream?q=${encodeURIComponent(q)}`);
+
+      evtSource.onmessage = (evt) => {
+        try {
+          const payload = JSON.parse(evt.data);
+          if (payload.type === 'log') {
+            const isCritical = payload.message.toUpperCase().includes('CRITICAL');
+            const isWarn = payload.message.toUpperCase().includes('WARNING') || payload.message.toUpperCase().includes('WARN');
+            const isOk = payload.message.toUpperCase().includes('PASS:') || payload.message.includes('OK --');
+            const color = isCritical ? '#FF4444' : isWarn ? '#FFA500' : isOk ? '#22C55E' : '#58A6FF';
+            appendLog(payload.message, color);
+          } else if (payload.type === 'report') {
+            const report = payload.data;
+            evtSource.close();
+            renderVerdictBanner(report);
+            renderEntityMap(report.entity_map);
+            renderCrossVerify(report.cross_verification);
+            renderDocCards(report.per_document_results);
+            appendLog(`Agent complete — Verdict: ${report.verdict_badge}`, '#22C55E');
+            if (btn) {
+              btn.innerHTML = '✅ AI Verification Complete — Run Again';
+              btn.disabled = false;
+            }
+            showToast(`AI Agent: ${report.summary?.total_documents||0} documents verified — ${report.verdict_badge}`);
+          } else if (payload.type === 'error') {
+            appendLog(`ERROR: ${payload.message}`, '#FF4444');
+            evtSource.close();
+            if (btn) { btn.innerHTML = '⚡ Run AI Verification Agent'; btn.disabled = false; }
+          }
+        } catch(e) { console.error('SSE parse error', e); }
+      };
+
+      evtSource.onerror = (err) => {
+        appendLog('Connection error — agent may have completed or timed out.', '#FFA500');
+        evtSource.close();
+        if (btn) { btn.innerHTML = '⚡ Run AI Verification Agent'; btn.disabled = false; }
+      };
+
     } catch (err) {
-      console.error("Document agent verification failed", err);
-      if (btn) {
-        btn.innerText = "⚡ Run Live Document Verification Agent";
-        btn.disabled = false;
-      }
+      console.error('Document agent stream failed', err);
+      appendLog(`Failed to start agent: ${err.message}`, '#FF4444');
+      if (btn) { btn.innerHTML = '⚡ Run AI Verification Agent'; btn.disabled = false; }
     }
   }
 
