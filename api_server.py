@@ -496,22 +496,20 @@ def get_geospatial_page():
 
 
 
-def is_db_server_up(host="localhost", port=5432):
-    """Ultra-fast 50ms socket check to see if PostgreSQL port is open."""
+def is_db_server_up(host="127.0.0.1", port=5432):
+    """Fast socket check to verify PostgreSQL port availability."""
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(0.05)
+            s.settimeout(0.5)
             return s.connect_ex((host, port)) == 0
     except Exception:
         return False
 
 
 def get_db_connection():
-    """Establish connection to PostgreSQL database with fast 50ms socket pre-check."""
-    if not is_db_server_up():
-        raise Exception("PostgreSQL server offline or not listening on port 5432")
+    """Establish connection to PostgreSQL database."""
     try:
-        conn = psycopg2.connect(DB_URI, connect_timeout=1, cursor_factory=psycopg2.extras.RealDictCursor)
+        conn = psycopg2.connect(DB_URI, connect_timeout=3, cursor_factory=psycopg2.extras.RealDictCursor)
         return conn
     except Exception as exc:
         raise HTTPException(
@@ -652,7 +650,8 @@ def list_projects(
     property_config: Optional[str] = Query(None, description="Filter by property configuration (e.g. 3 BHK, Plots)"),
     q: Optional[str] = Query(None, description="Search term matching project name, promoter, or reg no"),
     min_quality_score: Optional[int] = Query(None, ge=0, le=100, description="Filter by minimum data quality score (0-100)"),
-    limit: int = Query(20, ge=1, le=100, description="Page limit (default: 20, max: 100)"),
+    risk_band: Optional[str] = Query(None, description="Filter by risk band: clear (>=70), watch (40-69), flag (<40 or unapproved)"),
+    limit: int = Query(20, ge=1, le=10000, description="Page limit (default: 20, max: 10000)"),
     offset: int = Query(0, ge=0, description="Offset index for pagination"),
 ):
     """Fetch paginated RERA projects with search and quality filters."""
@@ -721,6 +720,15 @@ def list_projects(
                 where_clauses.append("(data->'data_quality'->>'quality_score')::int >= %s")
                 params.append(min_quality_score)
 
+            if risk_band:
+                rb = risk_band.strip().lower()
+                if rb == "clear":
+                    where_clauses.append("(COALESCE((data->'data_quality'->>'quality_score')::int, 85) >= 70 AND UPPER(COALESCE(status, 'APPROVED')) = 'APPROVED')")
+                elif rb == "watch":
+                    where_clauses.append("(COALESCE((data->'data_quality'->>'quality_score')::int, 85) >= 40 AND COALESCE((data->'data_quality'->>'quality_score')::int, 85) < 70 AND UPPER(COALESCE(status, 'APPROVED')) = 'APPROVED')")
+                elif rb == "flag":
+                    where_clauses.append("(COALESCE((data->'data_quality'->>'quality_score')::int, 85) < 40 OR UPPER(COALESCE(status, 'APPROVED')) != 'APPROVED')")
+
             where_str = " AND ".join(where_clauses)
 
             data_query = f"""
@@ -760,6 +768,8 @@ def list_projects(
 
             for r in rows:
                 r.pop('property_configs', None)
+                if r.get('crawled_at') is not None and not isinstance(r['crawled_at'], str):
+                    r['crawled_at'] = str(r['crawled_at'])
 
             count_query = f"SELECT COUNT(*) as total FROM rera_projects WHERE {where_str};"
             cur.execute(count_query, params)

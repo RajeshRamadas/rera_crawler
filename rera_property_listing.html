@@ -884,14 +884,28 @@
     </div>
     <div class="toolbar-row">
       <div class="filters" id="filterChips"></div>
-      <div class="sort-group">
-        Sort
-        <select id="sortBy">
-          <option value="score-desc">Score, high to low</option>
-          <option value="score-asc">Score, low to high</option>
-          <option value="name-asc">Name, A–Z</option>
-          <option value="price-asc">Price, low to high</option>
-        </select>
+      <div class="sort-group" style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+        <div>
+          Sort
+          <select id="sortBy">
+            <option value="score-desc">Score, high to low</option>
+            <option value="score-asc">Score, low to high</option>
+            <option value="name-asc">Name, A–Z</option>
+            <option value="price-asc">Price, low to high</option>
+          </select>
+        </div>
+        <div>
+          Per Page
+          <select id="pageSizeSelect" style="padding:0.25rem 0.45rem; font-size:0.78rem; font-family:'IBM Plex Mono',monospace; border:1px solid var(--hairline-strong); background:var(--paper-raised); color:var(--ink); border-radius:3px;">
+            <option value="20">20 / page</option>
+            <option value="50">50 / page</option>
+            <option value="100">100 / page</option>
+            <option value="250">250 / page</option>
+            <option value="500">500 / page</option>
+            <option value="1000">1,000 / page</option>
+            <option value="10000">All (8,946+)</option>
+          </select>
+        </div>
       </div>
     </div>
   </div>
@@ -1160,7 +1174,7 @@ try {
 
   const SAMPLE_PROPERTIES = [...PROPERTIES];
 
-  const PAGE_SIZE = 20;
+  let PAGE_SIZE = 20;
   let currentPage = 1;
   let totalMatchingItems = 0;
   let totalPagesCount = 1;
@@ -1184,14 +1198,17 @@ try {
 
   function renderSummary() {
     const total = totalMatchingItems || PROPERTIES.length;
-    const clear = PROPERTIES.filter(p => p.band.class === 'clear' && p.gateOK).length;
-    const watch = PROPERTIES.filter(p => p.band.class === 'watch' && p.gateOK).length;
-    const flag = PROPERTIES.filter(p => p.band.class === 'flag' || !p.gateOK).length;
+    const isFiltered = activeFilter !== 'all';
+    const clearCount = (isFiltered && activeFilter === 'clear') ? total : PROPERTIES.filter(p => p.band.class === 'clear' && p.gateOK).length;
+    const watchCount = (isFiltered && activeFilter === 'watch') ? total : PROPERTIES.filter(p => p.band.class === 'watch' && p.gateOK).length;
+    const flagCount = (isFiltered && activeFilter === 'flag') ? total : PROPERTIES.filter(p => p.band.class === 'flag' || !p.gateOK).length;
+    const scopeLabel = (isFiltered || PAGE_SIZE >= 8000) ? 'Total' : 'Page';
+
     document.getElementById('summaryStrip').innerHTML = `
       <div class="summary-cell"><div class="num">${total.toLocaleString()}</div><div class="lbl">Tracked properties</div></div>
-      <div class="summary-cell clear"><div class="num">${clear}</div><div class="lbl">Clear band (Page)</div></div>
-      <div class="summary-cell watch"><div class="num">${watch}</div><div class="lbl">Watch band (Page)</div></div>
-      <div class="summary-cell flag"><div class="num">${flag}</div><div class="lbl">Flag / gate failed</div></div>
+      <div class="summary-cell clear"><div class="num">${clearCount.toLocaleString()}</div><div class="lbl">Clear band (${scopeLabel})</div></div>
+      <div class="summary-cell watch"><div class="num">${watchCount.toLocaleString()}</div><div class="lbl">Watch band (${scopeLabel})</div></div>
+      <div class="summary-cell flag"><div class="num">${flagCount.toLocaleString()}</div><div class="lbl">Flag / gate failed (${scopeLabel})</div></div>
     `;
   }
 
@@ -1653,15 +1670,14 @@ try {
 
   async function fetchLiveProperties(page = 1) {
     const isFilteredByChip = activeFilter !== 'all';
-    // If filtering by chip (Clear/Watch/Flag), fetch a larger set (100) to filter locally accurately
-    const fetchLimit = isFilteredByChip ? 100 : PAGE_SIZE;
-    const offset = isFilteredByChip ? 0 : (page - 1) * PAGE_SIZE;
+    const offset = (page - 1) * PAGE_SIZE;
 
     const queryParams = new URLSearchParams({
-      limit: fetchLimit,
+      limit: PAGE_SIZE,
       offset: offset
     });
 
+    if (isFilteredByChip) queryParams.append('risk_band', activeFilter);
     if (searchTerm) queryParams.append('q', searchTerm);
     if (selectedDistrict) queryParams.append('district', selectedDistrict);
     if (selectedStatus) queryParams.append('status', selectedStatus);
@@ -1681,10 +1697,8 @@ try {
         if (res.ok) {
           const data = await res.json();
           if (data && data.results) {
-            if (!isFilteredByChip) {
-              totalMatchingItems = data.total ?? data.results.length;
-              totalPagesCount = Math.max(1, Math.ceil(totalMatchingItems / PAGE_SIZE));
-            }
+            totalMatchingItems = data.total ?? data.results.length;
+            totalPagesCount = Math.max(1, Math.ceil(totalMatchingItems / PAGE_SIZE));
             
             const mapped = data.results.map((p, idx) => {
               const coords = resolveCoordinates(p);
@@ -1757,22 +1771,18 @@ try {
 
     if (!isLive) {
       rawList = [...SAMPLE_PROPERTIES];
-    }
-
-    // Apply Filter Chips (Clear, Watch, Flag)
-    let filteredList = rawList;
-    if (activeFilter === 'clear') {
-      filteredList = rawList.filter(p => p.band.class === 'clear' && p.gateOK);
-    } else if (activeFilter === 'watch') {
-      filteredList = rawList.filter(p => p.band.class === 'watch' && p.gateOK);
-    } else if (activeFilter === 'flag') {
-      filteredList = rawList.filter(p => p.band.class === 'flag' || !p.gateOK);
-    }
-
-    if (activeFilter !== 'all' || !isLive) {
-      totalMatchingItems = filteredList.length;
+      if (activeFilter === 'clear') {
+        rawList = rawList.filter(p => p.band.class === 'clear' && p.gateOK);
+      } else if (activeFilter === 'watch') {
+        rawList = rawList.filter(p => p.band.class === 'watch' && p.gateOK);
+      } else if (activeFilter === 'flag') {
+        rawList = rawList.filter(p => p.band.class === 'flag' || !p.gateOK);
+      }
+      totalMatchingItems = rawList.length;
       totalPagesCount = Math.max(1, Math.ceil(totalMatchingItems / PAGE_SIZE));
     }
+
+    let filteredList = [...rawList];
 
     if (activeSort === 'score-desc') filteredList.sort((a, b) => b.composite - a.composite);
     else if (activeSort === 'score-asc') filteredList.sort((a, b) => a.composite - b.composite);
@@ -1780,7 +1790,7 @@ try {
     else if (activeSort === 'price-asc') filteredList.sort((a, b) => a.priceMin - b.priceMin);
 
     PROPERTIES.length = 0;
-    if (activeFilter !== 'all' || !isLive) {
+    if (!isLive) {
       const pageStart = (currentPage - 1) * PAGE_SIZE;
       PROPERTIES.push(...filteredList.slice(pageStart, pageStart + PAGE_SIZE));
     } else {
@@ -1790,6 +1800,7 @@ try {
     renderSummary();
     renderPagination();
     renderList();
+    updateMapMarkers();
   }
 
   let searchTimer = null;
@@ -1833,7 +1844,9 @@ try {
     document.getElementById('statusFilter').value = '';
     document.getElementById('approvalYearFilter').value = '';
     document.getElementById('completionYearFilter').value = '';
+    document.getElementById('pageSizeSelect').value = '20';
 
+    PAGE_SIZE = 20;
     searchTerm = '';
     selectedDistrict = '';
     selectedStatus = '';
@@ -1850,6 +1863,15 @@ try {
     activeSort = e.target.value;
     loadAndRender();
   });
+
+  const pSizeSel = document.getElementById('pageSizeSelect');
+  if (pSizeSel) {
+    pSizeSel.addEventListener('change', (e) => {
+      PAGE_SIZE = parseInt(e.target.value, 10) || 20;
+      currentPage = 1;
+      loadAndRender();
+    });
+  }
 
   document.getElementById('firstPageBtn').addEventListener('click', () => {
     if (currentPage > 1) { currentPage = 1; loadAndRender(); }
