@@ -65,6 +65,44 @@ class TestKarnatakaLegalEngine(unittest.TestCase):
         for area in expected_areas:
             self.assertIn(area, matrix_checks)
 
+    def test_verify_uploaded_documents(self):
+        """Test document ingestion and cross-verification engine."""
+        test_docs = [
+            {
+                "filename": "sale_deed_varthur.pdf",
+                "doc_type": "SALE_DEED",
+                "text_content": "Absolute Sale Deed registered at Varthur SRO. Purchaser: Ramesh Kumar. Vendor: Devraj & Family."
+            },
+            {
+                "filename": "kaveri_ec_30yr.pdf",
+                "doc_type": "EC",
+                "text_content": "Kaveri 2 Encumbrance Certificate Form 15. Simple Mortgage to HDFC Bank Ltd for Rs. 1.2 Crore."
+            },
+            {
+                "filename": "bhoomi_rtc_pahani.pdf",
+                "doc_type": "RTC",
+                "text_content": "Bhoomi Revenue Pahani Sy No 84/2. Owner: Ramesh Kumar. SC/ST PTCL Grant Land restriction noted."
+            }
+        ]
+
+        result = self.agent.verify_uploaded_documents(test_docs, "Varthur Land Plot")
+        self.assertIn("uploaded_documents_summary", result)
+        self.assertEqual(len(result["uploaded_documents_summary"]), 3)
+        self.assertIn("cross_document_contradictions", result)
+        self.assertIn("ai_verification_logs", result)
+        self.assertGreater(len(result["ai_verification_logs"]), 3)
+
+    def test_chat_with_legal_copilot(self):
+        """Test AI Legal Copilot response for Karnataka property questions."""
+        res_mortgage = self.agent.chat_with_legal_copilot("Is there any active bank mortgage in the EC?")
+        self.assertIn("Encumbrance", res_mortgage["category"])
+        self.assertIn("mortgage", res_mortgage["answer"].lower())
+
+        res_ptcl = self.agent.chat_with_legal_copilot("What are the PTCL grant land restrictions?")
+        self.assertIn("PTCL", res_ptcl["category"])
+        self.assertIn("null and void", res_ptcl["answer"].lower())
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+

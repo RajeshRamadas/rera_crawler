@@ -154,6 +154,40 @@ def evaluate_property_legal_risk(payload: dict):
         raise HTTPException(status_code=500, detail=f"Legal Engine Error: {str(exc)}")
 
 
+class UploadVerificationRequest(BaseModel):
+    property_name: Optional[str] = "Uploaded Legal Document Package"
+    documents: List[dict]
+
+
+class LegalChatRequest(BaseModel):
+    query: str
+    context: Optional[dict] = None
+
+
+@app.post("/api/legal-due-diligence/upload-verify", summary="Run AI Agent Document Verification on Uploaded Files")
+def verify_uploaded_legal_documents(payload: UploadVerificationRequest):
+    """
+    Ingests uploaded legal documents (Sale Deed, Kaveri EC, Bhoomi RTC, Khata), extracts entities,
+    cross-verifies consistency, and evaluates 27 Karnataka legal checks.
+    """
+    try:
+        return legal_agent_instance.verify_uploaded_documents(payload.documents, payload.property_name)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"AI Agent Ingestion Error: {str(exc)}")
+
+
+@app.post("/api/legal-due-diligence/chat", summary="Chat with AI Property Legal Assistant Copilot")
+def chat_legal_assistant(payload: LegalChatRequest):
+    """
+    Answers custom legal questions regarding uploaded documents, Karnataka Land Revenue laws,
+    PTCL restrictions, Kaveri EC encumbrances, and Rajakaluve buffer rules.
+    """
+    try:
+        return legal_agent_instance.chat_with_legal_copilot(payload.query, payload.context or {})
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Legal Copilot Error: {str(exc)}")
+
+
 # --- INDIVIDUAL GOVERNMENT DOCUMENT PROCUREMENT & RETRIEVAL SERVICE ---
 
 class DocumentOrderRequest(BaseModel):
