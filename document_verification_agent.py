@@ -40,9 +40,52 @@ except ImportError:
         HAS_PYMUPDF = False
 
 try:
+    from PIL import Image as _PILImage
+    HAS_PILLOW = True
+except ImportError:
+    HAS_PILLOW = False
+
+# OCR support hierarchy (CPU-safe, no AVX2 required):
+# 1. RapidOCR  — ONNX Runtime, works on all CPUs, no system binary needed
+# 2. pytesseract — wrapper around tesseract binary (needs: apt install tesseract-ocr)
+HAS_EASYOCR = False  # disabled — requires AVX2 (PyTorch), crashes on older CPUs
+_EASYOCR_READER = None
+
+HAS_RAPIDOCR = False
+_RAPIDOCR_ENGINE = None
+try:
+    from rapidocr_onnxruntime import RapidOCR as _RapidOCR
+    HAS_RAPIDOCR = True
+except ImportError:
+    pass
+
+HAS_PYTESSERACT = False
+try:
+    import pytesseract as _pytesseract
+    _pytesseract.get_tesseract_version()  # raises if binary missing
+    HAS_PYTESSERACT = True
+except Exception:
+    pass
+
+try:
     from project_analyzer import search_project
 except ImportError:
     search_project = None
+
+
+def _get_easyocr_reader():
+    return None  # disabled
+
+
+def _get_rapidocr_engine():
+    """Lazy-init RapidOCR engine (loads ONNX models once)."""
+    global _RAPIDOCR_ENGINE
+    if _RAPIDOCR_ENGINE is None and HAS_RAPIDOCR:
+        try:
+            _RAPIDOCR_ENGINE = _RapidOCR()
+        except Exception:
+            pass
+    return _RAPIDOCR_ENGINE
 
 
 DOCTYPE_RERA_CERT   = "RERA_CERT"
@@ -157,8 +200,26 @@ class DocumentDownloadAndVerifyAgent:
         yield _emit(f"[Step 3/5] Extracting text from {len(downloaded)} PDFs...")
         per_doc = []
         for item in downloaded:
+            if item.get("skip"):
+                item["text"] = ""
+                item["pages"] = 0
+                item["extraction_method"] = "skipped_html"
+                item["is_readable"] = False
+                item["status"] = "SKIPPED"
+                item["status_badge"] = "SKIPPED — WEBSITE URL"
+                item["doc_type"] = "OTHER"
+                item["doc_type_label"] = "Website URL (Skipped)"
+                item["entities"] = {}
+                item["issues"] = ["URL returned an HTML page, not a legal document."]
+                per_doc.append(item)
+                yield _emit(f"   SKIP (HTML) -- {item.get('title','')[:45]}")
+                continue
             if item["bytes"]:
-                extracted = self._extract_text(item["bytes"], item["title"])
+                ct = item.get("content_type", "").lower()
+                if any(mime in ct for mime in ["image/jpeg", "image/png", "image/jpg", "image/tiff"]):
+                    extracted = self._ocr_image_bytes(item["bytes"], item.get("title", ""))
+                else:
+                    extracted = self._extract_text(item["bytes"], item["title"])
                 item["text"] = extracted["text"]
                 item["pages"] = extracted["pages"]
                 item["extraction_method"] = extracted["method"]
@@ -168,9 +229,12 @@ class DocumentDownloadAndVerifyAgent:
                 item["pages"] = 0
                 item["extraction_method"] = "none"
                 item["is_readable"] = False
+            method = item.get("extraction_method", "none")
+            chars = len(item.get("text", ""))
+            ocr_flag = " [OCR]" if "ocr" in method.lower() else ""
             yield _emit(
-                f"   '{item['title'][:45]}' -> {item.get('pages', 0)} pages, "
-                f"{len(item.get('text', ''))} chars [{item.get('extraction_method', 'none')}]"
+                f"   '{item['title'][:40]}' -> {item.get('pages', 0)}p, "
+                f"{chars}chars [{method}]{ocr_flag}"
             )
             classified = self._classify_and_extract(item)
             per_doc.append(classified)
@@ -220,11 +284,21 @@ class DocumentDownloadAndVerifyAgent:
         seen_urls = set()
         reg_no = db_rec.get("registration_no", "")
 
+        # URL patterns that are known to return HTML pages, not documents
+        _HTML_URL_PATTERNS = (
+            "casagrandegroup.com", "casagrandeindia.com",
+            "facebook.com", "linkedin.com", "twitter.com",
+            "/promoter-profile", "/project-details",
+        )
+
         def _add(title, url, category_key, category_name, annexure, file_type, desc):
             if not url or not isinstance(url, str):
                 return
             url = url.strip()
             if not url.startswith("http") or url.endswith("DOC_ID=") or url in seen_urls:
+                return
+            # Skip known HTML/website URLs that aren't legal documents
+            if any(pat in url for pat in _HTML_URL_PATTERNS):
                 return
             seen_urls.add(url)
             docs.append({
@@ -380,18 +454,53 @@ class DocumentDownloadAndVerifyAgent:
         item["bytes"] = b""
         item["error"] = None
         url = doc.get("url", "")
-        try:
-            req = urllib.request.Request(url, headers={
-                "User-Agent": self.UA,
-                "Accept": "application/pdf,application/octet-stream,*/*",
-                "Referer": "https://rera.karnataka.gov.in/",
-            })
-            with urllib.request.urlopen(req, context=self._ssl_ctx, timeout=self.DOWNLOAD_TIMEOUT) as resp:
-                item["bytes"] = resp.read()
-                item["http_status"] = resp.status
-                item["content_type"] = resp.headers.get("Content-Type", "")
-        except Exception as e:
-            item["error"] = str(e)
+        for attempt in range(1, 4):  # up to 3 attempts
+            try:
+                req = urllib.request.Request(url, headers={
+                    "User-Agent": self.UA,
+                    "Accept": "application/pdf,application/octet-stream,image/*,*/*",
+                    "Referer": "https://rera.karnataka.gov.in/",
+                })
+                with urllib.request.urlopen(req, context=self._ssl_ctx, timeout=self.DOWNLOAD_TIMEOUT) as resp:
+                    item["http_status"] = resp.status
+                    item["content_type"] = resp.headers.get("Content-Type", "")
+                    # Skip HTML pages — website URLs, not legal documents
+                    ct = item["content_type"].lower()
+                    if "text/html" in ct:
+                        item["error"] = "HTML page — not a legal document"
+                        item["skip"] = True
+                        return item
+                    # Read with IncompleteRead tolerance
+                    # RERA servers use chunked encoding and sometimes send premature EOF
+                    # The bytes already buffered are the complete document
+                    buf = io.BytesIO()
+                    try:
+                        while True:
+                            chunk = resp.read(65536)  # 64 KB chunks
+                            if not chunk:
+                                break
+                            buf.write(chunk)
+                    except Exception as read_err:
+                        err_str = str(read_err)
+                        # IncompleteRead — use whatever was read (usually the full doc)
+                        if "IncompleteRead" in type(read_err).__name__ or "IncompleteRead" in err_str:
+                            # hasattr check for the partial attribute
+                            if hasattr(read_err, 'partial') and read_err.partial:
+                                buf.write(read_err.partial)
+                        else:
+                            raise  # re-raise non-IncompleteRead errors
+                    raw = buf.getvalue()
+                    if raw:
+                        item["bytes"] = raw
+                        item["error"] = None
+                        return item  # success
+                    else:
+                        item["error"] = "Empty response body"
+            except Exception as e:
+                item["error"] = str(e)
+                if attempt < 3:
+                    import time
+                    time.sleep(1.5 * attempt)  # back-off: 1.5s, 3s
         return item
 
     # ---- Step 3: Extract Text ----
@@ -399,8 +508,27 @@ class DocumentDownloadAndVerifyAgent:
     def _step3_extract_and_classify(self, downloaded: List[dict]) -> List[dict]:
         per_doc = []
         for item in downloaded:
+            # Skip HTML pages that were detected during download
+            if item.get("skip"):
+                item["text"] = ""
+                item["pages"] = 0
+                item["extraction_method"] = "skipped_html"
+                item["is_readable"] = False
+                item["status"] = "SKIPPED"
+                item["status_badge"] = "SKIPPED — WEBSITE URL"
+                item["doc_type"] = "OTHER"
+                item["doc_type_label"] = "Website URL (Skipped)"
+                item["entities"] = {}
+                item["issues"] = ["URL returned an HTML page, not a legal document."]
+                per_doc.append(item)
+                continue
             if item["bytes"]:
-                extracted = self._extract_text(item["bytes"], item["title"])
+                ct = item.get("content_type", "").lower()
+                # Route directly to image OCR for JPEG/PNG responses
+                if any(mime in ct for mime in ["image/jpeg", "image/png", "image/jpg", "image/tiff"]):
+                    extracted = self._ocr_image_bytes(item["bytes"], item.get("title", ""))
+                else:
+                    extracted = self._extract_text(item["bytes"], item["title"])
                 item["text"] = extracted["text"]
                 item["pages"] = extracted["pages"]
                 item["extraction_method"] = extracted["method"]
@@ -415,6 +543,7 @@ class DocumentDownloadAndVerifyAgent:
 
     def _extract_text(self, pdf_bytes: bytes, title: str = "") -> Dict[str, Any]:
         result = {"text": "", "pages": 0, "method": "none", "is_readable": False}
+        # --- Layer 1: pdfplumber (best for text-layer PDFs) ---
         if HAS_PDFPLUMBER:
             try:
                 buf = io.BytesIO(pdf_bytes)
@@ -428,6 +557,7 @@ class DocumentDownloadAndVerifyAgent:
                         return result
             except Exception:
                 result["method"] = "pdfplumber_err"
+        # --- Layer 2: PyMuPDF (wider format support) ---
         if HAS_PYMUPDF:
             try:
                 doc = fitz.open(stream=pdf_bytes, filetype="pdf")
@@ -437,12 +567,75 @@ class DocumentDownloadAndVerifyAgent:
                 result["text"] = "\n".join(t for t in texts if t)
                 result["method"] = "PyMuPDF"
                 result["is_readable"] = bool(result["text"].strip())
-                return result
+                if result["is_readable"]:
+                    return result
             except Exception:
                 result["method"] = "PyMuPDF_err"
+        # --- Layer 3: OCR fallback for scanned PDFs ---
+        # Render each PDF page to an image and run OCR
+        if HAS_PYMUPDF and (HAS_RAPIDOCR or HAS_PYTESSERACT):
+            try:
+                ocr_texts = []
+                doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+                n_pages = min(doc.page_count, 6)  # cap at 6 pages for speed
+                result["pages"] = doc.page_count
+                for page_num in range(n_pages):
+                    page = doc[page_num]
+                    # Render at 200 DPI
+                    mat = fitz.Matrix(200 / 72, 200 / 72)
+                    pix = page.get_pixmap(matrix=mat, alpha=False)
+                    img_bytes = pix.tobytes("png")
+                    ocr_texts.append(self._ocr_image_bytes_raw(img_bytes))
+                doc.close()
+                combined = "\n".join(t for t in ocr_texts if t)
+                if combined.strip():
+                    result["text"] = combined
+                    ocr_lib = "rapidocr" if HAS_RAPIDOCR else "tesseract"
+                    result["method"] = f"OCR_{ocr_lib}"
+                    result["is_readable"] = True
+                    return result
+            except Exception as e:
+                result["method"] = f"OCR_err:{str(e)[:40]}"
         if not HAS_PDFPLUMBER and not HAS_PYMUPDF:
             result["method"] = "no_pdf_library_installed"
         return result
+
+    def _ocr_image_bytes(self, img_bytes: bytes, title: str = "") -> Dict[str, Any]:
+        """Run OCR on a raw image (JPEG/PNG bytes) — for direct image URLs."""
+        result = {"text": "", "pages": 1, "method": "none", "is_readable": False}
+        text = self._ocr_image_bytes_raw(img_bytes)
+        if text:
+            result["text"] = text
+            ocr_lib = "rapidocr" if HAS_RAPIDOCR else "tesseract"
+            result["method"] = f"OCR_image_{ocr_lib}"
+            result["is_readable"] = True
+        return result
+
+    def _ocr_image_bytes_raw(self, img_bytes: bytes) -> str:
+        """Core OCR: RapidOCR (ONNX, CPU-safe) -> pytesseract fallback."""
+        # RapidOCR path — ONNX Runtime, works on all CPUs
+        if HAS_RAPIDOCR:
+            try:
+                engine = _get_rapidocr_engine()
+                if engine:
+                    from PIL import Image as PILImg
+                    import numpy as np
+                    img = PILImg.open(io.BytesIO(img_bytes)).convert("RGB")
+                    arr = np.array(img)
+                    result, _ = engine(arr)
+                    if result:
+                        return " ".join(str(line[1]) for line in result if line and len(line) > 1)
+            except Exception:
+                pass
+        # Pytesseract fallback — needs `apt install tesseract-ocr`
+        if HAS_PYTESSERACT and HAS_PILLOW:
+            try:
+                from PIL import Image as PILImg
+                img = PILImg.open(io.BytesIO(img_bytes))
+                return _pytesseract.image_to_string(img, lang="eng")
+            except Exception:
+                pass
+        return ""
 
     # ---- Step 4: Classify & Extract Entities ----
 
@@ -452,31 +645,33 @@ class DocumentDownloadAndVerifyAgent:
         text_lower = text.lower()
         combined = title_lower + " " + text_lower
 
-        doc_type = DOCTYPE_OTHER
-        if any(k in combined for k in ["registration certificate", "rera cert", "certificate of registration"]):
-            doc_type = DOCTYPE_RERA_CERT
-        elif any(k in combined for k in ["encumbrance certificate", "form 15", "form 16", "nil encumbrance", "kaveri"]):
+        # Title-based overrides: annexure numbers are definitive
+        if "annexure-43" in combined or "annexure-44" in combined:
+            doc_type = DOCTYPE_RTC  # Bhoomi RTC / Mutation
+        elif "annexure-46" in combined or "encumbrance certificate" in combined:
             doc_type = DOCTYPE_EC
+        elif "annexure-53" in combined or "icai" in combined or "chartered accountant" in combined:
+            doc_type = DOCTYPE_CA_FORM1
+        elif "annexure-57" in combined or "council of architecture" in combined or "registration of coa" in combined:
+            doc_type = DOCTYPE_ARCH_FORM2
+        elif "annexure-55" in combined or "local authority licence" in combined or "structural engineer" in combined:
+            doc_type = DOCTYPE_ENG_FORM3
+        elif "landconversion.karnataka.gov.in" in combined or "conversion order" in combined or "alienation order" in combined or "dc order" in combined or "sec 95" in combined:
+            doc_type = DOCTYPE_CONVERSION
+        elif any(k in combined for k in ["registration certificate", "rera cert", "certificate of registration", "prm/ka/rera"]):
+            doc_type = DOCTYPE_RERA_CERT
         elif any(k in combined for k in ["sale deed", "title deed", "absolute sale", "registered deed"]):
             doc_type = DOCTYPE_SALE_DEED
-        elif any(k in combined for k in ["pahani", "rtc", "rights tenancy", "bhoomi", "khatedar"]):
+        elif any(k in combined for k in ["pahani", "rtc", "rights tenancy", "bhoomi", "khatedar", "mutation register"]):
             doc_type = DOCTYPE_RTC
         elif any(k in combined for k in ["khata", "e-khata", "a-khata", "b-khata", "pid", "e-swathu"]):
             doc_type = DOCTYPE_KHATA
-        elif any(k in combined for k in ["icai", "chartered accountant", "form 1", "annexure-53"]):
-            doc_type = DOCTYPE_CA_FORM1
-        elif any(k in combined for k in ["council of architecture", "coa", "architect", "form 2", "annexure-57"]):
-            doc_type = DOCTYPE_ARCH_FORM2
-        elif any(k in combined for k in ["structural engineer", "form 3", "annexure-55", "engineer licence"]):
-            doc_type = DOCTYPE_ENG_FORM3
         elif any(k in combined for k in ["joint development", "jda", "development agreement"]):
             doc_type = DOCTYPE_JDA
-        elif any(k in combined for k in ["mutation", "mr extract", "mutation register"]):
-            doc_type = DOCTYPE_MUTATION
-        elif any(k in combined for k in ["conversion order", "dc order", "alienation", "sec 95", "section 95 klr"]):
-            doc_type = DOCTYPE_CONVERSION
         elif any(k in combined for k in ["sanction plan", "building plan", "layout plan", "approved plan"]):
             doc_type = DOCTYPE_PLAN
+        else:
+            doc_type = DOCTYPE_OTHER
 
         item["doc_type"] = doc_type
         item["doc_type_label"] = CATEGORY_LABELS.get(doc_type, "Other")
@@ -544,14 +739,39 @@ class DocumentDownloadAndVerifyAgent:
         m = re.search(pattern, text, flags)
         return _clean(m.group(group)) if m else None
 
+    def _is_kannada(self, text: str) -> bool:
+        """Returns True if the text is predominantly Kannada script."""
+        kannada_chars = sum(1 for c in text if '\u0C80' <= c <= '\u0CFF')
+        return kannada_chars > 20
+
     def _extract_rera_cert(self, text: str) -> dict:
         e = {}
-        e["registration_no"] = (self._find(r"(PRM/KA/RERA/\d{4}/\d{4}/[A-Z0-9]+)", text) or
-                                 self._find(r"Registration\s*No[.:]?\s*([A-Z0-9/\-]+)", text))
-        e["project_name"] = self._find(r"Project\s*Name[:\s]+([^\n]{5,80})", text)
-        e["promoter_name"] = self._find(r"(?:Promoter|Developer|Firm)[:\s]+([^\n]{5,80})", text)
-        e["validity_date"] = self._find(r"valid(?:ity)?\s*(?:upto|till|until|up to)[:\s]+(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})", text)
-        e["issue_date"] = self._find(r"(?:issued?|granted?)\s*(?:on)?[:\s]+(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})", text)
+        lines = [l.strip() for l in text.splitlines() if l.strip()]
+        # RERA reg no — flexible: 3 or 4 digit segments
+        e["registration_no"] = (
+            self._find(r"(PRM/KA/RERA/\d{3,4}/\d{3,4}/[A-Z0-9/]+)", text) or
+            self._find(r"Registration\s*No[.:]?\s*([A-Z0-9/\-]+)", text)
+        )
+        # ACK no is the acknowledgement number (line 0 often)
+        e["ack_no"] = self._find(r"(ACK/KA/RERA/[A-Z0-9/]+)", text)
+        # Project name: look for line containing "SURVEY NO" or after RERA no line
+        e["project_name"] = self._find(r"([A-Z][A-Z\s]+),\s*SURVEY NO", text)
+        # Promoter: line after project address (3rd–5th line typically)
+        if len(lines) >= 4:
+            # Find first ALL-CAPS line that looks like a company name
+            for line in lines[2:]:
+                if re.match(r'^[A-Z][A-Z\s\.]{10,}(?:PVT|LTD|LIMITED|BUILDERS|DEVELOPERS|PROPERTIES).*', line):
+                    e["promoter_name"] = line
+                    break
+        e["promoter_name"] = e.get("promoter_name") or self._find(
+            r"(?:Promoter|Developer|Firm)[:\s]+([^\n]{5,80})", text
+        )
+        # Validity date: look for standalone date in DD-MM-YYYY at end of cert
+        e["validity_date"] = (
+            self._find(r"valid(?:ity)?\s*(?:upto|till|until|up to)[:\s]+(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})", text) or
+            self._find(r"(\d{2}-\d{2}-\d{4})\s*$", text, flags=re.MULTILINE)
+        )
+        e["issue_date"] = self._find(r"(\d{2}-\d{2}-\d{4})", text)  # first date = issue date
         return {k: v for k, v in e.items() if v is not None}
 
     def _extract_sale_deed(self, text: str) -> dict:
@@ -569,6 +789,10 @@ class DocumentDownloadAndVerifyAgent:
     def _extract_ec(self, text: str) -> dict:
         e = {}
         text_lower = text.lower()
+        # EC from Karnataka is in Kannada — mark language and extract what we can
+        is_kannada = self._is_kannada(text)
+        e["language"] = "Kannada" if is_kannada else "English"
+        e["ec_no"] = self._find(r"((?:ECC-[0-9A-Z\-]+|RRN-EC-[A-Z0-9\-]+))", text)
         e["period"] = self._find(r"(?:from|period)[:\s]+(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\s+to\s+\d{1,2}[/-]\d{1,2}[/-]\d{2,4})", text)
         e["property_owner"] = self._find(r"(?:owner|khatedar|party)[:\s]+([A-Z][^,\n]{3,60})", text)
         e["survey_no"] = self._find(r"(?:survey\s+no|sy\.?\s*no\.?)[.:\s]+([0-9/A-Za-z\s,]+?)(?:\n|,)", text)
@@ -579,17 +803,26 @@ class DocumentDownloadAndVerifyAgent:
             e["mortgage_bank"] = self._find(r"(HDFC|ICICI|SBI|Axis|Canara|Bank\s+of\s+[A-Z]\w+|[A-Z]\w+\s+Bank)", text)
             e["mortgage_amount"] = self._find(r"(?:Rs\.?\s*)([\d,]+\s*(?:lakhs?|crores?)?)\s*(?:loan|mortgage)", text)
             e["discharge_deed_found"] = bool(re.search(r"\bdischarge\s+deed\b|\bform\s*16\b|\bnoc\b", text_lower))
+        if is_kannada:
+            e["note"] = "EC is in Kannada script — install tesseract-ocr-kan for full entity extraction"
         return {k: v for k, v in e.items() if v is not None}
 
     def _extract_rtc(self, text: str) -> dict:
         e = {}
         text_lower = text.lower()
+        is_kannada = self._is_kannada(text)
+        e["language"] = "Kannada" if is_kannada else "English"
+        # Survey numbers often appear as digits even in Kannada docs
         e["survey_no"] = self._find(r"(?:sy\.?\s*no\.?|survey\s+no)[:\s]+([0-9/A-Za-z]+)", text)
         e["khatedar_col9"] = self._find(r"(?:col\.?\s*9|column\s*9|khatedar|hissedhar)[:\s]+([A-Z][^,\n]{3,60})", text)
         e["extent"] = self._find(r"(?:extent|area|acres?)[:\s]+([0-9.]+\s*(?:acres?|guntas?))", text)
         e["ptcl_flag"] = bool(re.search(r"\bptcl\b|\bsc/st\b|\bscheduled\s+caste\b|\bsaguvali\b|\bgrant\s+land\b", text_lower))
         e["kharab_flag"] = bool(re.search(r"\bb.kharab\b|\bkharab\b|\bpd\s+kharab\b", text_lower))
-        e["mutation_status"] = self._find(r"(?:mutation|mr\s+no)[:\s]+([A-Z0-9\-/\s]{2,30})", text)
+        # Mutation register number appears even in Kannada (IMR prefix)
+        e["mutation_no"] = self._find(r"(IMR[A-Z0-9]+)", text)
+        e["mutation_date"] = self._find(r"(\d{2}/\d{2}/\d{4})", text)
+        if is_kannada:
+            e["note"] = "RTC/Mutation is in Kannada script — install tesseract-ocr-kan for full entity extraction"
         return {k: v for k, v in e.items() if v is not None}
 
     def _extract_khata(self, text: str) -> dict:
