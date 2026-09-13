@@ -7,11 +7,145 @@
   <title>Property Risk & Compliance Report — RERA Intelligence</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
-    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
+  /* Top Announcement Bar */
+  .top-announcement {
+    background: linear-gradient(90deg, #0B1329 0%, #152244 50%, #0B1329 100%) !important;
+    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+    font-size: 0.75rem !important;
+    padding: 0.5rem 2.5rem !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    color: #94A3B8 !important;
+    position: relative !important;
+    z-index: 1010 !important;
+  }
+
+  .pulse-indicator {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    color: #F8FAFC !important;
+  }
+
+  .pulse-dot {
+    width: 8px !important;
+    height: 8px !important;
+    background: #10B981 !important;
+    border-radius: 50% !important;
+    box-shadow: 0 0 10px #10B981 !important;
+    animation: pulseGlow 2s infinite ease-in-out !important;
+  }
+
+  @keyframes pulseGlow {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.25); opacity: 0.6; }
+  }
+
+  /* Glassmorphic Navigation Bar */
+  .navbar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1000 !important;
+    background: rgba(9, 13, 22, 0.92) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    padding: 0.85rem 2.5rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 1.5rem !important;
+    font-family: 'Plus Jakarta Sans', 'IBM Plex Sans', sans-serif !important;
+  }
+
+  .nav-brand {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.85rem !important;
+    text-decoration: none !important;
+  }
+
+  .brand-logo-box {
+    width: 40px !important;
+    height: 40px !important;
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+    color: #FFFFFF !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-family: 'IBM Plex Serif', serif !important;
+    font-weight: 700 !important;
+    font-size: 1.3rem !important;
+    box-shadow: 0 0 20px rgba(37, 99, 235, 0.4) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+  }
+
+  .brand-title {
+    font-family: 'IBM Plex Serif', serif !important;
+    font-weight: 700 !important;
+    font-size: 1.25rem !important;
+    color: #F8FAFC !important;
+    line-height: 1.1 !important;
+    letter-spacing: -0.01em !important;
+  }
+
+  .brand-subtitle {
+    font-size: 0.68rem !important;
+    color: #38BDF8 !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-weight: 600 !important;
+  }
+
+  .nav-links {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.35rem !important;
+    background: rgba(255,255,255,0.04) !important;
+    padding: 0.25rem 0.5rem !important;
+    border-radius: 30px !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+  }
+
+  .nav-item {
+    font-size: 0.84rem !important;
+    font-weight: 600 !important;
+    color: #94A3B8 !important;
+    padding: 0.45rem 0.95rem !important;
+    border-radius: 20px !important;
+    text-decoration: none !important;
+    transition: all 0.2s ease !important;
+  }
+
+  .nav-item:hover, .nav-item.active {
+    color: #FFFFFF !important;
+    background: rgba(255,255,255,0.1) !important;
+  }
+
+  .nav-cta {
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    font-size: 0.85rem !important;
+    padding: 0.55rem 1.15rem !important;
+    border-radius: 8px !important;
+    text-decoration: none !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35) !important;
+    transition: all 0.2s ease !important;
+    display: inline-flex !important;
+    align-items: center !important;
+  }
+  .nav-cta:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5) !important;
+  }
     :root {
       --paper: #F6F5F1;
       --paper-raised: #FCFBF8;
@@ -813,7 +947,6 @@
       color: #FFFFFF !important;
       padding: 4.5rem 2.5rem 2.5rem !important;
       border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
-      margin-top: 4rem;
     }
 
     .footer-container {
@@ -882,9 +1015,38 @@
       color: #64748B !important;
     }
   </style>
-</head>
-
 <body>
+
+  <!-- Top Announcement Bar -->
+  <div class="top-announcement">
+    <div class="pulse-indicator">
+      <div class="pulse-dot"></div>
+      <span>KARNATAKA RERA LEGAL ENGINE LIVE • 1,240+ POSTGRES RECORDS OPERATIONAL</span>
+    </div>
+    <div>CROSS-VERIFYING KAVERI 2.0 • BHOOMI RTC • BDA • BBMP • E-COURTS</div>
+  </div>
+
+  <!-- Glassmorphic Navbar -->
+  <header class="navbar">
+    <a href="/" class="nav-brand">
+      <div class="brand-logo-box">R</div>
+      <div>
+        <div class="brand-title">RERA Intelligence</div>
+        <div class="brand-subtitle">AI Property Verification</div>
+      </div>
+    </a>
+
+    <nav class="nav-links">
+      <a href="/geospatial" class="nav-item">Geospatial Map</a>
+      <a href="/legal-report?q=CASAGRAND%20MOONDANCE" class="nav-item">Legal Due-Diligence</a>
+      <a href="/register" class="nav-item">Compliance Register</a>
+      <a href="/radar-chart" class="nav-item active">Composite Radar</a>
+      <a href="/compare" class="nav-item">Compare Projects</a>
+      <a href="/detail?q=CASAGRAND%20MOONDANCE" class="nav-item">Audit Profile</a>
+    </nav>
+
+    <a href="/legal-report?q=CASAGRAND%20MOONDANCE" class="nav-cta">Launch Legal Audit ↗</a>
+  </header>
 
   <div class="container">
     <header class="masthead">
@@ -1682,7 +1844,7 @@
       <div>
         <div class="footer-brand">RERA Intelligence</div>
         <p class="footer-desc">
-          AI-driven real estate legal due-diligence, property compliance verification, and composite risk scoring platform for Karnataka.
+          AI-driven real estate legal due-diligence, property compliance verification, and composite risk scoring platform for Karnataka. Cross-verifying Kaveri 2.0, Bhoomi RTC, BDA, BBMP e-Aasthi, and e-Courts registries.
         </p>
       </div>
 
@@ -1691,9 +1853,20 @@
         <ul class="footer-links">
           <li><a href="/legal-report?q=CASAGRAND%20MOONDANCE">AI Legal Due-Diligence Report</a></li>
           <li><a href="/register">RERA Compliance Register</a></li>
-          <li><a href="/radar-chart">Composite Risk & Quality Radar</a></li>
           <li><a href="/compare">Side-by-Side Project Comparison</a></li>
           <li><a href="/detail?q=CASAGRAND%20MOONDANCE">Detailed Audit Dossier</a></li>
+          <li><a href="/geospatial">Statewide Geospatial Map</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="footer-title">Government & Portal Links</div>
+        <ul class="footer-links">
+          <li><a href="https://rera.karnataka.gov.in" target="_blank" rel="noopener">Karnataka RERA Portal ↗</a></li>
+          <li><a href="https://kaveri.karnataka.gov.in" target="_blank" rel="noopener">Kaveri 2.0 SRO Portal ↗</a></li>
+          <li><a href="https://landrecords.karnataka.gov.in" target="_blank" rel="noopener">Bhoomi RTC Revenue Records ↗</a></li>
+          <li><a href="https://e-swathu.karnataka.gov.in" target="_blank" rel="noopener">e-Swathu / BBMP e-Khata ↗</a></li>
+          <li><a href="https://services.ecourts.gov.in" target="_blank" rel="noopener">e-Courts Litigation Portal ↗</a></li>
         </ul>
       </div>
 
@@ -1718,7 +1891,7 @@
 
     <div class="footer-bottom">
       <div>© 2026 RERA Intelligence Platform. All rights reserved.</div>
-      <div>Designed for Karnataka Property Buyers & Legal Auditors</div>
+      <div>Designed for Karnataka Property Buyers, Advocates & Financial Lenders</div>
     </div>
   </footer>
 

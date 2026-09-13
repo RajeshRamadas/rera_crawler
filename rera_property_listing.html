@@ -6,7 +6,7 @@
 <title>Property Risk & Compliance Register — RERA Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:ital,wght@0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -24,10 +24,17 @@
     --flag: #AC2C2C;
     --flag-tint: #AC2C2C12;
     --gold: #8A6A1F;
+    --bg-dark: #090D16;
+    --text-main: #F8FAFC;
+    --text-muted: #94A3B8;
+    --brand-blue: #2563EB;
+    --brand-cyan: #0EA5E9;
+    --border-dark: rgba(255, 255, 255, 0.08);
+    --pass: #10B981;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: 'IBM Plex Sans', sans-serif;
+    font-family: 'Plus Jakarta Sans', 'IBM Plex Sans', sans-serif;
     background: var(--paper);
     color: var(--ink);
     min-height: 100vh;
@@ -35,8 +42,154 @@
     line-height: 1.5;
     font-size: 15px;
   }
-  .mono { font-family: 'IBM Plex Mono', monospace; }
+  .mono { font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace; }
   .container { max-width: 1180px; margin: 0 auto; padding: 0 2rem; }
+
+  /* Top Announcement Bar */
+  .top-announcement {
+    background: linear-gradient(90deg, #0B1329 0%, #152244 50%, #0B1329 100%);
+    border-bottom: 1px solid var(--border-dark);
+    font-size: 0.75rem;
+    padding: 0.5rem 2.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+    position: relative;
+    z-index: 10;
+  }
+
+  .pulse-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pulse-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--pass);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--pass);
+    animation: pulseGlow 2s infinite ease-in-out;
+  }
+
+  @keyframes pulseGlow {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.25); opacity: 0.6; }
+  }
+
+  /* Glassmorphic Navigation Bar */
+  .navbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: rgba(9, 13, 22, 0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-dark);
+    padding: 0.85rem 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    text-decoration: none;
+  }
+
+  .brand-logo-box {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+    color: #FFFFFF;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'IBM Plex Serif', serif;
+    font-weight: 700;
+    font-size: 1.3rem;
+    box-shadow: 0 0 20px rgba(37, 99, 235, 0.4);
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+
+  .brand-title {
+    font-family: 'IBM Plex Serif', serif;
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: var(--text-main);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+
+  .brand-subtitle {
+    font-size: 0.68rem;
+    color: var(--brand-cyan);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: rgba(255,255,255,0.04);
+    padding: 0.25rem 0.5rem;
+    border-radius: 30px;
+    border: 1px solid var(--border-dark);
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  .nav-item {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding: 0.45rem 0.95rem;
+    border-radius: 20px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+
+  .nav-item:hover, .nav-item.active {
+    color: var(--text-main);
+    background: rgba(255,255,255,0.12);
+  }
+
+  .nav-cta {
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+    color: #FFFFFF !important;
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 0.6rem 1.3rem;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(37, 99, 235, 0.35);
+    border: 1px solid rgba(255,255,255,0.15);
+    transition: all 0.2s ease;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .nav-cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 30px rgba(37, 99, 235, 0.55);
+  }
+
+  @media (max-width: 992px) {
+    .top-announcement { display: none; }
+    .navbar { padding: 0.75rem 1.25rem; flex-wrap: wrap; }
+    .nav-links { overflow-x: auto; flex-wrap: nowrap; max-width: 100%; }
+  }
 
   header.masthead { border-bottom: 1px solid var(--hairline-strong); padding: 2.25rem 0 1.5rem; margin-bottom: 1.5rem; }
   .eyebrow {
@@ -508,97 +661,132 @@
     .summary-cell:last-child { border-bottom: none; }
   }
 
-  /* Footer Styles */
-  .footer {
+  /* Footer Styles matching index.html */
+  footer.footer, .footer {
     background: #05080E !important;
     color: #FFFFFF !important;
     padding: 4.5rem 2.5rem 2.5rem !important;
     border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
-    margin-top: 4rem;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+    font-family: 'Plus Jakarta Sans', 'IBM Plex Sans', sans-serif !important;
   }
 
-  .footer-container {
-    max-width: 1280px;
-    margin: 0 auto;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 2.5rem;
-    margin-bottom: 3.5rem;
+  .footer .footer-container {
+    max-width: 1280px !important;
+    margin: 0 auto !important;
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+    gap: 2.5rem !important;
+    margin-bottom: 3.5rem !important;
   }
 
-  .footer-brand {
-    font-family: 'IBM Plex Serif', serif, sans-serif;
-    font-size: 1.4rem;
-    font-weight: 700;
+  .footer .footer-brand {
+    font-family: 'IBM Plex Serif', serif, sans-serif !important;
+    font-size: 1.4rem !important;
+    font-weight: 700 !important;
     color: #FFFFFF !important;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.75rem !important;
   }
 
-  .footer-desc {
-    font-size: 0.84rem;
+  .footer .footer-desc {
+    font-size: 0.84rem !important;
     color: #94A3B8 !important;
-    line-height: 1.65;
+    line-height: 1.65 !important;
   }
 
-  .footer-title {
-    font-family: 'IBM Plex Serif', serif, sans-serif;
-    font-weight: 700;
-    font-size: 0.98rem;
-    margin-bottom: 1.1rem;
+  .footer .footer-title {
+    font-family: 'IBM Plex Serif', serif, sans-serif !important;
+    font-weight: 700 !important;
+    font-size: 0.98rem !important;
+    margin-bottom: 1.1rem !important;
     color: #F8FAFC !important;
   }
 
-  .footer-links {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+  .footer .footer-links, footer.footer ul.footer-links {
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
 
-  .footer-links li {
-    margin-bottom: 0.65rem;
-  }
-
-  .footer-links a {
-    font-size: 0.84rem;
+  .footer .footer-links li, footer.footer ul.footer-links li {
+    margin-bottom: 0.65rem !important;
+    list-style: none !important;
+    list-style-type: none !important;
     color: #94A3B8 !important;
-    text-decoration: none;
-    transition: color 0.15s ease;
   }
 
-  .footer-links a:hover {
+  .footer .footer-links a, footer.footer ul.footer-links a {
+    font-size: 0.84rem !important;
+    color: #94A3B8 !important;
+    text-decoration: none !important;
+    transition: color 0.15s ease !important;
+  }
+
+  .footer .footer-links a:hover, footer.footer ul.footer-links a:hover {
     color: #FFFFFF !important;
+    text-decoration: underline !important;
   }
 
-  .footer-bottom {
-    max-width: 1280px;
-    margin: 0 auto;
-    padding-top: 2rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-    font-size: 0.78rem;
+  .footer .footer-bottom {
+    max-width: 1280px !important;
+    margin: 0 auto !important;
+    padding-top: 2rem !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 1rem !important;
+    font-size: 0.78rem !important;
+    color: #64748B !important;
+  }
     color: #64748B !important;
   }
 </style>
 </head>
 <body>
 
-<div class="container">
+<!-- Top Announcement Bar -->
+<div class="top-announcement">
+  <div class="pulse-indicator">
+    <div class="pulse-dot"></div>
+    <span>KARNATAKA RERA LEGAL ENGINE LIVE • 1,240+ POSTGRES RECORDS OPERATIONAL</span>
+  </div>
+  <div>CROSS-VERIFYING KAVERI 2.0 • BHOOMI RTC • BDA • BBMP • E-COURTS</div>
+</div>
+
+<!-- Glassmorphic Navbar -->
+<header class="navbar">
+  <a href="/" class="nav-brand">
+    <div class="brand-logo-box">R</div>
+    <div>
+      <div class="brand-title">RERA Intelligence</div>
+      <div class="brand-subtitle">AI Property Verification</div>
+    </div>
+  </a>
+
+  <nav class="nav-links">
+    <a href="/geospatial" class="nav-item">Geospatial Map</a>
+    <a href="/legal-report?q=CASAGRAND%20MOONDANCE" class="nav-item">Legal Due-Diligence</a>
+    <a href="/#docProcurementSection" class="nav-item" style="color:#FBBF24;">🏛️ Document Procurement</a>
+    <a href="/register" class="nav-item active">Compliance Register</a>
+    <a href="/radar-chart" class="nav-item">Composite Radar</a>
+    <a href="/compare" class="nav-item">Compare Projects</a>
+    <a href="/detail?q=CASAGRAND%20MOONDANCE" class="nav-item">Audit Profile</a>
+  </nav>
+
+  <a href="/legal-report?q=CASAGRAND%20MOONDANCE" class="nav-cta">Launch Legal Audit ↗</a>
+</header>
+
+<div class="container" style="margin-top: 1.5rem;">
   <header class="masthead">
     <div class="eyebrow">
-      <span><span class="dot"></span> RERA Karnataka Intelligence · Property Register</span>
-      <div style="margin-left: auto; display: flex; gap: 1rem; align-items: center;">
-        <a href="/geospatial" style="color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink); font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; text-transform: uppercase;">Geospatial Map ↗</a>
-        <a href="/legal-report" style="color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink); font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; text-transform: uppercase;">Legal Due-Diligence Report ↗</a>
-        <a href="/compare" style="color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink); font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; text-transform: uppercase;">Compare 2–3 Properties ↗</a>
-        <a href="/radar-chart" style="color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink); font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; text-transform: uppercase;">Compare Radar ↗</a>
-      </div>
+      <span><span class="dot"></span> RERA Karnataka Intelligence · Statewide Register</span>
     </div>
     <h1>Property Risk & Compliance Register</h1>
-    <p class="sub">All tracked developments in one list, ranked by weighted composite score.</p>
+    <p class="sub">All tracked developments in one unified directory, ranked by weighted composite legal score.</p>
   </header>
 
   <div class="banner" id="errorBanner"></div>
@@ -1718,7 +1906,7 @@ try {
       <div>
         <div class="footer-brand">RERA Intelligence</div>
         <p class="footer-desc">
-          AI-driven real estate legal due-diligence, property compliance verification, and composite risk scoring platform for Karnataka.
+          AI-driven real estate legal due-diligence, property compliance verification, and composite risk scoring platform for Karnataka. Cross-verifying Kaveri 2.0, Bhoomi RTC, BDA, BBMP e-Aasthi, and e-Courts registries.
         </p>
       </div>
 
@@ -1727,9 +1915,20 @@ try {
         <ul class="footer-links">
           <li><a href="/legal-report?q=CASAGRAND%20MOONDANCE">AI Legal Due-Diligence Report</a></li>
           <li><a href="/register">RERA Compliance Register</a></li>
-          <li><a href="/radar-chart">Composite Risk & Quality Radar</a></li>
           <li><a href="/compare">Side-by-Side Project Comparison</a></li>
           <li><a href="/detail?q=CASAGRAND%20MOONDANCE">Detailed Audit Dossier</a></li>
+          <li><a href="/geospatial">Statewide Geospatial Map</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="footer-title">Government & Portal Links</div>
+        <ul class="footer-links">
+          <li><a href="https://rera.karnataka.gov.in" target="_blank" rel="noopener">Karnataka RERA Portal ↗</a></li>
+          <li><a href="https://kaveri.karnataka.gov.in" target="_blank" rel="noopener">Kaveri 2.0 SRO Portal ↗</a></li>
+          <li><a href="https://landrecords.karnataka.gov.in" target="_blank" rel="noopener">Bhoomi RTC Revenue Records ↗</a></li>
+          <li><a href="https://e-swathu.karnataka.gov.in" target="_blank" rel="noopener">e-Swathu / BBMP e-Khata ↗</a></li>
+          <li><a href="https://services.ecourts.gov.in" target="_blank" rel="noopener">e-Courts Litigation Portal ↗</a></li>
         </ul>
       </div>
 
@@ -1754,7 +1953,7 @@ try {
 
     <div class="footer-bottom">
       <div>© 2026 RERA Intelligence Platform. All rights reserved.</div>
-      <div>Designed for Karnataka Property Buyers & Legal Auditors</div>
+      <div>Designed for Karnataka Property Buyers, Advocates & Financial Lenders</div>
     </div>
   </footer>
 
