@@ -20,9 +20,10 @@ from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel
 
+import auth
 
 try:
-    from fastapi import FastAPI, HTTPException, Query, Response
+    from fastapi import FastAPI, HTTPException, Query, Response, Header, File, UploadFile, Depends
     from fastapi.middleware.cors import CORSMiddleware
     import psycopg2
     import psycopg2.extras
@@ -1266,4 +1267,349 @@ def list_complaints(
         }
     finally:
         conn.close()
+
+
+# --------------------------------------------------------------------------- #
+# User Auth & Document Upload Models & Infrastructure
+# --------------------------------------------------------------------------- #
+
+class UserRegister(BaseModel):
+    email: str
+    password: str
+    full_name: str
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+
+UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+def init_auth_db():
+    """Ensure users and user_documents tables exist in PostgreSQL database."""
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id SERIAL PRIMARY KEY,
+                    email VARCHAR(255) UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    full_name VARCHAR(255) NOT NULL,
+                    role VARCHAR(50) DEFAULT 'user',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS user_documents (
+                    id SERIAL PRIMARY KEY,
+                    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+                    filename VARCHAR(255) NOT NULL,
+                    file_path TEXT NOT NULL,
+                    document_type VARCHAR(100) DEFAULT 'General Document',
+                    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    verification_status VARCHAR(50) DEFAULT 'Completed',
+                    analysis_result JSONB DEFAULT '{}'::jsonb
+                );
+            """)
+            conn.commit()
+        conn.close()
+        print("[+] User Authentication & Document database tables verified/initialized.")
+    except Exception as exc:
+        print(f"[!] DB Initialization note: {exc}", file=sys.stderr)
+
+
+@app.on_event("startup")
+def on_startup():
+    """Initialize database tables on application launch."""
+    init_auth_db()
+
+
+def get_current_user(authorization: Optional[str] = Header(None)):
+    """FastAPI dependency to authenticate requests using JWT Bearer token."""
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authentication token required. Please login.")
+    
+    token = authorization.replace("Bearer ", "").strip()
+    payload = auth.decode_access_token(token)
+    if not payload or "sub" not in payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired authentication token.")
+    
+    user_id = int(payload["sub"])
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, email, full_name, role, created_at FROM users WHERE id = %s;", (user_id,))
+            user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=401, detail="User account not found.")
+        return user
+    finally:
+        conn.close()
+
+
+@app.get("/user-dashboard", summary="User Accounts & File Upload Portal Dashboard")
+@app.get("/dashboard", summary="User Accounts & File Upload Portal Dashboard")
+def get_user_dashboard_page():
+    """Serves the interactive user dashboard HTML page."""
+    html_path = os.path.join(os.path.dirname(__file__), "user_dashboard.html")
+    if not os.path.exists(html_path):
+        raise HTTPException(status_code=404, detail="user_dashboard.html template not found.")
+    return FileResponse(html_path, media_type="text/html")
+
+
+@app.post("/api/auth/register", summary="Register a new user account")
+def register_user(payload: UserRegister):
+    """Creates a new user account with hashed password."""
+    if not payload.email or "@" not in payload.email:
+        raise HTTPException(status_code=400, detail="Invalid email address.")
+    if len(payload.password) < 4:
+        raise HTTPException(status_code=400, detail="Password must be at least 4 characters long.")
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM users WHERE email = %s;", (payload.email.lower().strip(),))
+            if cur.fetchone():
+                raise HTTPException(status_code=400, detail="An account with this email already exists.")
+
+            hashed = auth.hash_password(payload.password)
+            cur.execute("""
+                INSERT INTO users (email, password_hash, full_name)
+                VALUES (%s, %s, %s)
+                RETURNING id, email, full_name, role, created_at;
+            """, (payload.email.lower().strip(), hashed, payload.full_name.strip()))
+            new_user = cur.fetchone()
+            conn.commit()
+
+        token = auth.create_access_token({"sub": new_user["id"], "email": new_user["email"]})
+        return {
+            "message": "Account created successfully",
+            "access_token": token,
+            "token_type": "bearer",
+            "user": new_user
+        }
+    finally:
+        conn.close()
+
+
+@app.post("/api/auth/login", summary="Login user and receive JWT bearer token")
+def login_user(payload: UserLogin):
+    """Authenticates user credentials and returns JWT token."""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, email, password_hash, full_name, role FROM users WHERE email = %s;", (payload.email.lower().strip(),))
+            user = cur.fetchone()
+        
+        if not user or not auth.verify_password(payload.password, user["password_hash"]):
+            raise HTTPException(status_code=401, detail="Invalid email or password.")
+        
+        token = auth.create_access_token({"sub": user["id"], "email": user["email"]})
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "user": {
+                "id": user["id"],
+                "email": user["email"],
+                "full_name": user["full_name"],
+                "role": user["role"]
+            }
+        }
+    finally:
+        conn.close()
+
+
+@app.get("/api/auth/me", summary="Get profile of currently logged-in user")
+def get_user_profile(current_user: dict = Depends(get_current_user)):
+    """Returns profile details of the authenticated user."""
+    return {"user": current_user}
+
+
+@app.post("/api/documents/upload", summary="Upload property document (PDF/Image) for legal verification")
+async def upload_document(
+    file: UploadFile = File(...),
+    document_type: str = Query("General Document", description="RTC / EC / Title Deed / RERA Approval / General"),
+    current_user: dict = Depends(get_current_user)
+):
+    """Uploads a document file, saves it securely, and runs OCR document verification analysis."""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file provided.")
+    
+    # 1. File Extension & Type Whitelist Security Validation
+    allowed_exts = {".pdf", ".png", ".jpg", ".jpeg", ".tiff"}
+    file_ext = os.path.splitext(file.filename.lower())[1]
+    if file_ext not in allowed_exts:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file format '{file_ext}'. Allowed formats: {', '.join(allowed_exts)}"
+        )
+    
+    # 2. File Size Limit Validation (Max 25 MB)
+    MAX_FILE_SIZE = 25 * 1024 * 1024  # 25 MB
+    contents = await file.read()
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail="File size exceeds maximum allowed limit of 25MB."
+        )
+
+    # 3. Path Traversal Prevention: Generate UUID storage filename
+    import uuid
+    safe_uuid = uuid.uuid4().hex
+    filename_clean = re.sub(r'[^a-zA-Z0-9_.-]', '_', file.filename)
+    saved_filename = f"user_{current_user['id']}_{safe_uuid}_{filename_clean}"
+    file_path = os.path.join(UPLOAD_DIR, saved_filename)
+    
+    # Save file contents to disk
+    with open(file_path, "wb") as f:
+        f.write(contents)
+    
+    # Run Document Verification Analysis (OCR & Legal Evaluation)
+    try:
+        if file.filename.lower().endswith('.pdf') or file.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+            analysis = doc_verify_agent.verify_local_document(file_path, document_type)
+        else:
+            analysis = {
+                "file_name": file.filename,
+                "document_type": document_type,
+                "file_size_kb": round(len(contents) / 1024, 2),
+                "status": "Verified",
+                "extracted_text_preview": "Uploaded file saved successfully. Binary preview not plain text.",
+                "verification_notes": ["File received and stored securely."]
+            }
+    except Exception as err:
+        analysis = {
+            "error": str(err),
+            "status": "Failed OCR Processing",
+            "file_name": file.filename
+        }
+    
+    # Save to PostgreSQL user_documents table
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO user_documents (user_id, filename, file_path, document_type, verification_status, analysis_result)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING id, filename, document_type, uploaded_at, verification_status, analysis_result;
+            """, (
+                current_user["id"],
+                file.filename,
+                file_path,
+                document_type,
+                "Completed" if "error" not in analysis else "OCR Alert",
+                json.dumps(analysis)
+            ))
+            doc_record = cur.fetchone()
+            conn.commit()
+
+        return {
+            "message": "File uploaded and analyzed successfully",
+            "document": doc_record
+        }
+    finally:
+        conn.close()
+
+
+@app.get("/api/documents/my-documents", summary="List all documents uploaded by logged-in user")
+def list_my_documents(current_user: dict = Depends(get_current_user)):
+    """Fetches user document list with analysis results."""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, filename, document_type, uploaded_at, verification_status, analysis_result
+                FROM user_documents
+                WHERE user_id = %s
+                ORDER BY uploaded_at DESC;
+            """, (current_user["id"],))
+            docs = cur.fetchall()
+
+        return {
+            "count": len(docs),
+            "documents": docs
+        }
+    finally:
+        conn.close()
+
+
+@app.get("/api/documents/{doc_id}", summary="Get detailed evaluation of a specific uploaded document")
+def get_document_detail(doc_id: int, current_user: dict = Depends(get_current_user)):
+    """Fetch details and OCR breakdown for a specific document."""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, filename, file_path, document_type, uploaded_at, verification_status, analysis_result
+                FROM user_documents
+                WHERE id = %s AND user_id = %s;
+            """, (doc_id, current_user["id"]))
+            doc = cur.fetchone()
+        
+        if not doc:
+            raise HTTPException(status_code=404, detail="Document not found.")
+
+        return {"document": doc}
+    finally:
+        conn.close()
+
+
+@app.delete("/api/documents/{doc_id}", summary="Delete an uploaded document (DPDP Act Data Erasure Compliance)")
+def delete_document(doc_id: int, current_user: dict = Depends(get_current_user)):
+    """Deletes an uploaded file from disk and database to respect user data erasure rights."""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, file_path FROM user_documents
+                WHERE id = %s AND user_id = %s;
+            """, (doc_id, current_user["id"]))
+            doc = cur.fetchone()
+            
+            if not doc:
+                raise HTTPException(status_code=404, detail="Document not found.")
+            
+            # Remove file from disk
+            if os.path.exists(doc["file_path"]):
+                try:
+                    os.remove(doc["file_path"])
+                except Exception as err:
+                    print(f"[!] File deletion warning: {err}", file=sys.stderr)
+            
+            # Delete record from database
+            cur.execute("DELETE FROM user_documents WHERE id = %s;", (doc_id,))
+            conn.commit()
+
+        return {"message": "Document and associated data deleted successfully."}
+    finally:
+        conn.close()
+
+
+@app.delete("/api/auth/me", summary="Delete user account and all uploaded files (DPDP Act Data Erasure)")
+def delete_user_account(current_user: dict = Depends(get_current_user)):
+    """Permanently deletes user profile and all associated document uploads."""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            # 1. Fetch all user uploaded files and remove them from disk
+            cur.execute("SELECT file_path FROM user_documents WHERE user_id = %s;", (current_user["id"],))
+            user_docs = cur.fetchall()
+            for doc in user_docs:
+                if os.path.exists(doc["file_path"]):
+                    try:
+                        os.remove(doc["file_path"])
+                    except Exception:
+                        pass
+            
+            # 2. Delete user record (Cascades to user_documents in DB)
+            cur.execute("DELETE FROM users WHERE id = %s;", (current_user["id"],))
+            conn.commit()
+
+        return {"message": "User account and all associated data permanently deleted."}
+    finally:
+        conn.close()
+
+
 

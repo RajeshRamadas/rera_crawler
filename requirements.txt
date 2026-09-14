@@ -19,10 +19,13 @@ beautifulsoup4>=4.11.0
 # --- Database ---
 psycopg2-binary>=2.9.5
 
-# --- API Server ---
+# --- API Server & Auth ---
 fastapi>=0.95.0
 uvicorn>=0.20.0
 python-multipart>=0.0.6
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+bcrypt>=4.0.1
 
 # --- PDF Text Extraction ---
 pdfplumber>=0.10.0
