@@ -18,12 +18,14 @@ import json
 import urllib.parse
 from typing import Optional, List
 from datetime import datetime
+from contextlib import asynccontextmanager
 from pydantic import BaseModel
 
 import auth
 
 try:
     from fastapi import FastAPI, HTTPException, Query, Response, Header, File, UploadFile, Depends
+    from fastapi.concurrency import run_in_threadpool
     from fastapi.middleware.cors import CORSMiddleware
     import psycopg2
     import psycopg2.extras
@@ -44,7 +46,15 @@ doc_verify_agent = DocumentDownloadAndVerifyAgent()
 
 DB_URI = os.getenv("DATABASE_URL", "postgresql://rera_user:rera_password@localhost:5432/rera_db")
 
+@asynccontextmanager
+async def lifespan(_app):
+    """Initialize database tables on application launch."""
+    init_auth_db()
+    yield
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="RERA Karnataka Property API",
     description="REST API for querying RERA Karnataka scraped project data, spatial coordinates, documents, analytics, and AI legal due-diligence.",
     version="1.0.0",
@@ -1320,18 +1330,14 @@ def init_auth_db():
         print(f"[!] DB Initialization note: {exc}", file=sys.stderr)
 
 
-@app.on_event("startup")
-def on_startup():
-    """Initialize database tables on application launch."""
-    init_auth_db()
-
-
 def get_current_user(authorization: Optional[str] = Header(None)):
     """FastAPI dependency to authenticate requests using JWT Bearer token."""
     if not authorization:
         raise HTTPException(status_code=401, detail="Authentication token required. Please login.")
     
-    token = authorization.replace("Bearer ", "").strip()
+    token = auth.parse_bearer_token(authorization)
+    if not token:
+        raise HTTPException(status_code=401, detail="Authorization header must be 'Bearer <token>'.")
     payload = auth.decode_access_token(token)
     if not payload or "sub" not in payload:
         raise HTTPException(status_code=401, detail="Invalid or expired authentication token.")
@@ -1364,8 +1370,10 @@ def register_user(payload: UserRegister):
     """Creates a new user account with hashed password."""
     if not payload.email or "@" not in payload.email:
         raise HTTPException(status_code=400, detail="Invalid email address.")
-    if len(payload.password) < 4:
-        raise HTTPException(status_code=400, detail="Password must be at least 4 characters long.")
+    if len(payload.password) < auth.MIN_PASSWORD_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Password must be at least {auth.MIN_PASSWORD_LENGTH} characters long.")
+    if not payload.full_name or not payload.full_name.strip():
+        raise HTTPException(status_code=400, detail="Full name is required.")
 
     conn = get_db_connection()
     try:
@@ -1405,7 +1413,14 @@ def login_user(payload: UserLogin):
         
         if not user or not auth.verify_password(payload.password, user["password_hash"]):
             raise HTTPException(status_code=401, detail="Invalid email or password.")
-        
+
+        # Upgrade hashes made by the old HMAC fallback to bcrypt on successful login
+        if auth.is_legacy_hash(user["password_hash"]):
+            with conn.cursor() as cur:
+                cur.execute("UPDATE users SET password_hash = %s WHERE id = %s;",
+                            (auth.hash_password(payload.password), user["id"]))
+            conn.commit()
+
         token = auth.create_access_token({"sub": user["id"], "email": user["email"]})
         return {
             "access_token": token,
@@ -1466,26 +1481,22 @@ async def upload_document(
     with open(file_path, "wb") as f:
         f.write(contents)
     
-    # Run Document Verification Analysis (OCR & Legal Evaluation)
+    # Run Document Verification Analysis (OCR & Legal Evaluation) off the event loop
     try:
-        if file.filename.lower().endswith('.pdf') or file.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
-            analysis = doc_verify_agent.verify_local_document(file_path, document_type)
-        else:
-            analysis = {
-                "file_name": file.filename,
-                "document_type": document_type,
-                "file_size_kb": round(len(contents) / 1024, 2),
-                "status": "Verified",
-                "extracted_text_preview": "Uploaded file saved successfully. Binary preview not plain text.",
-                "verification_notes": ["File received and stored securely."]
-            }
+        analysis = await run_in_threadpool(doc_verify_agent.verify_local_document, file_path, document_type)
     except Exception as err:
         analysis = {
             "error": str(err),
             "status": "Failed OCR Processing",
             "file_name": file.filename
         }
-    
+    if analysis.get("error"):
+        verification_status = "OCR Alert"
+    elif analysis.get("status") in ("CRITICAL", "CAUTION", "SCANNED_PDF"):
+        verification_status = analysis["status"]
+    else:
+        verification_status = "Completed"
+
     # Save to PostgreSQL user_documents table
     conn = get_db_connection()
     try:
@@ -1499,7 +1510,7 @@ async def upload_document(
                 file.filename,
                 file_path,
                 document_type,
-                "Completed" if "error" not in analysis else "OCR Alert",
+                verification_status,
                 json.dumps(analysis)
             ))
             doc_record = cur.fetchone()

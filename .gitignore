@@ -58,3 +58,6 @@ coverage.xml
 scratch/
 .tempmediaStorage/
 location_intelligence/project_33_labeled_map.png
+
+# User uploads (personal documents)
+uploads/

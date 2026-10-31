@@ -105,4 +105,5 @@ To host on managed cloud platforms like Render or Railway:
 2. **Repository**: Connect your GitHub repository (`rera_crawler`).
 3. **Environment Variables**:
    * Set `DATABASE_URL`: `postgresql://<user>:<password>@<host>:5432/<dbname>`
+   * Set `JWT_SECRET_KEY` (required so logins survive restarts): `python3 -c "import secrets; print(secrets.token_urlsafe(48))"`. Docker: put it in `.env`. systemd: add `JWT_SECRET_KEY=...` to `/home/ubuntu/rera_crawler/.env`.
 4. The platform will automatically build using the included [`Dockerfile`](file:///home/rajesh/Documents/GitHub/rera_crawler/Dockerfile) and start the FastAPI server on port 8000.

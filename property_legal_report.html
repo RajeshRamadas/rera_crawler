@@ -2663,9 +2663,10 @@
       if (!el) return;
       const badge = report.verdict_badge || '';
       const verdict = report.final_verdict || '';
-      const score = report.legal_risk_score || 0;
-      const isFail = badge.includes('NOT') || badge.includes('FAIL') || verdict.includes('FAIL');
-      const isCaution = badge.includes('CAUTION') || verdict.includes('CAUTION');
+      const score = (report.legal_risk_score === null || report.legal_risk_score === undefined) ? '—' : report.legal_risk_score;
+      const isFail = badge.includes('DO NOT') || badge.includes('FAIL') || verdict.startsWith('FAIL');
+      const isCaution = !isFail && (badge.includes('CAUTION') || badge.includes('REVIEW') || badge.includes('UNABLE')
+        || verdict.includes('CAUTION') || verdict.startsWith('INCOMPLETE') || verdict.startsWith('CONDITIONAL'));
       const bgColor = isFail ? 'linear-gradient(135deg,#3D0000,#6B0000)' : isCaution ? 'linear-gradient(135deg,#2D1A00,#4D3000)' : 'linear-gradient(135deg,#003D1A,#006B30)';
       const borderColor = isFail ? '#FF4444' : isCaution ? '#FFA500' : '#22C55E';
       const icon = isFail ? '🔴' : isCaution ? '🟡' : '🟢';

@@ -532,7 +532,7 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Password</label>
-                    <input type="password" id="regPassword" class="form-input" placeholder="••••••••" required>
+                    <input type="password" id="regPassword" class="form-input" placeholder="At least 8 characters" minlength="8" required>
                 </div>
                 <button type="submit" class="btn-primary" style="width: 100%; margin-top: 10px;">Create Account</button>
             </form>
@@ -760,7 +760,7 @@
             const docType = document.getElementById('docTypeSelect').value;
             const statusMsg = document.getElementById('uploadStatusMsg');
 
-            statusMsg.innerHTML = `<span style="color: var(--primary);">⏳ Uploading & running OCR analysis on <strong>${file.filename}</strong>...</span>`;
+            statusMsg.innerHTML = `<span style="color: var(--primary);">⏳ Uploading & running OCR analysis on <strong>${file.name}</strong>...</span>`;
 
             const formData = new FormData();
             formData.append('file', file);
@@ -774,7 +774,7 @@
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.detail || 'Upload failed');
 
-                statusMsg.innerHTML = `<span style="color: var(--accent-emerald);">✓ Document <strong>${file.filename}</strong> successfully uploaded and analyzed!</span>`;
+                statusMsg.innerHTML = `<span style="color: var(--accent-emerald);">✓ Document <strong>${file.name}</strong> successfully uploaded and analyzed!</span>`;
                 fetchUserDocuments();
             } catch (err) {
                 statusMsg.innerHTML = `<span style="color: var(--accent-rose);">✕ Upload failed: ${err.message}</span>`;

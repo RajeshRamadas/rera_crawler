@@ -33,8 +33,10 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql://rera_user:rera_password@db:5432/rera_db
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
     volumes:
       - ./rera_data:/app/rera_data
+      - ./uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy

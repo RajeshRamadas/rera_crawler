@@ -19,9 +19,12 @@ import re
 import ssl
 import json
 import datetime
+import difflib
 import io
+import time
 import urllib.request
-from typing import Dict, Any, List, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Dict, Any, List, Optional, Tuple
 
 try:
     import pdfplumber
@@ -60,12 +63,58 @@ except ImportError:
     pass
 
 HAS_PYTESSERACT = False
+HAS_KANNADA_OCR = False
+TESSERACT_LANG = "eng"
 try:
     import pytesseract as _pytesseract
     _pytesseract.get_tesseract_version()  # raises if binary missing
     HAS_PYTESSERACT = True
+    try:
+        if "kan" in _pytesseract.get_languages(config=""):
+            HAS_KANNADA_OCR = True
+            TESSERACT_LANG = "kan+eng"
+    except Exception:
+        pass
 except Exception:
     pass
+
+# Kannada terms used on Bhoomi RTC / Kaveri EC documents.
+# NOTE: validate against real documents and extend as needed.
+KN_PTCL_TERMS = ["ಪಿಟಿಸಿಎಲ್", "ದರಖಾಸ್ತು", "ಸಾಗುವಳಿ ಚೀಟಿ", "ಪರಿಶಿಷ್ಟ ಜಾತಿ", "ಪರಿಶಿಷ್ಟ ಪಂಗಡ", "ಮಂಜೂರಾತಿ ಜಮೀನು"]
+KN_KHARAB_TERMS = ["ಖರಾಬು", "ಖರಾಬ್"]
+KN_MORTGAGE_TERMS = ["ಅಡಮಾನ", "ಭೋಗ್ಯ"]
+KN_RELEASE_TERMS = ["ಋಣ ಮುಕ್ತ", "ಋಣಮುಕ್ತ", "ಬಿಡುಗಡೆ ಪತ್ರ", "ಅಡಮಾನ ಬಿಡುಗಡೆ"]
+KN_NIL_TERMS = ["ಋಣಭಾರ ಇಲ್ಲ", "ಯಾವುದೇ ವ್ಯವಹಾರ ಇಲ್ಲ", "ಯಾವುದೇ ಋಣಭಾರ"]
+
+# RERA Karnataka annexure numbers -> document type (definitive when present in the title)
+ANNEXURE_DOCTYPE = {
+    40: "CONVERSION_ORDER",
+    41: "SALE_DEED",
+    42: "JOINT_DEV_AGREEMENT",
+    43: "RTC_PAHANI",
+    44: "MUTATION_EXTRACT",
+    45: "KHATA",
+    46: "ENCUMBRANCE_CERT",
+    53: "CA_FORM1",
+    55: "ENG_FORM3",
+    57: "ARCH_FORM2",
+}
+
+# Column labels of the RERA Karnataka "survey land" grid. The crawler flattens each grid row
+# into one key made of all column labels joined together; these let us split it back.
+SURVEY_GRID_LABELS = sorted([
+    "Survey Number", "Is Conversion/Alienation Done ?", "Is Sale/Title/Gift Deed Executed ?",
+    "Is JDA Registered ?", "Khatha Number", "Type of Land", "Conversion/Alienation Order Number",
+    "Sale Deed Number", "JDA Registered Date", "Khatha Date", "Tenure of Land",
+    "Conversion/Alienation Date", "Deed Execution Date", "Khatha Issuing Authority",
+    "No. of Land Owners", "Conversion/Alienation Authority", "Sub Registrar Office", "Type of Khatha",
+    "Extent of Land", "Conversion/Alienation Type", "Sale/Title/Gift Deed (Annexure-41)",
+    "Guidance Value", "Conversion/Alienation Order (Annexure-40)", "Extent of Land as per Deed",
+    "JDA (Annexure-42)", "Extent of Land as per Khatha", "RTC (Annexure-43)", "Mutation (Annexure-44)",
+    "Extent of Land as per Conversion/Alienation", "Deed Executed From", "Deed Executed To",
+    "Extent of Land as per JDA", "Khatha (Annexure-45)", "Encumbrance Certificate (Annexure-46)",
+], key=len, reverse=True)
+SURVEY_GRID_COLUMNS = 5
 
 try:
     from project_analyzer import search_project
@@ -134,14 +183,106 @@ def _clean(text: str) -> str:
     return re.sub(r"\s+", " ", text or "").strip()
 
 
+def _annexure_no(title: str) -> Optional[int]:
+    m = re.search(r"annexure\s*-\s*(\d+)", title or "", re.IGNORECASE)
+    return int(m.group(1)) if m else None
+
+
+def _has_any(text: str, terms: List[str]) -> bool:
+    return any(t in text for t in terms)
+
+
+def _kannada_chars(text: str) -> int:
+    return sum(1 for c in (text or "") if 'ಀ' <= c <= '೿')
+
+
+def _norm_survey(s: Optional[str]) -> str:
+    """'Sy. No 113 / 7A' -> '113/7A'"""
+    s = re.sub(r"\s+", "", str(s or "")).upper().strip(".,;:")
+    return s
+
+
+_NAME_STOP = {"sri", "shri", "smt", "kum", "mr", "mrs", "ms", "dr", "late", "s/o", "d/o", "w/o",
+              "son", "of", "wife", "daughter", "and", "others", "m/s", "pvt", "ltd", "private",
+              "limited", "llp"}
+
+
+def _name_tokens(name: Optional[str]) -> List[str]:
+    toks = re.findall(r"[a-z]+", (name or "").lower())
+    return [t for t in toks if t not in _NAME_STOP and len(t) > 1]
+
+
+def _names_match(a: Optional[str], b: Optional[str]) -> bool:
+    ta, tb = _name_tokens(a), _name_tokens(b)
+    if not ta or not tb:
+        return False
+    sa, sb = set(ta), set(tb)
+    if sa <= sb or sb <= sa:
+        return True
+    return difflib.SequenceMatcher(None, " ".join(ta), " ".join(tb)).ratio() >= 0.85
+
+
+def _extent_sqm(extent: Optional[str]) -> Optional[float]:
+    """Convert '2.10 acres', '1 Acre 10 Guntas', '1266 Sq Mtrs', '9,200 sq ft' to square metres."""
+    if not extent:
+        return None
+    s = str(extent).lower().replace(",", "")
+    total = 0.0
+    found = False
+    for num, unit in re.findall(r"([\d.]+)\s*(acres?|guntas?|sq\.?\s*(?:ft|feet|m|mtrs?|meters?|metres?))", s):
+        try:
+            v = float(num)
+        except ValueError:
+            continue
+        found = True
+        if unit.startswith("acre"):
+            total += v * 4046.86
+        elif unit.startswith("gunta"):
+            total += v * 101.17
+        elif "ft" in unit or "feet" in unit:
+            total += v * 0.092903
+        else:
+            total += v
+    return round(total, 1) if found else None
+
+
+def _parse_date(s: Optional[str]) -> Optional[datetime.date]:
+    if not s:
+        return None
+    for fmt in ("%d-%m-%Y", "%d/%m/%Y", "%d-%m-%y", "%d/%m/%y"):
+        try:
+            return datetime.datetime.strptime(s.strip(), fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _split_grid_labels(row_text: str) -> Optional[List[str]]:
+    """Split a flattened grid row ('RTC (Annexure-43) Conversion/Alienation Order (Annexure-40) ...')
+    back into its column labels. Returns None if the row contains unknown text."""
+    labels = []
+    rest = row_text.strip()
+    while rest:
+        for lab in SURVEY_GRID_LABELS:
+            if rest.startswith(lab) and (len(rest) == len(lab) or rest[len(lab)] == " "):
+                labels.append(lab)
+                rest = rest[len(lab):].strip()
+                break
+        else:
+            return None
+    return labels
+
+
 class DocumentDownloadAndVerifyAgent:
     """
     AI agent that downloads, reads, and legally verifies all RERA Karnataka
     project documents (PDFs) for a given project name or registration number.
     """
 
-    DOWNLOAD_TIMEOUT = 30
-    MAX_DOCS = 40
+    DOWNLOAD_TIMEOUT = 20      # seconds per attempt
+    DOWNLOAD_ATTEMPTS = 2
+    DOWNLOAD_WORKERS = 6       # parallel downloads (keep low to be polite to the RERA server)
+    MAX_DOCS = 80
     UA = (
         "Mozilla/5.0 (X11; Linux x86_64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -151,6 +292,8 @@ class DocumentDownloadAndVerifyAgent:
     def __init__(self):
         self._logs: List[str] = []
         self._ssl_ctx = _make_ssl_ctx()
+        self._project_surveys: List[str] = []
+        self._docs_truncated = 0
 
     # ---- Public entry points ----
 
@@ -163,7 +306,7 @@ class DocumentDownloadAndVerifyAgent:
             return self._empty_report(query, "No downloadable documents found for this project.")
         downloaded = self._step2_download(doc_list)
         per_doc = self._step3_extract_and_classify(downloaded)
-        cross = self._step5_cross_verify(per_doc)
+        cross = self._step5_cross_verify(per_doc, db_rec)
         report = self._step6_report(query, db_rec, per_doc, cross)
         self._log(f"Agent DONE -- Verdict: {report['final_verdict']}")
         report["agent_logs"] = self._logs
@@ -187,60 +330,30 @@ class DocumentDownloadAndVerifyAgent:
             return
 
         yield _emit(f"[Step 1/5] Found {len(doc_list)} downloadable documents.")
-
-        downloaded = []
-        for i, doc in enumerate(doc_list, 1):
-            yield _emit(f"[Step 2/5] Downloading ({i}/{len(doc_list)}): {doc['title'][:60]}...")
-            result = self._download_single(doc)
-            downloaded.append(result)
+        yield _emit(f"[Step 2/5] Downloading {len(doc_list)} documents ({self.DOWNLOAD_WORKERS} in parallel)...")
+        downloaded: List[Optional[dict]] = [None] * len(doc_list)
+        done = 0
+        for idx, result in self._iter_downloads(doc_list):
+            downloaded[idx] = result
+            done += 1
             size_kb = round(len(result["bytes"]) / 1024, 1) if result["bytes"] else 0
-            ok = "OK" if result["bytes"] else "FAIL"
-            yield _emit(f"   {ok} -- {doc['title'][:50]} ({size_kb} KB)")
+            ok = "OK" if result["bytes"] else ("SKIP (HTML)" if result.get("skip") else "FAIL")
+            yield _emit(f"   ({done}/{len(doc_list)}) {ok} -- {result['title'][:50]} ({size_kb} KB)")
 
-        yield _emit(f"[Step 3/5] Extracting text from {len(downloaded)} PDFs...")
+        yield _emit(f"[Step 3/5] Extracting text from {len(downloaded)} documents...")
         per_doc = []
         for item in downloaded:
-            if item.get("skip"):
-                item["text"] = ""
-                item["pages"] = 0
-                item["extraction_method"] = "skipped_html"
-                item["is_readable"] = False
-                item["status"] = "SKIPPED"
-                item["status_badge"] = "SKIPPED — WEBSITE URL"
-                item["doc_type"] = "OTHER"
-                item["doc_type_label"] = "Website URL (Skipped)"
-                item["entities"] = {}
-                item["issues"] = ["URL returned an HTML page, not a legal document."]
-                per_doc.append(item)
-                yield _emit(f"   SKIP (HTML) -- {item.get('title','')[:45]}")
-                continue
-            if item["bytes"]:
-                ct = item.get("content_type", "").lower()
-                if any(mime in ct for mime in ["image/jpeg", "image/png", "image/jpg", "image/tiff"]):
-                    extracted = self._ocr_image_bytes(item["bytes"], item.get("title", ""))
-                else:
-                    extracted = self._extract_text(item["bytes"], item["title"])
-                item["text"] = extracted["text"]
-                item["pages"] = extracted["pages"]
-                item["extraction_method"] = extracted["method"]
-                item["is_readable"] = extracted["is_readable"]
-            else:
-                item["text"] = ""
-                item["pages"] = 0
-                item["extraction_method"] = "none"
-                item["is_readable"] = False
-            method = item.get("extraction_method", "none")
-            chars = len(item.get("text", ""))
+            classified = self._process_item(item)
+            per_doc.append(classified)
+            method = classified.get("extraction_method", "none")
             ocr_flag = " [OCR]" if "ocr" in method.lower() else ""
             yield _emit(
-                f"   '{item['title'][:40]}' -> {item.get('pages', 0)}p, "
-                f"{chars}chars [{method}]{ocr_flag}"
+                f"   '{classified['title'][:40]}' -> {classified.get('pages', 0)}p, "
+                f"{len(classified.get('text', ''))}chars [{method}]{ocr_flag} => {classified.get('doc_type')}"
             )
-            classified = self._classify_and_extract(item)
-            per_doc.append(classified)
 
         yield _emit("[Step 4/5] Cross-verifying legal entities across documents...")
-        cross = self._step5_cross_verify(per_doc)
+        cross = self._step5_cross_verify(per_doc, db_rec)
         for flag in cross["critical_flags"]:
             yield _emit(f"   CRITICAL: {flag}")
         for w in cross["warnings"]:
@@ -252,6 +365,38 @@ class DocumentDownloadAndVerifyAgent:
         report = self._step6_report(query, db_rec, per_doc, cross)
         report["agent_logs"] = self._logs
         yield _sse({"type": "report", "data": report})
+
+    def verify_local_document(self, file_path: str, document_type: str = "General Document") -> Dict[str, Any]:
+        """Analyse a single user-uploaded file (PDF or image) and return its classification,
+        extracted entities and issues. Used by POST /api/documents/upload."""
+        with open(file_path, "rb") as f:
+            data = f.read()
+        ext = os.path.splitext(file_path.lower())[1]
+        content_type = {
+            ".pdf": "application/pdf", ".png": "image/png", ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg", ".tif": "image/tiff", ".tiff": "image/tiff",
+        }.get(ext, "application/octet-stream")
+        hint_map = {
+            "rtc": DOCTYPE_RTC, "pahani": DOCTYPE_RTC, "ec": DOCTYPE_EC, "encumbrance": DOCTYPE_EC,
+            "title deed": DOCTYPE_SALE_DEED, "sale deed": DOCTYPE_SALE_DEED,
+            "rera": DOCTYPE_RERA_CERT, "khata": DOCTYPE_KHATA, "khatha": DOCTYPE_KHATA,
+            "mutation": DOCTYPE_MUTATION, "conversion": DOCTYPE_CONVERSION, "plan": DOCTYPE_PLAN,
+        }
+        dt = (document_type or "").strip().lower()
+        hint = next((v for k, v in hint_map.items() if dt == k or dt.startswith(k + " ") or k in dt.split(" / ")), None)
+        item = {
+            "title": f"{document_type} -- {os.path.basename(file_path)}",
+            "url": None, "bytes": data, "error": None, "content_type": content_type,
+            "doc_type_hint": hint,
+        }
+        result = self._process_item(item)
+        result.pop("bytes", None)
+        result.pop("error", None)
+        result["file_name"] = os.path.basename(file_path)
+        result["file_size_kb"] = round(len(data) / 1024, 2)
+        result["document_type"] = document_type
+        result["text_preview"] = (result.pop("text", "") or "")[:1500]
+        return result
 
     # ---- Step 1: Resolve documents ----
 
@@ -272,6 +417,11 @@ class DocumentDownloadAndVerifyAgent:
             except Exception:
                 raw = {}
         doc_list = self._extract_all_document_urls(raw, db_rec)
+        # Keep land-title documents first so they are never cut off by MAX_DOCS
+        doc_list.sort(key=lambda d: 0 if d.get("doc_type_hint") else 1)
+        self._docs_truncated = max(0, len(doc_list) - self.MAX_DOCS)
+        if self._docs_truncated:
+            self._log(f"[Step 1] {self._docs_truncated} documents beyond MAX_DOCS={self.MAX_DOCS} not processed.")
         doc_list = doc_list[:self.MAX_DOCS]
         self._log(
             f"[Step 1] Matched: '{db_rec.get('project_name')}' "
@@ -291,7 +441,8 @@ class DocumentDownloadAndVerifyAgent:
             "/promoter-profile", "/project-details",
         )
 
-        def _add(title, url, category_key, category_name, annexure, file_type, desc):
+        def _add(title, url, category_key, category_name, annexure, file_type, desc,
+                 doc_type_hint=None, survey_no=None):
             if not url or not isinstance(url, str):
                 return
             url = url.strip()
@@ -305,6 +456,7 @@ class DocumentDownloadAndVerifyAgent:
                 "title": title, "url": url, "categoryKey": category_key,
                 "categoryName": category_name, "annexure": annexure,
                 "fileType": file_type, "desc": desc, "reg_no": reg_no,
+                "doc_type_hint": doc_type_hint, "survey_no": survey_no,
             })
 
         def _urls(val):
@@ -318,7 +470,8 @@ class DocumentDownloadAndVerifyAgent:
         for u in _urls(raw.get("certificate_url")):
             _add("RERA Official Registration Certificate", u, "certs",
                  "RERA Official Certificates", "Official Certificate", "PDF",
-                 "Official RERA registration certificate.")
+                 "Official RERA registration certificate.",
+                 doc_type_hint=DOCTYPE_RERA_CERT)
         if raw.get("renewed_certificate_url"):
             _add("Renewed RERA Registration Certificate", raw["renewed_certificate_url"],
                  "certs", "RERA Official Certificates", "Renewal Order", "PDF",
@@ -389,19 +542,61 @@ class DocumentDownloadAndVerifyAgent:
                  "Enquired Doc", "Document", "Enquired document submitted to RERA.")
 
         # 6. Survey Land Tables
+        # The crawler stores the per-survey land grid as a list of dicts, one per grid COLUMN,
+        # where each key is a whole grid ROW of labels joined together. Rebuild which column
+        # (and therefore which annexure) each URL belongs to, and which survey number it is for.
         proj_details = raw.get("project_details") or {}
         survey_tables = proj_details.get("survey_land_tables") or raw.get("survey_land_tables") or []
-        for st in survey_tables:
-            if not isinstance(st, dict):
-                continue
-            for k, val in st.items():
-                if k.endswith(" URL") or k.endswith("_url"):
-                    clean_title = re.sub(r"\s*URL.*$", "", k).replace("_url", "").strip()
-                    for u in _urls(val):
-                        _add(clean_title, u, "legal",
-                             "Legal Title Deeds & Sanctioned Plans",
-                             "Land Titling", "Legal Document",
-                             f"Survey land titling: {clean_title}.")
+        survey_tables = [st for st in survey_tables if isinstance(st, dict)]
+        self._project_surveys = []
+        def _row0(st: dict) -> str:
+            # Value of the first grid row ("Survey Number | Is Conversion/Alienation Done ? | ...").
+            # Looked up by label because JSONB does not preserve key order.
+            for k, v in st.items():
+                if "Survey Number Is Conversion/Alienation Done" in k and not k.endswith("URL"):
+                    return str(v).strip()
+            return ""
+
+        group_survey, col = None, 0
+        for i, st in enumerate(survey_tables):
+            items = list(st.items())
+            first_val = _row0(st)
+            nxt = survey_tables[i + 1] if i + 1 < len(survey_tables) else {}
+            nxt_first = _row0(nxt).upper() if nxt else ""
+            # A new survey group starts with the "Survey Number" column; the next column is
+            # "Is Conversion/Alienation Done ?" (YES/NO).
+            if group_survey is None or (col >= SURVEY_GRID_COLUMNS and nxt_first in ("YES", "NO")):
+                group_survey, col = first_val, 0
+                if first_val and first_val not in self._project_surveys:
+                    self._project_surveys.append(first_val)
+            else:
+                col += 1
+            for k, val in items:
+                if not (k.endswith(" URL") or k.endswith("_url")):
+                    continue
+                row = re.sub(r"\s*URL$", "", k).replace("_url", "")
+                row = re.sub(r"^For Survey Number \S+\s+", "", row)
+                row = row.split(" Land Owner / Co-promoter")[0].strip()
+                labels = _split_grid_labels(row)
+                label = None
+                if labels and col < len(labels):
+                    label = labels[col]
+                elif labels is None:
+                    anns = re.findall(r"[A-Za-z/ ]+\(Annexure-\d+\)", row)
+                    label = anns[0].strip() if len(anns) == 1 else None
+                if label is None:
+                    if col >= SURVEY_GRID_COLUMNS:
+                        label = "Land Owner Document"
+                    else:
+                        label = "Land Document"
+                ann = _annexure_no(label)
+                title = f"{label} -- Survey No {group_survey}"
+                for u in _urls(val):
+                    _add(title, u, "legal",
+                         "Legal Title Deeds & Sanctioned Plans",
+                         f"Annexure-{ann}" if ann else "Land Titling", "Legal Document",
+                         f"Survey land titling: {label} for Sy. No {group_survey}.",
+                         doc_type_hint=ANNEXURE_DOCTYPE.get(ann), survey_no=group_survey)
 
         # 7. Quarterly Progress Updates
         for qu in (raw.get("quarterly_updates") or []):
@@ -437,16 +632,28 @@ class DocumentDownloadAndVerifyAgent:
 
     # ---- Step 2: Download PDFs ----
 
+    def _iter_downloads(self, doc_list: List[dict]):
+        """Download in parallel; yields (index, result) as each download finishes."""
+        with ThreadPoolExecutor(max_workers=self.DOWNLOAD_WORKERS) as pool:
+            futures = {pool.submit(self._download_single, doc): i for i, doc in enumerate(doc_list)}
+            for fut in as_completed(futures):
+                i = futures[fut]
+                try:
+                    result = fut.result()
+                except Exception as e:  # never let one bad download kill the run
+                    result = dict(doc_list[i], bytes=b"", error=str(e))
+                yield i, result
+
     def _step2_download(self, doc_list: List[dict]) -> List[dict]:
-        results = []
-        total = len(doc_list)
-        for i, doc in enumerate(doc_list, 1):
-            self._log(f"Downloading [{i}/{total}]: {doc['title'][:55]}...")
-            result = self._download_single(doc)
+        results: List[Optional[dict]] = [None] * len(doc_list)
+        t0 = time.time()
+        for i, result in self._iter_downloads(doc_list):
+            results[i] = result
             size_kb = round(len(result["bytes"]) / 1024, 1) if result["bytes"] else 0
-            ok = "OK" if result["bytes"] else f"FAIL: {result.get('error', 'unknown')[:50]}"
-            self._log(f"  -> {ok} ({size_kb} KB)")
-            results.append(result)
+            ok = "OK" if result["bytes"] else f"FAIL: {(result.get('error') or 'unknown')[:50]}"
+            self._log(f"Download {result['title'][:55]} -> {ok} ({size_kb} KB)")
+        self._log(f"[Step 2] Downloaded {sum(1 for r in results if r['bytes'])}/{len(results)} "
+                  f"in {time.time() - t0:.1f}s")
         return results
 
     def _download_single(self, doc: dict) -> dict:
@@ -454,7 +661,7 @@ class DocumentDownloadAndVerifyAgent:
         item["bytes"] = b""
         item["error"] = None
         url = doc.get("url", "")
-        for attempt in range(1, 4):  # up to 3 attempts
+        for attempt in range(1, self.DOWNLOAD_ATTEMPTS + 1):
             try:
                 req = urllib.request.Request(url, headers={
                     "User-Agent": self.UA,
@@ -465,81 +672,69 @@ class DocumentDownloadAndVerifyAgent:
                     item["http_status"] = resp.status
                     item["content_type"] = resp.headers.get("Content-Type", "")
                     # Skip HTML pages — website URLs, not legal documents
-                    ct = item["content_type"].lower()
-                    if "text/html" in ct:
+                    if "text/html" in item["content_type"].lower():
                         item["error"] = "HTML page — not a legal document"
                         item["skip"] = True
                         return item
-                    # Read with IncompleteRead tolerance
-                    # RERA servers use chunked encoding and sometimes send premature EOF
-                    # The bytes already buffered are the complete document
+                    # RERA servers use chunked encoding and sometimes send a premature EOF;
+                    # the bytes already buffered are normally the complete document.
                     buf = io.BytesIO()
                     try:
                         while True:
-                            chunk = resp.read(65536)  # 64 KB chunks
+                            chunk = resp.read(65536)
                             if not chunk:
                                 break
                             buf.write(chunk)
                     except Exception as read_err:
-                        err_str = str(read_err)
-                        # IncompleteRead — use whatever was read (usually the full doc)
-                        if "IncompleteRead" in type(read_err).__name__ or "IncompleteRead" in err_str:
-                            # hasattr check for the partial attribute
-                            if hasattr(read_err, 'partial') and read_err.partial:
+                        if "IncompleteRead" in type(read_err).__name__ or "IncompleteRead" in str(read_err):
+                            if getattr(read_err, "partial", None):
                                 buf.write(read_err.partial)
                         else:
-                            raise  # re-raise non-IncompleteRead errors
+                            raise
                     raw = buf.getvalue()
                     if raw:
                         item["bytes"] = raw
                         item["error"] = None
-                        return item  # success
-                    else:
-                        item["error"] = "Empty response body"
+                        return item
+                    item["error"] = "Empty response body"
             except Exception as e:
                 item["error"] = str(e)
-                if attempt < 3:
-                    import time
-                    time.sleep(1.5 * attempt)  # back-off: 1.5s, 3s
+                if attempt < self.DOWNLOAD_ATTEMPTS:
+                    time.sleep(1.5 * attempt)
         return item
 
     # ---- Step 3: Extract Text ----
 
+    def _process_item(self, item: dict) -> dict:
+        """Extract text from one downloaded item, then classify it and extract entities."""
+        if item.get("skip"):
+            item.update({
+                "text": "", "pages": 0, "extraction_method": "skipped_html", "is_readable": False,
+                "status": "SKIPPED", "status_badge": "SKIPPED — WEBSITE URL",
+                "doc_type": DOCTYPE_OTHER, "doc_type_label": "Website URL (Skipped)",
+                "entities": {}, "issues": ["URL returned an HTML page, not a legal document."],
+            })
+            return item
+        if item.get("bytes"):
+            data = item["bytes"]
+            ct = (item.get("content_type") or "").lower()
+            is_image = any(m in ct for m in ("image/jpeg", "image/png", "image/jpg", "image/tiff")) or \
+                data[:3] == b"\xff\xd8\xff" or data[:8] == b"\x89PNG\r\n\x1a\n" or data[:4] in (b"II*\x00", b"MM\x00*")
+            extracted = self._ocr_image_bytes(data, item.get("title", "")) if is_image \
+                else self._extract_text(data, item.get("title", ""))
+            item["text"] = extracted["text"]
+            item["pages"] = extracted["pages"]
+            item["extraction_method"] = extracted["method"]
+            item["is_readable"] = extracted["is_readable"]
+        else:
+            item["text"] = ""
+            item["pages"] = 0
+            item["extraction_method"] = "none"
+            item["is_readable"] = False
+        return self._classify_and_extract(item)
+
     def _step3_extract_and_classify(self, downloaded: List[dict]) -> List[dict]:
-        per_doc = []
-        for item in downloaded:
-            # Skip HTML pages that were detected during download
-            if item.get("skip"):
-                item["text"] = ""
-                item["pages"] = 0
-                item["extraction_method"] = "skipped_html"
-                item["is_readable"] = False
-                item["status"] = "SKIPPED"
-                item["status_badge"] = "SKIPPED — WEBSITE URL"
-                item["doc_type"] = "OTHER"
-                item["doc_type_label"] = "Website URL (Skipped)"
-                item["entities"] = {}
-                item["issues"] = ["URL returned an HTML page, not a legal document."]
-                per_doc.append(item)
-                continue
-            if item["bytes"]:
-                ct = item.get("content_type", "").lower()
-                # Route directly to image OCR for JPEG/PNG responses
-                if any(mime in ct for mime in ["image/jpeg", "image/png", "image/jpg", "image/tiff"]):
-                    extracted = self._ocr_image_bytes(item["bytes"], item.get("title", ""))
-                else:
-                    extracted = self._extract_text(item["bytes"], item["title"])
-                item["text"] = extracted["text"]
-                item["pages"] = extracted["pages"]
-                item["extraction_method"] = extracted["method"]
-                item["is_readable"] = extracted["is_readable"]
-            else:
-                item["text"] = ""
-                item["pages"] = 0
-                item["extraction_method"] = "none"
-                item["is_readable"] = False
-            per_doc.append(self._classify_and_extract(item))
-        return per_doc
+        return [self._process_item(item) for item in downloaded]
 
     def _extract_text(self, pdf_bytes: bytes, title: str = "") -> Dict[str, Any]:
         result = {"text": "", "pages": 0, "method": "none", "is_readable": False}
@@ -632,46 +827,70 @@ class DocumentDownloadAndVerifyAgent:
             try:
                 from PIL import Image as PILImg
                 img = PILImg.open(io.BytesIO(img_bytes))
-                return _pytesseract.image_to_string(img, lang="eng")
+                return _pytesseract.image_to_string(img, lang=TESSERACT_LANG)
             except Exception:
                 pass
         return ""
 
     # ---- Step 4: Classify & Extract Entities ----
 
-    def _classify_and_extract(self, item: dict) -> dict:
-        title_lower = (item.get("title", "") or "").lower()
-        text = (item.get("text", "") or "")
-        text_lower = text.lower()
-        combined = title_lower + " " + text_lower
+    def _detect_doc_type(self, item: dict) -> str:
+        # 1. Type known from where the URL came from (certificate field / survey grid column)
+        if item.get("doc_type_hint"):
+            return item["doc_type_hint"]
+        title = item.get("title", "") or ""
+        # 2. Annexure number in the title is definitive
+        ann = _annexure_no(title)
+        if ann in ANNEXURE_DOCTYPE:
+            return ANNEXURE_DOCTYPE[ann]
+        if ann is not None:
+            # Other annexures (PAN, GST, partnership deed, firm registration...) are promoter
+            # filings -- don't let generic words like "registration certificate" misclassify them.
+            return DOCTYPE_OTHER
+        # 3. Fall back to keywords in title + text
+        combined = (title + " " + (item.get("text", "") or "")).lower()
+        if "encumbrance certificate" in combined or "ಋಣಭಾರ ಪ್ರಮಾಣ" in combined:
+            return DOCTYPE_EC
+        if "icai" in combined or "chartered accountant" in combined:
+            return DOCTYPE_CA_FORM1
+        if "council of architecture" in combined or "registration of coa" in combined:
+            return DOCTYPE_ARCH_FORM2
+        if "local authority licence" in combined or "structural engineer" in combined:
+            return DOCTYPE_ENG_FORM3
+        if any(k in combined for k in ["landconversion.karnataka.gov.in", "conversion order",
+                                        "alienation order", "dc order", "sec 95"]):
+            return DOCTYPE_CONVERSION
+        if "prm/ka/rera" in combined or "real estate regulatory authority" in combined:
+            return DOCTYPE_RERA_CERT
+        if any(k in combined for k in ["sale deed", "title deed", "absolute sale", "registered deed"]):
+            return DOCTYPE_SALE_DEED
+        if "mutation register" in combined or re.search(r"\bimr[a-z0-9]+", combined):
+            return DOCTYPE_MUTATION
+        if any(k in combined for k in ["pahani", "rights tenancy", "bhoomi", "khatedar", "ಪಹಣಿ"]) or \
+                re.search(r"\brtc\b", combined):
+            return DOCTYPE_RTC
+        if any(k in combined for k in ["e-khata", "a-khata", "b-khata", "e-swathu", "khata certificate",
+                                        "khata no", "khatha no"]):
+            return DOCTYPE_KHATA
+        if any(k in combined for k in ["joint development", "development agreement"]) or re.search(r"\bjda\b", combined):
+            return DOCTYPE_JDA
+        if any(k in combined for k in ["sanction plan", "building plan", "layout plan", "approved plan"]):
+            return DOCTYPE_PLAN
+        return DOCTYPE_OTHER
 
-        # Title-based overrides: annexure numbers are definitive
-        if "annexure-43" in combined or "annexure-44" in combined:
-            doc_type = DOCTYPE_RTC  # Bhoomi RTC / Mutation
-        elif "annexure-46" in combined or "encumbrance certificate" in combined:
-            doc_type = DOCTYPE_EC
-        elif "annexure-53" in combined or "icai" in combined or "chartered accountant" in combined:
-            doc_type = DOCTYPE_CA_FORM1
-        elif "annexure-57" in combined or "council of architecture" in combined or "registration of coa" in combined:
-            doc_type = DOCTYPE_ARCH_FORM2
-        elif "annexure-55" in combined or "local authority licence" in combined or "structural engineer" in combined:
-            doc_type = DOCTYPE_ENG_FORM3
-        elif "landconversion.karnataka.gov.in" in combined or "conversion order" in combined or "alienation order" in combined or "dc order" in combined or "sec 95" in combined:
-            doc_type = DOCTYPE_CONVERSION
-        elif any(k in combined for k in ["registration certificate", "rera cert", "certificate of registration", "prm/ka/rera"]):
-            doc_type = DOCTYPE_RERA_CERT
-        elif any(k in combined for k in ["sale deed", "title deed", "absolute sale", "registered deed"]):
-            doc_type = DOCTYPE_SALE_DEED
-        elif any(k in combined for k in ["pahani", "rtc", "rights tenancy", "bhoomi", "khatedar", "mutation register"]):
-            doc_type = DOCTYPE_RTC
-        elif any(k in combined for k in ["khata", "e-khata", "a-khata", "b-khata", "pid", "e-swathu"]):
-            doc_type = DOCTYPE_KHATA
-        elif any(k in combined for k in ["joint development", "jda", "development agreement"]):
-            doc_type = DOCTYPE_JDA
-        elif any(k in combined for k in ["sanction plan", "building plan", "layout plan", "approved plan"]):
-            doc_type = DOCTYPE_PLAN
-        else:
-            doc_type = DOCTYPE_OTHER
+    # Fields that must be found for a land document's content checks to be trusted
+    KEY_FIELDS = {
+        DOCTYPE_RTC: ("survey_no", "khatedar_col9"),
+        DOCTYPE_MUTATION: ("survey_no", "khatedar_col9", "mutation_no"),
+        DOCTYPE_EC: ("survey_no", "property_owner", "ec_no"),
+        DOCTYPE_KHATA: ("khata_no", "owner"),
+        DOCTYPE_RERA_CERT: ("registration_no",),
+        DOCTYPE_SALE_DEED: ("vendor", "purchaser", "survey_no"),
+    }
+
+    def _classify_and_extract(self, item: dict) -> dict:
+        text = (item.get("text", "") or "")
+        doc_type = self._detect_doc_type(item)
 
         item["doc_type"] = doc_type
         item["doc_type_label"] = CATEGORY_LABELS.get(doc_type, "Other")
@@ -680,21 +899,21 @@ class DocumentDownloadAndVerifyAgent:
 
         if not item.get("bytes"):
             entities["download_status"] = "FAILED"
-            issues.append("PDF could not be downloaded from RERA server.")
-            item["entities"] = entities
-            item["issues"] = issues
-            item["status"] = "DOWNLOAD_FAILED"
-            item["status_badge"] = "DOWNLOAD FAILED"
+            if item.get("error"):
+                entities["download_error"] = str(item["error"])[:200]
+            issues.append("Document could not be downloaded from RERA server.")
+            item.update(entities=entities, issues=issues, status="DOWNLOAD_FAILED",
+                        status_badge="DOWNLOAD FAILED")
             return item
 
-        if not item.get("is_readable", False) or len(text.strip()) < 30:
+        english_words = len(re.findall(r"[A-Za-z]{3,}", text))
+        meaningful = english_words >= 5 or _kannada_chars(text) > 20
+        if not item.get("is_readable", False) or len(text.strip()) < 30 or not meaningful:
             entities["text_status"] = "SCANNED_PDF"
             entities["pages"] = item.get("pages", 0)
-            issues.append("PDF is a scanned image -- OCR required for deeper analysis.")
-            item["entities"] = entities
-            item["issues"] = issues
-            item["status"] = "SCANNED_PDF"
-            item["status_badge"] = "SCANNED -- OCR NEEDED"
+            issues.append("No readable text could be extracted (scanned image / OCR failed) -- review manually.")
+            item.update(entities=entities, issues=issues, status="SCANNED_PDF",
+                        status_badge="SCANNED -- OCR NEEDED")
             return item
 
         entities["pages"] = item.get("pages", 0)
@@ -705,6 +924,7 @@ class DocumentDownloadAndVerifyAgent:
             DOCTYPE_SALE_DEED:  self._extract_sale_deed,
             DOCTYPE_EC:         self._extract_ec,
             DOCTYPE_RTC:        self._extract_rtc,
+            DOCTYPE_MUTATION:   self._extract_rtc,
             DOCTYPE_KHATA:      self._extract_khata,
             DOCTYPE_CA_FORM1:   self._extract_ca_form1,
             DOCTYPE_ARCH_FORM2: self._extract_arch_form2,
@@ -715,13 +935,25 @@ class DocumentDownloadAndVerifyAgent:
         extractor = extractor_map.get(doc_type, self._extract_generic)
         entities.update(extractor(text))
 
+        # If none of a land document's key fields were found, the absence of red flags
+        # (PTCL, mortgage...) proves nothing -- e.g. a Kannada RTC OCR'd without Kannada support.
+        key_fields = self.KEY_FIELDS.get(doc_type)
+        if key_fields and not any(entities.get(f) for f in key_fields):
+            entities["content_unverified"] = True
+            note = "Key fields (survey no / owner) not found in text"
+            if entities.get("language") == "Kannada" or _kannada_chars(text) > 20:
+                note += " -- document is in Kannada"
+            if "OCR" in (item.get("extraction_method") or "") and not HAS_KANNADA_OCR:
+                note += " -- Kannada OCR pack (tesseract-ocr-kan) not installed"
+            issues.append(note + "; red-flag checks could not be completed.")
+
         if doc_type == DOCTYPE_EC and entities.get("has_active_mortgage") and not entities.get("discharge_deed_found"):
-            issues.append("Active mortgage found in EC -- no Discharge Deed detected.")
-        if doc_type == DOCTYPE_RTC:
+            issues.append("Active mortgage found in EC -- no Discharge/Release Deed detected.")
+        if doc_type in (DOCTYPE_RTC, DOCTYPE_MUTATION):
             if entities.get("ptcl_flag"):
                 issues.append("PTCL/SC-ST Grant Land restriction -- prior Govt approval required.")
             if entities.get("kharab_flag"):
-                issues.append("B-Kharab (Govt Reserve Land) detected.")
+                issues.append("Kharab (Govt Reserve Land) entry detected.")
         if doc_type == DOCTYPE_KHATA and entities.get("khata_type") == "B-Khata":
             issues.append("B-Khata -- bank financing restricted, legal title questionable.")
         if doc_type == DOCTYPE_CA_FORM1 and entities.get("escrow_balance_zero"):
@@ -766,12 +998,16 @@ class DocumentDownloadAndVerifyAgent:
         e["promoter_name"] = e.get("promoter_name") or self._find(
             r"(?:Promoter|Developer|Firm)[:\s]+([^\n]{5,80})", text
         )
-        # Validity date: look for standalone date in DD-MM-YYYY at end of cert
-        e["validity_date"] = (
-            self._find(r"valid(?:ity)?\s*(?:upto|till|until|up to)[:\s]+(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})", text) or
-            self._find(r"(\d{2}-\d{2}-\d{4})\s*$", text, flags=re.MULTILINE)
-        )
-        e["issue_date"] = self._find(r"(\d{2}-\d{2}-\d{4})", text)  # first date = issue date
+        # Dates: explicit "valid upto" wins; otherwise the cert lists the issue date first
+        # and the validity (completion) date last.
+        dates = re.findall(r"\b(\d{1,2}[/-]\d{1,2}[/-]\d{4})\b", text)
+        explicit = self._find(r"valid(?:ity)?\s*(?:upto|till|until|up to)[:\s]+(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})", text)
+        if dates:
+            e["issue_date"] = dates[0]
+        if explicit:
+            e["validity_date"] = explicit
+        elif len(dates) >= 2:
+            e["validity_date"] = dates[-1]
         return {k: v for k, v in e.items() if v is not None}
 
     def _extract_sale_deed(self, text: str) -> dict:
@@ -781,47 +1017,60 @@ class DocumentDownloadAndVerifyAgent:
         e["sro"] = self._find(r"(?:sub.?registrar|sro)[^\n]{0,20}(?:office)?[:\s]+([A-Za-z\s]{3,40})", text)
         e["execution_date"] = self._find(r"(?:executed?|registered?)\s+(?:on|this|dated)[:\s]+(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})", text)
         e["consideration"] = self._find(r"(?:consideration|sale\s+price)[:\s]+(?:Rs\.?\s*)?(\d[\d,]+(?:\s*(?:lakhs?|lacs?|crores?))?)", text)
-        e["survey_no"] = self._find(r"(?:survey\s+no|sy\.?\s*no\.?)[.:\s]+([0-9/A-Za-z\s,]+?)(?:\n|,|measuring|extent)", text)
-        e["extent"] = self._find(r"(?:extent|area|measuring)[:\s]+([0-9.]+\s*(?:acres?|guntas?|sq\.?\s*(?:ft|m)))", text)
+        e["survey_no"] = self._find(r"(?:survey\s+no|sy\.?\s*no\.?)[.:\s]+([0-9][0-9/A-Za-z]*(?:\s*/\s*[0-9A-Za-z]+)*)", text)
+        e["extent"] = self._find(r"(?:extent|area|measuring)[:\s]+([0-9.,]+\s*(?:acres?|guntas?|sq\.?\s*(?:ft|m\w*))(?:\s*[0-9.]+\s*guntas?)?)", text)
         e["doc_no"] = self._find(r"(?:document\s+no|doc\.?\s+no\.?)[:\s]+([0-9/\-]+)", text)
         return {k: v for k, v in e.items() if v is not None}
+
+    _RELEASE_RE = re.compile(
+        r"\b(?:discharge|release|reconveyance|redemption)\s+deed\b"
+        r"|\bmortgage\s+(?:is\s+|has\s+been\s+)?(?:released|discharged|redeemed|cleared|closed)\b"
+        r"|\bloan\s+(?:fully\s+)?(?:closed|repaid|discharged)\b"
+        r"|\bno\s+objection\s+certificate\s+(?:from|issued\s+by)\s+[a-z ]*bank\b"
+        r"|\bbank\s+noc\b|\bform\s*16\b",
+        re.IGNORECASE)
+    _MORTGAGE_RE = re.compile(r"\b(?:simple\s+|equitable\s+|usufructuary\s+)?mortgage\b|\bhypothecation\b",
+                              re.IGNORECASE)
 
     def _extract_ec(self, text: str) -> dict:
         e = {}
         text_lower = text.lower()
-        # EC from Karnataka is in Kannada — mark language and extract what we can
-        is_kannada = self._is_kannada(text)
+        is_kannada = _kannada_chars(text) > 20
         e["language"] = "Kannada" if is_kannada else "English"
         e["ec_no"] = self._find(r"((?:ECC-[0-9A-Z\-]+|RRN-EC-[A-Z0-9\-]+))", text)
         e["period"] = self._find(r"(?:from|period)[:\s]+(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\s+to\s+\d{1,2}[/-]\d{1,2}[/-]\d{2,4})", text)
         e["property_owner"] = self._find(r"(?:owner|khatedar|party)[:\s]+([A-Z][^,\n]{3,60})", text)
-        e["survey_no"] = self._find(r"(?:survey\s+no|sy\.?\s*no\.?)[.:\s]+([0-9/A-Za-z\s,]+?)(?:\n|,)", text)
-        e["nil_encumbrance"] = bool(re.search(r"\bnil\b|\bno\s+encumbrance\b|\bno\s+transaction\b", text_lower))
-        has_mortgage = bool(re.search(r"\bmortgage\b|\bsimple\s+mortgage\b|\bhypothecation\b", text_lower))
-        e["has_active_mortgage"] = has_mortgage
+        e["survey_no"] = self._find(r"(?:survey\s+no|sy\.?\s*no\.?)[.:\s]+([0-9/A-Za-z]+(?:\s*/\s*[0-9A-Za-z]+)*)", text)
+        has_mortgage = bool(self._MORTGAGE_RE.search(text)) or _has_any(text, KN_MORTGAGE_TERMS)
+        released = bool(self._RELEASE_RE.search(text)) or _has_any(text, KN_RELEASE_TERMS)
+        e["has_active_mortgage"] = has_mortgage and not released
         if has_mortgage:
+            e["mortgage_found"] = True
+            e["discharge_deed_found"] = released
             e["mortgage_bank"] = self._find(r"(HDFC|ICICI|SBI|Axis|Canara|Bank\s+of\s+[A-Z]\w+|[A-Z]\w+\s+Bank)", text)
             e["mortgage_amount"] = self._find(r"(?:Rs\.?\s*)([\d,]+\s*(?:lakhs?|crores?)?)\s*(?:loan|mortgage)", text)
-            e["discharge_deed_found"] = bool(re.search(r"\bdischarge\s+deed\b|\bform\s*16\b|\bnoc\b", text_lower))
-        if is_kannada:
+        nil_phrase = bool(re.search(r"\bnil\s+encumbrance\b|\bno\s+encumbrances?\b|\bno\s+transactions?\b"
+                                    r"|\bencumbrance\s*[:\-]\s*nil\b", text_lower)) or _has_any(text, KN_NIL_TERMS)
+        e["nil_encumbrance"] = nil_phrase and not has_mortgage
+        if is_kannada and not HAS_KANNADA_OCR:
             e["note"] = "EC is in Kannada script — install tesseract-ocr-kan for full entity extraction"
         return {k: v for k, v in e.items() if v is not None}
 
     def _extract_rtc(self, text: str) -> dict:
         e = {}
         text_lower = text.lower()
-        is_kannada = self._is_kannada(text)
+        is_kannada = _kannada_chars(text) > 20
         e["language"] = "Kannada" if is_kannada else "English"
-        # Survey numbers often appear as digits even in Kannada docs
-        e["survey_no"] = self._find(r"(?:sy\.?\s*no\.?|survey\s+no)[:\s]+([0-9/A-Za-z]+)", text)
+        e["survey_no"] = self._find(r"(?:sy\.?\s*no\.?|survey\s+no)[:\s]+([0-9/A-Za-z]+(?:\s*/\s*[0-9A-Za-z]+)*)", text)
         e["khatedar_col9"] = self._find(r"(?:col\.?\s*9|column\s*9|khatedar|hissedhar)[:\s]+([A-Z][^,\n]{3,60})", text)
-        e["extent"] = self._find(r"(?:extent|area|acres?)[:\s]+([0-9.]+\s*(?:acres?|guntas?))", text)
-        e["ptcl_flag"] = bool(re.search(r"\bptcl\b|\bsc/st\b|\bscheduled\s+caste\b|\bsaguvali\b|\bgrant\s+land\b", text_lower))
-        e["kharab_flag"] = bool(re.search(r"\bb.kharab\b|\bkharab\b|\bpd\s+kharab\b", text_lower))
-        # Mutation register number appears even in Kannada (IMR prefix)
+        e["extent"] = self._find(r"(?:extent|area)[:\s]+([0-9.]+\s*(?:acres?|guntas?)(?:\s*[0-9.]+\s*guntas?)?)", text)
+        e["ptcl_flag"] = bool(re.search(r"\bptcl\b|\bsc/st\b|\bscheduled\s+(?:caste|tribe)\b|\bsaguvali\b"
+                                        r"|\bgrant(?:ed)?\s+land\b|\bdarkhast\b", text_lower)) or _has_any(text, KN_PTCL_TERMS)
+        e["kharab_flag"] = bool(re.search(r"\b[ab]\s*-?\s*kharab\b|\bkharab\b|\bpd\s+kharab\b", text_lower)) or \
+            _has_any(text, KN_KHARAB_TERMS)
         e["mutation_no"] = self._find(r"(IMR[A-Z0-9]+)", text)
         e["mutation_date"] = self._find(r"(\d{2}/\d{2}/\d{4})", text)
-        if is_kannada:
+        if is_kannada and not HAS_KANNADA_OCR:
             e["note"] = "RTC/Mutation is in Kannada script — install tesseract-ocr-kan for full entity extraction"
         return {k: v for k, v in e.items() if v is not None}
 
@@ -895,117 +1144,239 @@ class DocumentDownloadAndVerifyAgent:
 
     # ---- Step 5: Cross-Verification ----
 
-    def _step5_cross_verify(self, per_doc: List[dict]) -> dict:
-        passed = []
-        warnings = []
-        critical_flags = []
+    @staticmethod
+    def _readable(d: dict) -> bool:
+        """Downloaded, text extracted, and key fields found."""
+        return (d.get("status") in ("VERIFIED", "CAUTION", "CRITICAL")
+                and not (d.get("entities") or {}).get("content_unverified"))
 
-        def _get(doc_type: str, field: str):
-            for d in per_doc:
-                if d.get("doc_type") == doc_type:
-                    val = (d.get("entities") or {}).get(field)
-                    if val is not None:
-                        return val
+    def _step5_cross_verify(self, per_doc: List[dict], db_rec: Optional[dict] = None) -> dict:
+        passed: List[str] = []
+        warnings: List[str] = []
+        critical_flags: List[str] = []
+
+        def of(*types):
+            return [d for d in per_doc if d.get("doc_type") in types]
+
+        def ent(d, f):
+            return (d.get("entities") or {}).get(f)
+
+        def first(docs, f):
+            for d in docs:
+                if ent(d, f) is not None:
+                    return ent(d, f)
             return None
 
-        ec_nil = _get(DOCTYPE_EC, "nil_encumbrance")
-        ec_has_mortgage = _get(DOCTYPE_EC, "has_active_mortgage")
-        ec_discharge = _get(DOCTYPE_EC, "discharge_deed_found")
-        rtc_ptcl = _get(DOCTYPE_RTC, "ptcl_flag")
-        khata_type = _get(DOCTYPE_KHATA, "khata_type")
-        rera_reg = _get(DOCTYPE_RERA_CERT, "registration_no")
+        def presence(label, types, required=True):
+            docs = of(*types)
+            got = [d for d in docs if d.get("bytes")]
+            readable = [d for d in docs if self._readable(d)]
+            if readable:
+                passed.append(f"{label} present and read ({len(readable)} document(s)).")
+            elif got:
+                warnings.append(f"{label} downloaded but its text could not be read -- verify manually.")
+            elif docs:
+                warnings.append(f"{label} listed on RERA but could not be downloaded.")
+            elif required:
+                warnings.append(f"{label} not found.")
+            return readable
 
-        entity_map = {
-            "seller_from_deed": _get(DOCTYPE_SALE_DEED, "vendor"),
-            "ec_owner": _get(DOCTYPE_EC, "property_owner"),
-            "rtc_owner_col9": _get(DOCTYPE_RTC, "khatedar_col9"),
-            "deed_survey_no": _get(DOCTYPE_SALE_DEED, "survey_no"),
-            "ec_survey_no": _get(DOCTYPE_EC, "survey_no"),
-            "rtc_survey_no": _get(DOCTYPE_RTC, "survey_no"),
-            "deed_extent": _get(DOCTYPE_SALE_DEED, "extent"),
-            "rtc_extent": _get(DOCTYPE_RTC, "extent"),
-            "khata_type": khata_type,
-            "rera_registration_no": rera_reg,
-        }
+        # ---- Presence of key documents ----
+        rera_docs = presence("RERA Registration Certificate", [DOCTYPE_RERA_CERT])
+        ec_docs = presence("Encumbrance Certificate (EC)", [DOCTYPE_EC])
+        rtc_docs = presence("Bhoomi RTC / Pahani", [DOCTYPE_RTC])
+        mut_docs = presence("Mutation Extract", [DOCTYPE_MUTATION], required=False)
+        deed_docs = presence("Sale / Title Deed", [DOCTYPE_SALE_DEED], required=False)
+        khata_docs = presence("Khata", [DOCTYPE_KHATA], required=False)
+        ca_docs = presence("CA Form 1 (Financial Audit)", [DOCTYPE_CA_FORM1])
+        presence("Architect Form 2 (COA)", [DOCTYPE_ARCH_FORM2])
+        presence("Engineer Form 3 (Structural Certificate)", [DOCTYPE_ENG_FORM3])
+        presence("DC Conversion Order", [DOCTYPE_CONVERSION], required=False)
+        presence("Sanctioned Building Plan", [DOCTYPE_PLAN])
+        land_docs = rtc_docs + mut_docs
 
-        # Checks
-        if any(d.get("doc_type") == DOCTYPE_RERA_CERT and d.get("bytes") for d in per_doc):
-            passed.append("RERA Registration Certificate present and downloaded.")
-        else:
-            warnings.append("RERA Registration Certificate not found or not downloadable.")
-
-        if any(d.get("doc_type") == DOCTYPE_EC and d.get("bytes") for d in per_doc):
-            passed.append("Encumbrance Certificate (EC) present.")
-        else:
-            warnings.append("Encumbrance Certificate not found.")
-
-        if any(d.get("doc_type") == DOCTYPE_RTC and d.get("bytes") for d in per_doc):
-            passed.append("Bhoomi RTC / Pahani present.")
-        else:
-            warnings.append("Bhoomi RTC / Pahani not found.")
-
-        if rtc_ptcl:
+        # ---- PTCL / Kharab (RTC + Mutation) ----
+        ptcl = [d for d in land_docs if ent(d, "ptcl_flag")]
+        if ptcl:
             critical_flags.append(
-                "PTCL/SC-ST Govt Grant Restriction in RTC -- Transfer is VOID without AC permission. "
-                "(Karnataka PTCL Act 1978, Sec 4 & 5)"
-            )
+                "PTCL/SC-ST Govt Grant Restriction in RTC/Mutation (" +
+                "; ".join(d["title"] for d in ptcl[:3]) +
+                ") -- Transfer is VOID without AC permission. (Karnataka PTCL Act 1978, Sec 4 & 5)")
+        elif rtc_docs:
+            passed.append(f"No PTCL/SC-ST Grant Land restriction in {len(rtc_docs)} readable RTC(s)"
+                          + (f" and {len(mut_docs)} mutation extract(s)." if mut_docs else "."))
+        elif mut_docs:
+            warnings.append("PTCL/SC-ST grant-land check done on mutation extracts only -- no readable RTC.")
         else:
-            passed.append("No PTCL/SC-ST Grant Land restriction detected.")
+            warnings.append("PTCL/SC-ST grant-land check NOT done -- no readable RTC/Mutation document.")
+        kharab = [d for d in land_docs if ent(d, "kharab_flag")]
+        if kharab:
+            warnings.append("Kharab (Govt reserve land) entry in RTC: " + "; ".join(d["title"] for d in kharab[:3]))
 
-        if ec_has_mortgage:
-            if ec_discharge:
-                passed.append("Active mortgage in EC -- Discharge Deed present, title appears clear.")
+        # ---- Encumbrance ----
+        if ec_docs:
+            active = [d for d in ec_docs if ent(d, "has_active_mortgage")]
+            released = [d for d in ec_docs if ent(d, "mortgage_found") and not ent(d, "has_active_mortgage")]
+            if active:
+                critical_flags.append(
+                    "Active bank mortgage in EC with NO Discharge/Release Deed (" +
+                    "; ".join(d["title"] for d in active[:3]) +
+                    ") -- Demand Bank NOC + registered Discharge Deed before payment.")
+            if released:
+                passed.append("Mortgage in EC shows as released/discharged (" +
+                              "; ".join(d["title"] for d in released[:3]) + ").")
+            if not active and all(ent(d, "nil_encumbrance") for d in ec_docs):
+                passed.append("All readable ECs show NIL encumbrance.")
+            elif not active and not released:
+                warnings.append("EC has entries but no clear NIL/mortgage status -- review EC transactions manually.")
+        else:
+            warnings.append("Encumbrance (mortgage) check NOT done -- no readable EC.")
+
+        # ---- Khata ----
+        ktypes = {ent(d, "khata_type") for d in khata_docs}
+        if "B-Khata" in ktypes:
+            critical_flags.append("B-Khata detected -- property in unauthorized layout; bank financing severely restricted.")
+        elif "A-Khata" in ktypes:
+            passed.append("A-Khata certificate present -- property is bank loan eligible.")
+        elif khata_docs:
+            warnings.append("Khata type (A/B) could not be determined from the Khata document.")
+
+        # ---- CA escrow ----
+        if any(ent(d, "escrow_balance_zero") for d in ca_docs if self._readable(d)):
+            warnings.append("CA Form 1: escrow (designated account) balance appears to be zero.")
+
+        # ---- RERA certificate vs database ----
+        db_reg = _norm_survey((db_rec or {}).get("registration_no"))
+        cert_reg = _norm_survey(first(rera_docs, "registration_no"))
+        if cert_reg and db_reg:
+            if cert_reg == db_reg:
+                passed.append("RERA certificate registration number matches the RERA project record.")
             else:
                 critical_flags.append(
-                    "Active bank mortgage in EC with NO Discharge Deed -- "
-                    "Demand Bank NOC + registered Discharge Deed (Form 16) before payment."
-                )
-        elif ec_nil:
-            passed.append("EC shows NIL encumbrance -- clean title chain.")
+                    f"RERA certificate number {cert_reg} does NOT match project registration {db_reg}.")
+        validity = _parse_date(first(rera_docs, "validity_date"))
+        if validity and validity < datetime.date.today():
+            warnings.append(f"RERA registration validity ({validity.isoformat()}) has passed -- check for an extension order.")
 
-        if any(d.get("doc_type") == DOCTYPE_CA_FORM1 for d in per_doc):
-            passed.append("CA Form 1 (Financial Audit) present.")
-        else:
-            warnings.append("CA Form 1 not found -- Escrow account audit unverified.")
+        # ---- Survey-wise cross-document consistency ----
+        project_surveys = [_norm_survey(x) for x in self._project_surveys if x]
 
-        if any(d.get("doc_type") == DOCTYPE_ARCH_FORM2 for d in per_doc):
-            passed.append("Architect Form 2 (COA) present.")
-        else:
-            warnings.append("Architect Form 2 not found -- Layout/FAR compliance unverified.")
+        def _survey_eq(a, b):
+            a, b = _norm_survey(a), _norm_survey(b)
+            return bool(a and b) and (a == b or a.rstrip("P") == b.rstrip("P"))
 
-        if any(d.get("doc_type") == DOCTYPE_ENG_FORM3 for d in per_doc):
-            passed.append("Engineer Form 3 (Structural Certificate) present.")
-        else:
-            warnings.append("Engineer Form 3 not found -- Structural cert unverified.")
+        for d in ec_docs + land_docs + deed_docs:
+            filed_for = d.get("survey_no")
+            found = ent(d, "survey_no")
+            if not found:
+                continue
+            if filed_for and not _survey_eq(filed_for, found):
+                critical_flags.append(
+                    f"Survey number mismatch: '{d['title']}' is filed for Sy. No {filed_for} "
+                    f"but the document shows Sy. No {found}.")
+            elif not filed_for and project_surveys and not any(_survey_eq(found, p) for p in project_surveys):
+                warnings.append(f"'{d['title']}' refers to Sy. No {found}, which is not in the project's "
+                                f"survey list ({', '.join(project_surveys[:6])}).")
 
-        if any(d.get("doc_type") == DOCTYPE_CONVERSION for d in per_doc):
-            passed.append("DC Conversion Order present.")
+        def _sv(d):
+            return d.get("survey_no") or ent(d, "survey_no") or "?"
 
-        if khata_type == "A-Khata":
-            passed.append("A-Khata certificate present -- property is bank loan eligible.")
-        elif khata_type == "B-Khata":
-            critical_flags.append(
-                "B-Khata detected -- property in unauthorized layout; bank financing severely restricted."
-            )
+        groups: Dict[str, Dict[str, List[dict]]] = {}
+        for kind, docs in (("ec", ec_docs), ("rtc", land_docs), ("deed", deed_docs)):
+            for d in docs:
+                groups.setdefault(_norm_survey(_sv(d)), {}).setdefault(kind, []).append(d)
+        unassigned_deeds = groups.pop("?", {}).get("deed", [])
 
-        if any(d.get("doc_type") == DOCTYPE_PLAN for d in per_doc):
-            passed.append("Sanctioned Building Plan present.")
-        else:
-            warnings.append("Sanctioned Building Plan not found.")
+        owners_checked = 0
+        for sv, g in groups.items():
+            deeds = g.get("deed") or unassigned_deeds
+            vendors = [ent(d, "vendor") for d in deeds if ent(d, "vendor")]
+            buyers = [ent(d, "purchaser") for d in deeds if ent(d, "purchaser")]
+            deed_parties = vendors + buyers
+            rtc_owners = [ent(d, "khatedar_col9") for d in g.get("rtc", []) if ent(d, "khatedar_col9")]
+            ec_owners = [ent(d, "property_owner") for d in g.get("ec", []) if ent(d, "property_owner")]
 
+            for o in rtc_owners:
+                if deed_parties:
+                    owners_checked += 1
+                    if not any(_names_match(o, p) for p in deed_parties):
+                        critical_flags.append(
+                            f"Owner mismatch on Sy. No {sv}: RTC khatedar '{o}' is neither the deed vendor "
+                            f"({', '.join(vendors) or 'n/a'}) nor the purchaser ({', '.join(buyers) or 'n/a'}).")
+            for o in ec_owners:
+                ref = deed_parties + rtc_owners
+                if ref:
+                    owners_checked += 1
+                    if not any(_names_match(o, p) for p in ref):
+                        warnings.append(
+                            f"EC owner '{o}' on Sy. No {sv} does not match the deed parties or RTC khatedar "
+                            f"({', '.join(ref)}) -- check the title chain.")
+
+            deed_ext = next((_extent_sqm(ent(d, "extent")) for d in deeds if ent(d, "extent")), None)
+            rtc_ext = next((_extent_sqm(ent(d, "extent")) for d in g.get("rtc", []) if ent(d, "extent")), None)
+            if deed_ext and rtc_ext:
+                diff = abs(deed_ext - rtc_ext) / max(deed_ext, rtc_ext)
+                if diff > 0.05:
+                    warnings.append(f"Extent mismatch on Sy. No {sv}: deed {deed_ext:.0f} sq m vs RTC "
+                                    f"{rtc_ext:.0f} sq m ({diff:.0%} difference).")
+                else:
+                    passed.append(f"Land extent on Sy. No {sv} matches between deed and RTC.")
+
+        if owners_checked and not any("Owner mismatch" in f for f in critical_flags) \
+                and not any("EC owner" in w for w in warnings):
+            passed.append(f"Owner names consistent across deed / RTC / EC ({owners_checked} comparison(s)).")
+        elif not owners_checked and (land_docs or ec_docs):
+            warnings.append("Owner-name cross-check NOT done -- owners could not be read from both the deed and RTC/EC.")
+
+        # Survey coverage: every survey in the project should have a readable RTC and EC
+        if project_surveys:
+            no_rtc = [p for p in project_surveys if not any(_survey_eq(_sv(d), p) for d in rtc_docs)]
+            no_ec = [p for p in project_surveys if not any(_survey_eq(_sv(d), p) for d in ec_docs)]
+            if no_rtc:
+                warnings.append(f"No readable RTC for Sy. No(s): {', '.join(no_rtc[:10])}.")
+            if no_ec:
+                warnings.append(f"No readable EC for Sy. No(s): {', '.join(no_ec[:10])}.")
+
+        # ---- Processing problems ----
         scanned = [d["title"] for d in per_doc if d.get("status") == "SCANNED_PDF"]
         if scanned:
-            warnings.append(f"{len(scanned)} PDF(s) are scanned images -- OCR required: " + "; ".join(scanned[:3]))
-
+            warnings.append(f"{len(scanned)} document(s) had no readable text -- OCR required: " + "; ".join(scanned[:3]))
         failed_dl = [d["title"] for d in per_doc if d.get("status") == "DOWNLOAD_FAILED"]
         if failed_dl:
             warnings.append(f"{len(failed_dl)} document(s) failed to download: " + "; ".join(failed_dl[:3]))
+        if self._docs_truncated:
+            warnings.append(f"{self._docs_truncated} further document(s) were not processed (limit {self.MAX_DOCS}).")
+
+        rtc0 = (land_docs or [{}])[0]
+        ec0 = (ec_docs or [{}])[0]
+        deed0 = (deed_docs or [{}])[0]
+        entity_map = {
+            "seller_from_deed": ent(deed0, "vendor") if deed0 else None,
+            "purchaser_from_deed": ent(deed0, "purchaser") if deed0 else None,
+            "ec_owner": ent(ec0, "property_owner") if ec0 else None,
+            "rtc_owner_col9": ent(rtc0, "khatedar_col9") if rtc0 else None,
+            "deed_survey_no": ent(deed0, "survey_no") if deed0 else None,
+            "ec_survey_no": ent(ec0, "survey_no") if ec0 else None,
+            "rtc_survey_no": ent(rtc0, "survey_no") if rtc0 else None,
+            "deed_extent": ent(deed0, "extent") if deed0 else None,
+            "rtc_extent": ent(rtc0, "extent") if rtc0 else None,
+            "khata_type": next(iter(k for k in ktypes if k and k != "Unknown"), None),
+            "rera_registration_no": cert_reg or None,
+            "rera_validity_date": first(rera_docs, "validity_date"),
+            "project_survey_numbers": ", ".join(self._project_surveys) or None,
+        }
+
+        core_readable = bool(rera_docs) and bool(ec_docs) and bool(rtc_docs)
+
+        def _dedupe(xs):
+            return list(dict.fromkeys(xs))
 
         return {
-            "passed": passed,
-            "warnings": warnings,
-            "critical_flags": critical_flags,
+            "passed": _dedupe(passed),
+            "warnings": _dedupe(warnings),
+            "critical_flags": _dedupe(critical_flags),
             "entity_map": entity_map,
+            "core_documents_verified": core_readable,
         }
 
     # ---- Step 6: Produce Report ----
@@ -1018,12 +1389,21 @@ class DocumentDownloadAndVerifyAgent:
         critical_c = sum(1 for d in per_doc if d.get("status") == "CRITICAL")
         scanned = sum(1 for d in per_doc if d.get("status") == "SCANNED_PDF")
         failed = sum(1 for d in per_doc if d.get("status") == "DOWNLOAD_FAILED")
+        downloaded = sum(1 for d in per_doc if d.get("bytes"))
         n_critical = len(cross["critical_flags"])
         n_warn = len(cross["warnings"])
-        if n_critical > 0:
+        if downloaded == 0:
+            verdict = "INCOMPLETE -- NO DOCUMENTS COULD BE DOWNLOADED, NOTHING WAS VERIFIED"
+            verdict_badge = "UNABLE TO VERIFY"
+            risk_score = None
+        elif n_critical > 0:
             verdict = "FAIL -- CRITICAL LEGAL RISKS IDENTIFIED"
             verdict_badge = "DO NOT BUY"
             risk_score = max(0, 40 - (n_critical * 15))
+        elif not cross.get("core_documents_verified"):
+            verdict = "INCOMPLETE -- RERA CERTIFICATE / EC / RTC COULD NOT ALL BE READ"
+            verdict_badge = "MANUAL REVIEW REQUIRED"
+            risk_score = 50
         elif n_warn > 3:
             verdict = "CAUTION -- MULTIPLE COMPLIANCE GAPS"
             verdict_badge = "BUY WITH CAUTION"
@@ -1043,7 +1423,7 @@ class DocumentDownloadAndVerifyAgent:
             "query": query,
             "generated_at": datetime.datetime.now().isoformat(),
             "summary": {
-                "total_documents": len(per_doc), "verified": verified,
+                "total_documents": len(per_doc), "downloaded": downloaded, "verified": verified,
                 "caution": caution, "critical": critical_c,
                 "scanned_pdf": scanned, "download_failed": failed,
             },
@@ -1057,6 +1437,7 @@ class DocumentDownloadAndVerifyAgent:
             "legal_risk_score": risk_score,
             "final_verdict": verdict,
             "verdict_badge": verdict_badge,
+            "kannada_ocr_available": HAS_KANNADA_OCR,
         }
 
     def _log(self, msg: str):
@@ -1069,8 +1450,8 @@ class DocumentDownloadAndVerifyAgent:
             "summary": {"total_documents": 0, "verified": 0, "caution": 0, "critical": 0, "scanned_pdf": 0, "download_failed": 0},
             "cross_verification": {"passed": [], "warnings": [reason], "critical_flags": []},
             "entity_map": {}, "per_document_results": [],
-            "legal_risk_score": 0, "final_verdict": "INCOMPLETE -- " + reason,
-            "verdict_badge": "INCOMPLETE", "agent_logs": self._logs,
+            "legal_risk_score": None, "final_verdict": "INCOMPLETE -- " + reason,
+            "verdict_badge": "UNABLE TO VERIFY", "agent_logs": self._logs,
         }
 
 
@@ -1083,7 +1464,8 @@ if __name__ == "__main__":
     print(f"REG NO  : {report['registration_no']}")
     print(f"DOCS    : {report['summary']['total_documents']} scanned")
     print(f"VERDICT : {report['verdict_badge']} -- {report['final_verdict']}")
-    print(f"SCORE   : {report['legal_risk_score']}/100")
+    score = report['legal_risk_score']
+    print(f"SCORE   : {score if score is not None else 'n/a'}/100")
     if report["cross_verification"]["critical_flags"]:
         print("\nCRITICAL FLAGS:")
         for f in report["cross_verification"]["critical_flags"]:

@@ -97,7 +97,7 @@ def main():
 
         print("=== Step 3: Populating indexed columns from JSONB data... ===")
         t0 = time.time()
-        cur.execute("""
+        cur.execute(r"""
             UPDATE rera_projects
             SET 
                 status = COALESCE(data->>'status', data->'project_overview_details'->>'Project Status', 'APPROVED'),
