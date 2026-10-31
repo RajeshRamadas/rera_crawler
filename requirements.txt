@@ -1,7 +1,39 @@
+# ============================================================
+# RERA Crawler — Python Dependencies
+# ============================================================
+# Install Python packages:
+#   pip install -r requirements.txt
+#
+# System prerequisites (run once as root / sudo):
+#   sudo apt-get install -y tesseract-ocr tesseract-ocr-kan poppler-utils
+#
+# tesseract-ocr       -- OCR engine for scanned PDFs
+# tesseract-ocr-kan   -- Kannada language pack (for RTC, EC, Mutation docs)
+# poppler-utils       -- PDF rendering tools (optional)
+# ============================================================
+
+# --- Web / API ---
 requests>=2.28.0
 beautifulsoup4>=4.11.0
+
+# --- Database ---
 psycopg2-binary>=2.9.5
+
+# --- API Server & Auth ---
 fastapi>=0.95.0
 uvicorn>=0.20.0
+python-multipart>=0.0.6
+python-jose[cryptography]>=3.3.0
+bcrypt>=4.0.1
 
+# --- PDF Text Extraction ---
+pdfplumber>=0.10.0
+PyMuPDF>=1.23.0
 
+# --- OCR (scanned PDFs & direct image URLs) ---
+# Requires system binary: sudo apt-get install tesseract-ocr tesseract-ocr-kan
+pytesseract>=0.3.10
+Pillow>=9.0.0
+
+# --- Optional: ONNX-based OCR (no system binary needed, requires CPU ONNX support) ---
+# rapidocr-onnxruntime>=1.3.0

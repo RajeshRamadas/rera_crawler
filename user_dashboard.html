@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RERA Portal — User Portal & Document Vault</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0f1d;
+            --bg-card: rgba(18, 25, 44, 0.85);
+            --bg-card-hover: rgba(26, 36, 62, 0.95);
+            --border-glow: rgba(99, 102, 241, 0.25);
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --accent-emerald: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-rose: #f43f5e;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(16, 185, 129, 0.12) 0%, transparent 40%);
+            background-attachment: fixed;
+            padding-bottom: 60px;
+        }
+
+        /* --- Header Navigation --- */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 2.5rem;
+            background: rgba(10, 15, 29, 0.8);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .logo-badge {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.2rem;
+            color: #fff;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .logo-text {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .nav-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--text-main);
+        }
+
+        .btn-outline {
+            border: 1px solid var(--border-glow);
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-main);
+            padding: 8px 18px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-outline:hover {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: var(--primary);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), #4f46e5);
+            color: #fff;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+        }
+
+        /* --- Main Layout Container --- */
+        .container {
+            max-width: 1200px;
+            margin: 2.5rem auto;
+            padding: 0 1.5rem;
+        }
+
+        /* --- Auth Card (Shown when logged out) --- */
+        .auth-wrapper {
+            max-width: 440px;
+            margin: 3rem auto;
+            background: var(--bg-card);
+            border: 1px solid var(--border-glow);
+            border-radius: 20px;
+            padding: 2.5rem;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .auth-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .auth-subtitle {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .tabs {
+            display: flex;
+            background: rgba(0, 0, 0, 0.25);
+            padding: 4px;
+            border-radius: 12px;
+            margin-bottom: 1.8rem;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.9rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: #fff;
+            box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4);
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 12px rgba(99, 102, 241, 0.3);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .auth-error {
+            background: rgba(244, 63, 94, 0.15);
+            border: 1px solid rgba(244, 63, 94, 0.3);
+            color: #fca5a5;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        /* --- Logged-In User Dashboard --- */
+        .dashboard-view {
+            display: none;
+        }
+
+        .user-welcome-card {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(16, 185, 129, 0.1));
+            border: 1px solid var(--border-glow);
+            border-radius: 20px;
+            padding: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(12px);
+        }
+
+        .user-info h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .user-info p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .user-badge {
+            display: inline-block;
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--accent-emerald);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-top: 6px;
+        }
+
+        /* --- Drag & Drop File Upload Area --- */
+        .upload-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-glow);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2.5rem;
+            backdrop-filter: blur(16px);
+        }
+
+        .section-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .dropzone {
+            border: 2px dashed rgba(99, 102, 241, 0.4);
+            background: rgba(99, 102, 241, 0.03);
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .dropzone:hover, .dropzone.dragover {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+            transform: scale(1.005);
+        }
+
+        .dropzone-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+
+        .dropzone-text {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .dropzone-subtext {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .upload-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .doc-type-select {
+            padding: 10px 16px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            color: var(--text-main);
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        /* --- Documents Table --- */
+        .docs-table-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-glow);
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(16px);
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            margin-top: 1rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 14px 18px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        td {
+            padding: 16px 18px;
+            font-size: 0.95rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            vertical-align: middle;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            display: inline-block;
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-emerald);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .badge-alert {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--accent-amber);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        /* --- Analysis Detail Modal --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: #12192c;
+            border: 1px solid var(--border-glow);
+            border-radius: 20px;
+            width: 90%;
+            max-width: 750px;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 2rem;
+            position: relative;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .modal-close:hover {
+            color: #fff;
+        }
+
+        .json-box {
+            background: #090d16;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 1.25rem;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #a7f3d0;
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header class="navbar">
+        <a href="/" class="logo-container">
+            <div class="logo-badge">R</div>
+            <div class="logo-text">RERA Karnataka Portal</div>
+        </a>
+        <nav class="nav-links">
+            <a href="/" class="nav-link">Home</a>
+            <a href="/legal-due-diligence" class="nav-link">Legal Due-Diligence</a>
+            <a href="/user-dashboard" class="nav-link active">User Portal</a>
+            <div id="navAuthBtns">
+                <button class="btn-outline" onclick="showAuthTab('login')">Login</button>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container">
+
+        <!-- LOGGED OUT: AUTHENTICATION FORM -->
+        <div id="authSection" class="auth-wrapper">
+            <div class="auth-header">
+                <h1 class="auth-title">User Account Portal</h1>
+                <p class="auth-subtitle">Access your property document vault & legal verification analysis</p>
+            </div>
+
+            <div class="tabs">
+                <button id="loginTabBtn" class="tab-btn active" onclick="switchAuthTab('login')">Login</button>
+                <button id="registerTabBtn" class="tab-btn" onclick="switchAuthTab('register')">Create Account</button>
+            </div>
+
+            <div id="authError" class="auth-error"></div>
+
+            <!-- Login Form -->
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label class="form-label">Email Address</label>
+                    <input type="email" id="loginEmail" class="form-input" placeholder="user@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 10px;">Sign In</button>
+            </form>
+
+            <!-- Registration Form -->
+            <form id="registerForm" onsubmit="handleRegister(event)" style="display: none;">
+                <div class="form-group">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" id="regFullName" class="form-input" placeholder="Rajesh Kumar" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email Address</label>
+                    <input type="email" id="regEmail" class="form-input" placeholder="user@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" id="regPassword" class="form-input" placeholder="At least 8 characters" minlength="8" required>
+                </div>
+                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 10px;">Create Account</button>
+            </form>
+        </div>
+
+        <!-- LOGGED IN: USER DASHBOARD -->
+        <div id="dashboardSection" class="dashboard-view">
+
+            <!-- Welcome Header -->
+            <div class="user-welcome-card">
+                <div class="user-info">
+                    <h2 id="userNameDisplay">Welcome, User</h2>
+                    <p id="userEmailDisplay">user@example.com</p>
+                    <span class="user-badge">✓ Authenticated User</span>
+                </div>
+                <button class="btn-outline" onclick="handleLogout()">Sign Out</button>
+            </div>
+
+            <!-- File Upload Box -->
+            <div class="upload-section">
+                <h3 class="section-title">📄 Upload Property Document for Legal & OCR Verification</h3>
+                
+                <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+                    <div class="dropzone-icon">📁</div>
+                    <div class="dropzone-text">Click or drag & drop files here to upload</div>
+                    <div class="dropzone-subtext">Supports PDF, JPG, PNG property documents (RTC, Encumbrance Certificate, Title Deed, RERA Approval)</div>
+                    
+                    <div class="upload-controls" onclick="event.stopPropagation()">
+                        <select id="docTypeSelect" class="doc-type-select">
+                            <option value="General Document">General Legal Document</option>
+                            <option value="RTC / Pahani Document">RTC / Pahani Document</option>
+                            <option value="Encumbrance Certificate (EC)">Encumbrance Certificate (EC)</option>
+                            <option value="Title Deed">Title Deed / Sale Deed</option>
+                            <option value="RERA Approval Sanction">RERA Approval Sanction</option>
+                        </select>
+                        <input type="file" id="fileInput" style="display: none;" onchange="handleFileSelect(event)">
+                        <button type="button" class="btn-primary" onclick="document.getElementById('fileInput').click()">Select File</button>
+                    </div>
+                </div>
+                <div id="uploadStatusMsg" style="text-align: center; margin-top: 1rem; font-weight: 600;"></div>
+            </div>
+
+            <!-- Uploaded Documents Vault Table -->
+            <div class="docs-table-card">
+                <h3 class="section-title">📂 Your Document Vault & Verification Reports</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Filename</th>
+                                <th>Document Category</th>
+                                <th>Uploaded Date</th>
+                                <th>OCR Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="docsTableBody">
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: var(--text-muted);">Loading your documents...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Analysis Detail Modal -->
+    <div id="analysisModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <h3 id="modalDocTitle" style="font-family: 'Outfit', sans-serif; font-size: 1.5rem; margin-bottom: 0.5rem;">Document Verification Report</h3>
+            <p id="modalDocSubtitle" style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;"></p>
+            <div id="modalJsonBody" class="json-box"></div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('rera_token') || null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (authToken) {
+                verifyTokenAndLoadDashboard();
+            }
+        });
+
+        function switchAuthTab(tab) {
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            const loginBtn = document.getElementById('loginTabBtn');
+            const regBtn = document.getElementById('registerTabBtn');
+            const errDiv = document.getElementById('authError');
+            errDiv.style.display = 'none';
+
+            if (tab === 'login') {
+                loginForm.style.display = 'block';
+                registerForm.style.display = 'none';
+                loginBtn.classList.add('active');
+                regBtn.classList.remove('active');
+            } else {
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'block';
+                loginBtn.classList.remove('active');
+                regBtn.classList.add('active');
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const errDiv = document.getElementById('authError');
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Login failed');
+
+                authToken = data.access_token;
+                localStorage.setItem('rera_token', authToken);
+                verifyTokenAndLoadDashboard();
+            } catch (err) {
+                errDiv.innerText = err.message;
+                errDiv.style.display = 'block';
+            }
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            const full_name = document.getElementById('regFullName').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            const errDiv = document.getElementById('authError');
+
+            try {
+                const res = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, full_name })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Registration failed');
+
+                authToken = data.access_token;
+                localStorage.setItem('rera_token', authToken);
+                verifyTokenAndLoadDashboard();
+            } catch (err) {
+                errDiv.innerText = err.message;
+                errDiv.style.display = 'block';
+            }
+        }
+
+        async function verifyTokenAndLoadDashboard() {
+            try {
+                const res = await fetch('/api/auth/me', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (!res.ok) throw new Error('Session expired');
+                const data = await res.json();
+
+                // Show Dashboard, hide Auth Form
+                document.getElementById('authSection').style.display = 'none';
+                document.getElementById('dashboardSection').style.display = 'block';
+                document.getElementById('userNameDisplay').innerText = `Welcome, ${data.user.full_name}`;
+                document.getElementById('userEmailDisplay').innerText = data.user.email;
+                document.getElementById('navAuthBtns').innerHTML = `<button class="btn-outline" onclick="handleLogout()">Logout</button>`;
+
+                fetchUserDocuments();
+            } catch (err) {
+                handleLogout();
+            }
+        }
+
+        function handleLogout() {
+            authToken = null;
+            localStorage.removeItem('rera_token');
+            document.getElementById('authSection').style.display = 'block';
+            document.getElementById('dashboardSection').style.display = 'none';
+            document.getElementById('navAuthBtns').innerHTML = `<button class="btn-outline" onclick="switchAuthTab('login')">Login</button>`;
+        }
+
+        async function fetchUserDocuments() {
+            const tbody = document.getElementById('docsTableBody');
+            try {
+                const res = await fetch('/api/documents/my-documents', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                const data = await res.json();
+                if (!data.documents || data.documents.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No documents uploaded yet. Upload your first document above.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = data.documents.map(doc => {
+                    const dateStr = new Date(doc.uploaded_at).toLocaleString();
+                    const badgeClass = doc.verification_status === 'Completed' ? 'badge-success' : 'badge-alert';
+                    return `
+                        <tr>
+                            <td><strong>${doc.filename}</strong></td>
+                            <td>${doc.document_type}</td>
+                            <td>${dateStr}</td>
+                            <td><span class="status-badge ${badgeClass}">${doc.verification_status}</span></td>
+                            <td>
+                                <button class="btn-outline" onclick="viewDocDetail(${doc.id})">View Analysis</button>
+                                <button class="btn-outline" style="border-color: rgba(244,63,94,0.4); color: #fca5a5; margin-left: 6px;" onclick="deleteDoc(${doc.id})">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--accent-rose);">Error loading documents.</td></tr>`;
+            }
+        }
+
+        async function handleFileSelect(e) {
+            const files = e.target.files;
+            if (!files || files.length === 0) return;
+            const file = files[0];
+            const docType = document.getElementById('docTypeSelect').value;
+            const statusMsg = document.getElementById('uploadStatusMsg');
+
+            statusMsg.innerHTML = `<span style="color: var(--primary);">⏳ Uploading & running OCR analysis on <strong>${file.name}</strong>...</span>`;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch(`/api/documents/upload?document_type=${encodeURIComponent(docType)}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` },
+                    body: formData
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Upload failed');
+
+                statusMsg.innerHTML = `<span style="color: var(--accent-emerald);">✓ Document <strong>${file.name}</strong> successfully uploaded and analyzed!</span>`;
+                fetchUserDocuments();
+            } catch (err) {
+                statusMsg.innerHTML = `<span style="color: var(--accent-rose);">✕ Upload failed: ${err.message}</span>`;
+            }
+        }
+
+        async function viewDocDetail(docId) {
+            try {
+                const res = await fetch(`/api/documents/${docId}`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                const data = await res.json();
+                const doc = data.document;
+
+                document.getElementById('modalDocTitle').innerText = doc.filename;
+                document.getElementById('modalDocSubtitle').innerText = `Type: ${doc.document_type} | Uploaded: ${new Date(doc.uploaded_at).toLocaleString()}`;
+                document.getElementById('modalJsonBody').innerText = JSON.stringify(doc.analysis_result, null, 2);
+                document.getElementById('analysisModal').style.display = 'flex';
+            } catch (err) {
+                alert('Error loading document detail.');
+            }
+        }
+
+        async function deleteDoc(docId) {
+            if (!confirm('Are you sure you want to permanently delete this document and its verification report?')) return;
+            try {
+                const res = await fetch(`/api/documents/${docId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Deletion failed');
+                fetchUserDocuments();
+            } catch (err) {
+                alert(`Error deleting document: ${err.message}`);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('analysisModal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

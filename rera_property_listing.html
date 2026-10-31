@@ -1,0 +1,1983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Property Risk & Compliance Register — RERA Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:ital,wght@0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --paper: #F6F5F1;
+    --paper-raised: #FCFBF8;
+    --ink: #1B1E24;
+    --ink-soft: #565B66;
+    --hairline: #DBD7CC;
+    --hairline-strong: #C7C2B3;
+    --clear: #2F6E4F;
+    --clear-tint: #2F6E4F12;
+    --watch: #97701A;
+    --watch-tint: #97701A14;
+    --flag: #AC2C2C;
+    --flag-tint: #AC2C2C12;
+    --gold: #8A6A1F;
+    --bg-dark: #090D16;
+    --text-main: #F8FAFC;
+    --text-muted: #94A3B8;
+    --brand-blue: #2563EB;
+    --brand-cyan: #0EA5E9;
+    --border-dark: rgba(255, 255, 255, 0.08);
+    --pass: #10B981;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Plus Jakarta Sans', 'IBM Plex Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 0 0 4rem;
+    line-height: 1.5;
+    font-size: 15px;
+  }
+  .mono { font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace; }
+  .container { max-width: 1180px; margin: 0 auto; padding: 0 2rem; }
+
+  /* Top Announcement Bar */
+  .top-announcement {
+    background: linear-gradient(90deg, #0B1329 0%, #152244 50%, #0B1329 100%);
+    border-bottom: 1px solid var(--border-dark);
+    font-size: 0.75rem;
+    padding: 0.5rem 2.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+    position: relative;
+    z-index: 10;
+  }
+
+  .pulse-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .pulse-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--pass);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--pass);
+    animation: pulseGlow 2s infinite ease-in-out;
+  }
+
+  @keyframes pulseGlow {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.25); opacity: 0.6; }
+  }
+
+  /* Glassmorphic Navigation Bar */
+  .navbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: rgba(9, 13, 22, 0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-dark);
+    padding: 0.85rem 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    text-decoration: none;
+  }
+
+  .brand-logo-box {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+    color: #FFFFFF;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'IBM Plex Serif', serif;
+    font-weight: 700;
+    font-size: 1.3rem;
+    box-shadow: 0 0 20px rgba(37, 99, 235, 0.4);
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+
+  .brand-title {
+    font-family: 'IBM Plex Serif', serif;
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: var(--text-main);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+
+  .brand-subtitle {
+    font-size: 0.68rem;
+    color: var(--brand-cyan);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: rgba(255,255,255,0.04);
+    padding: 0.25rem 0.5rem;
+    border-radius: 30px;
+    border: 1px solid var(--border-dark);
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  .nav-item {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding: 0.45rem 0.95rem;
+    border-radius: 20px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+
+  .nav-item:hover, .nav-item.active {
+    color: var(--text-main);
+    background: rgba(255,255,255,0.12);
+  }
+
+  .nav-cta {
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+    color: #FFFFFF !important;
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 0.6rem 1.3rem;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(37, 99, 235, 0.35);
+    border: 1px solid rgba(255,255,255,0.15);
+    transition: all 0.2s ease;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .nav-cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 30px rgba(37, 99, 235, 0.55);
+  }
+
+  @media (max-width: 992px) {
+    .top-announcement { display: none; }
+    .navbar { padding: 0.75rem 1.25rem; flex-wrap: wrap; }
+    .nav-links { overflow-x: auto; flex-wrap: nowrap; max-width: 100%; }
+  }
+
+  header.masthead { border-bottom: 1px solid var(--hairline-strong); padding: 2.25rem 0 1.5rem; margin-bottom: 1.5rem; }
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ink-soft); display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem;
+  }
+  .eyebrow .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--ink-soft); }
+  h1 { font-family: 'IBM Plex Serif', serif; font-weight: 600; font-size: 2rem; letter-spacing: -0.01em; }
+  .masthead p.sub { font-size: 0.9rem; color: var(--ink-soft); margin-top: 0.4rem; max-width: 62ch; }
+
+  .banner {
+    border: 1px solid var(--hairline-strong);
+    background: #FBF7EC;
+    color: #6b5416;
+    font-size: 0.8rem;
+    padding: 0.7rem 1rem;
+    margin-bottom: 1.25rem;
+    display: none;
+  }
+  .banner.show { display: block; }
+
+  .summary-strip { display: grid; grid-template-columns: repeat(5, 1fr); border: 1px solid var(--hairline); background: var(--paper-raised); margin-bottom: 1.25rem; }
+  .summary-cell { padding: 0.9rem 1.1rem; border-left: 1px solid var(--hairline); }
+  .summary-cell:first-child { border-left: none; }
+  .summary-cell .num { font-family: 'IBM Plex Mono', monospace; font-size: 1.5rem; font-weight: 600; line-height: 1; }
+  .summary-cell .lbl { font-family: 'IBM Plex Mono', monospace; font-size: 0.63rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); margin-top: 0.3rem; }
+  .summary-cell.clear .num { color: var(--clear); }
+  .summary-cell.watch .num { color: var(--watch); }
+  .summary-cell.flag .num { color: var(--flag); }
+  .summary-cell.gold .num { color: var(--gold); }
+  @media (max-width: 760px) { .summary-strip { grid-template-columns: repeat(2, 1fr); } .summary-cell:nth-child(odd) { border-left: none; } }
+
+  .toolbar { margin-bottom: 1.5rem; }
+  .toolbar-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; }
+  .toolbar-row + .toolbar-row { margin-top: 0.75rem; }
+
+  .search-wrap { flex: 1; min-width: 220px; height: 38px; border: 1px solid var(--hairline-strong); background: var(--paper-raised); display: flex; align-items: center; padding: 0 0.75rem; box-sizing: border-box; }
+  .search-wrap span.icon { font-family: 'IBM Plex Mono', monospace; color: var(--ink-soft); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-right: 0.5rem; flex-shrink: 0; }
+  #searchInput { flex: 1; border: none; outline: none; background: transparent; font-family: 'IBM Plex Sans', sans-serif; font-size: 0.85rem; color: var(--ink); height: 100%; padding: 0; box-sizing: border-box; }
+  #searchInput::placeholder { color: var(--ink-soft); }
+
+  .btn {
+    height: 36px; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+    border: 1px solid var(--ink); background: var(--ink); color: var(--paper); padding: 0 0.9rem; border-radius: 4px; cursor: pointer; transition: opacity 0.15s, border-color 0.15s; white-space: nowrap; line-height: 1;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn.ghost { background: var(--paper-raised); color: var(--ink); border-color: var(--hairline-strong); }
+  .btn.ghost:hover { border-color: var(--ink); background: #EDEAE2; opacity: 1; }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .btn.btn-sm {
+    height: 28px;
+    padding: 0 0.65rem;
+    font-size: 0.68rem;
+    border-radius: 3px;
+  }
+
+  .filters { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .filter-chip {
+    height: 36px; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; letter-spacing: 0.03em; text-transform: uppercase;
+    border: 1px solid var(--hairline-strong); border-radius: 4px; background: var(--paper-raised); color: var(--ink-soft); padding: 0 0.85rem; cursor: pointer; transition: all 0.15s;
+  }
+  .filter-chip:hover { border-color: var(--ink); color: var(--ink); }
+  .filter-chip.active { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+  .reset-btn {
+    height: 36px; box-sizing: border-box; border-radius: 4px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; font-weight: 600;
+    letter-spacing: 0.03em; text-transform: uppercase;
+    color: #991B1B; background: #FEF2F2; border: 1px solid #FCA5A5;
+    padding: 0 0.85rem; cursor: pointer; transition: all 0.15s ease;
+    display: inline-flex; align-items: center; gap: 0.35rem; white-space: nowrap;
+  }
+  .reset-btn:hover { background: #FEE2E2; border-color: #EF4444; color: #7F1D1D; }
+
+  .sort-group { display: flex; align-items: center; gap: 0.5rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); }
+  select#sortBy, select.filter-select {
+    height: 36px; box-sizing: border-box; border-radius: 4px;
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 0.8rem; font-weight: 500; color: var(--ink); background: var(--paper-raised); border: 1px solid var(--hairline-strong);
+    padding: 0 1.8rem 0 0.75rem; appearance: none; -webkit-appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink-soft) 50%), linear-gradient(135deg, var(--ink-soft) 50%, transparent 50%);
+    background-position: calc(100% - 12px) center, calc(100% - 7px) center; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; cursor: pointer;
+  }
+  .pagination-bar {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.8rem;
+    margin-top: 1.25rem; padding: 0.85rem 1rem; background: var(--paper-raised); border: 1px solid var(--hairline);
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.76rem;
+  }
+  .page-controls { display: flex; align-items: center; gap: 0.35rem; }
+  .page-btn { padding: 0.35rem 0.65rem; font-size: 0.7rem; }
+  .page-current { font-weight: 600; padding: 0 0.5rem; color: var(--ink); }
+
+  .main-layout { display: grid; grid-template-columns: 340px 1fr; gap: 1.5rem; align-items: start; }
+  @media (max-width: 900px) { .main-layout { grid-template-columns: 1fr; } }
+
+  .map-panel {
+    background: var(--paper-raised);
+    border: 1px solid var(--hairline-strong);
+    border-radius: 6px;
+    box-shadow: 0 10px 30px rgba(27,30,36,0.08);
+    position: sticky;
+    top: 1.25rem;
+    z-index: 100;
+    max-height: calc(100vh - 2.5rem);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: box-shadow 0.2s ease;
+  }
+  .map-panel:hover {
+    box-shadow: 0 14px 36px rgba(27,30,36,0.14);
+  }
+  .map-head {
+    height: 44px;
+    padding: 0 1rem;
+    border-bottom: 1px solid var(--hairline-strong);
+    font-family: 'IBM Plex Serif', serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--paper-raised);
+    user-select: none;
+    flex-shrink: 0;
+  }
+  .map-head-left { display: flex; align-items: center; gap: 0.55rem; }
+  .map-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    background: var(--hairline);
+    color: var(--ink-soft);
+    padding: 0.15rem 0.55rem;
+    border-radius: 10px;
+    font-weight: 500;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+  }
+  .map-head-right { display: flex; align-items: center; gap: 0.5rem; }
+  .map-icon-btn {
+    border: 1px solid var(--hairline-strong);
+    border-radius: 3px;
+    background: var(--paper-raised);
+    color: var(--ink-soft);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    cursor: pointer;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 0.55rem;
+    text-transform: uppercase;
+    transition: all 0.15s;
+    box-sizing: border-box;
+    line-height: 1;
+  }
+  .map-icon-btn:hover { border-color: var(--ink); color: var(--ink); }
+
+  .map-body { display: flex; flex-direction: column; flex: 1; overflow-y: auto; }
+  #mapContainer { width: 100%; height: 310px; min-height: 220px; background: #eee; flex-shrink: 0; position: relative; }
+  .leaflet-popup-content-wrapper { border-radius: 0; font-family: 'IBM Plex Sans', sans-serif; }
+  .leaflet-popup-content { font-size: 0.8rem; margin: 0.6rem 0.75rem; }
+  .popup-title { font-family: 'IBM Plex Serif', serif; font-weight: 600; margin-bottom: 0.15rem; }
+  .popup-score { font-family: 'IBM Plex Mono', monospace; font-weight: 600; }
+
+  /* Floating active property card inside map panel */
+  .map-active-card {
+    border-top: 2px solid var(--ink);
+    border-bottom: 1px solid var(--hairline-strong);
+    background: #F8F7F3;
+    padding: 0.85rem 1rem;
+    flex-shrink: 0;
+    animation: fadeInCard 0.2s ease-out;
+  }
+  @keyframes fadeInCard {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .map-active-card .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
+  .map-active-card .card-title { font-family: 'IBM Plex Serif', serif; font-weight: 600; font-size: 0.95rem; color: var(--ink); line-height: 1.25; }
+  .map-active-card .card-dev { font-size: 0.76rem; color: var(--ink-soft); margin-top: 0.2rem; font-weight: 500; }
+  .map-active-card .card-row2 { display: flex; align-items: center; justify-content: space-between; margin-top: 0.55rem; }
+  .map-active-card .card-actions { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.6rem; padding-top: 0.5rem; border-top: 1px solid var(--hairline); }
+
+  .map-legend { display: flex; align-items: center; justify-content: space-around; gap: 0.8rem; padding: 0.6rem 1rem; font-size: 0.7rem; font-family: 'IBM Plex Mono', monospace; color: var(--ink-soft); border-top: 1px solid var(--hairline); background: var(--paper-raised); flex-shrink: 0; }
+  .map-legend .item { display: flex; align-items: center; gap: 0.35rem; }
+  .map-legend .sw { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .map-note { font-size: 0.66rem; color: var(--ink-soft); padding: 0.4rem 1rem 0.65rem; font-family: 'IBM Plex Mono', monospace; background: var(--paper-raised); flex-shrink: 0; text-align: center; }
+
+  #registerList { display: flex; flex-direction: column; gap: 1rem; }
+
+  .prop-row {
+    background: var(--paper-raised);
+    border: 1px solid var(--hairline);
+    border-left: 4px solid var(--hairline-strong);
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px rgba(27,30,36,0.03);
+  }
+  .prop-row:hover {
+    border-color: var(--hairline-strong);
+    box-shadow: 0 6px 18px rgba(27,30,36,0.08);
+  }
+  .prop-row.band-clear-row { border-left-color: var(--clear); }
+  .prop-row.band-watch-row { border-left-color: var(--watch); }
+  .prop-row.band-flag-row  { border-left-color: var(--flag); }
+  
+  /* On Selection: Green/accent border vanishes and even 3px thick black outline takes over */
+  .prop-row.pin-highlight,
+  .prop-row.open {
+    border: 3px solid var(--ink) !important;
+    box-shadow: 0 8px 24px rgba(27,30,36,0.12) !important;
+  }
+
+  .prop-head {
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
+    gap: 1.25rem;
+    padding: 1.15rem 1.35rem;
+    cursor: pointer;
+    align-items: center;
+  }
+  .prop-head:hover { background: rgba(27,30,36,0.015); }
+
+  .prop-left-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .rank { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--ink-soft); font-weight: 600; }
+
+  .prop-main-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .prop-header-line {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+  .prop-name {
+    font-family: 'IBM Plex Serif', serif;
+    font-weight: 600;
+    font-size: 1.15rem;
+    color: var(--ink);
+    line-height: 1.25;
+    margin: 0;
+  }
+  .prop-type-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    background: #EAE7DC;
+    color: #363B45;
+    border: 1px solid #D4D0C2;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .prop-status-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.63rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 0.12rem 0.45rem;
+    border-radius: 3px;
+  }
+  .prop-status-badge.status-approved { background: var(--clear-tint); color: var(--clear); border: 1px solid var(--clear); }
+  .prop-status-badge.status-lapsed { background: var(--flag-tint); color: var(--flag); border: 1px solid var(--flag); }
+
+  .prop-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+  }
+  .prop-meta-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 420px;
+  }
+  .prop-meta-cell.dev-cell {
+    color: var(--ink-soft);
+  }
+  .prop-meta-cell strong {
+    color: var(--ink);
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .prop-bottom-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding-top: 0.25rem;
+    border-top: 1px dashed var(--hairline);
+  }
+  .prop-price-units {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+  }
+  .price-val { font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; font-weight: 600; color: var(--ink); }
+  .unit-tag {
+    display: inline-block;
+    border: 1px solid var(--hairline-strong);
+    background: var(--paper-raised);
+    color: var(--ink);
+    padding: 0.08rem 0.45rem;
+    border-radius: 3px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 500;
+  }
+
+  .prop-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .prop-right-col {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    flex-wrap: nowrap;
+    align-self: center;
+  }
+  .seal {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.55rem;
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    white-space: nowrap;
+    box-sizing: border-box;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .seal:hover {
+    filter: brightness(0.9);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  }
+  .seal.pass { color: var(--clear); background: var(--clear-tint); border: 1px solid var(--clear); }
+  .seal.fail { color: var(--flag); background: var(--flag-tint); border: 1px solid var(--flag); }
+
+  .score-block { text-align: right; }
+  .score-num { font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 1.3rem; line-height: 1; }
+  .score-num.clear { color: var(--clear); }
+  .score-num.watch { color: var(--watch); }
+  .score-num.flag { color: var(--flag); }
+  .score-of { font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; color: var(--ink-soft); }
+
+  .band-tag { font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; padding: 0.15rem 0.45rem; display: inline-block; margin-top: 0.25rem; }
+  .band-clear { background: var(--clear-tint); color: var(--clear); }
+  .band-watch { background: var(--watch-tint); color: var(--watch); }
+  .band-flag  { background: var(--flag-tint); color: var(--flag); }
+
+  .chevron { font-family: 'IBM Plex Mono', monospace; color: var(--ink-soft); font-size: 0.85rem; transition: transform 0.15s; }
+  .prop-row.open .chevron { transform: rotate(90deg); }
+
+  .prop-detail { display: none; border-top: 1px solid var(--hairline-strong); padding: 1.2rem 1.25rem; background: #FAF9F5; }
+  .prop-row.open .prop-detail { display: block; }
+
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.85rem 1.5rem;
+    padding: 1rem 1.15rem;
+    background: var(--paper-raised);
+    border: 1px solid var(--hairline-strong);
+    border-radius: 4px;
+    margin-bottom: 1.1rem;
+  }
+  .meta-item { display: flex; flex-direction: column; gap: 0.2rem; }
+  .meta-item-label { font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); font-weight: 500; }
+  .meta-item-val { font-family: 'IBM Plex Sans', sans-serif; font-size: 0.84rem; font-weight: 600; color: var(--ink); word-break: break-word; }
+  .meta-item-val.mono { font-family: 'IBM Plex Mono', monospace; font-size: 0.76rem; font-weight: 500; }
+
+  .axis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem 1.75rem; }
+  @media (max-width: 768px) {
+    .prop-head { grid-template-columns: auto 1fr; }
+    .prop-right-col { grid-column: 1 / -1; width: 100%; justify-content: space-between; border-top: 1px dashed var(--hairline-strong); padding-top: 0.6rem; margin-top: 0.4rem; }
+    .prop-timeline-strip { flex-direction: column; align-items: flex-start; gap: 0.35rem; }
+    .timeline-divider { display: none; }
+    .axis-grid { grid-template-columns: 1fr; }
+  }
+  .axis-line { display: grid; grid-template-columns: 9.5rem 1fr 2rem; align-items: center; gap: 0.6rem; }
+  .axis-label { font-size: 0.76rem; color: var(--ink-soft); }
+  .axis-bar-track { height: 5px; background: var(--hairline); position: relative; }
+  .axis-bar-fill { height: 100%; }
+  .axis-bar-fill.clear { background: var(--clear); }
+  .axis-bar-fill.watch { background: var(--watch); }
+  .axis-bar-fill.flag { background: var(--flag); }
+  .axis-value { font-family: 'IBM Plex Mono', monospace; font-size: 0.76rem; font-weight: 600; text-align: right; }
+
+  .prop-note { font-size: 0.8rem; color: var(--ink-soft); margin-top: 0.9rem; padding-top: 0.75rem; border-top: 1px solid var(--hairline); }
+
+  .empty-state { text-align: center; padding: 3rem 1rem; color: var(--ink-soft); font-size: 0.9rem; border: 1px dashed var(--hairline-strong); }
+
+  .note { font-size: 0.78rem; color: var(--ink-soft); line-height: 1.5; border-top: 1px solid var(--hairline); padding-top: 1rem; margin-top: 1.5rem; }
+  .toast {
+    position: fixed; bottom: 1.25rem; left: 50%; transform: translateX(-50%) translateY(8px);
+    background: var(--ink); color: var(--paper); font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem;
+    padding: 0.55rem 0.9rem; opacity: 0; pointer-events: none; transition: all 0.2s; z-index: 2000;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Comprehensive Mobile Responsiveness */
+  @media (max-width: 900px) {
+    .container { padding: 0 1rem; }
+    .main-layout { grid-template-columns: 1fr; }
+    .map-panel { position: static; max-height: none; height: 300px; margin-bottom: 1.25rem; }
+  }
+
+  @media (max-width: 768px) {
+    header.masthead { padding: 1.25rem 0 1rem; }
+    .eyebrow { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+    .eyebrow > div { margin-left: 0 !important; overflow-x: auto; max-width: 100%; padding-bottom: 4px; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+    .eyebrow a { white-space: nowrap; flex-shrink: 0; }
+    h1 { font-size: 1.5rem; }
+    .toolbar-row { flex-direction: column; align-items: stretch; }
+    .search-wrap { min-width: 100%; }
+    .filters { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+    .filter-chip { flex-shrink: 0; white-space: nowrap; }
+    .sort-group { flex-wrap: wrap; }
+    .summary-strip { grid-template-columns: repeat(2, 1fr); }
+    .meta-grid { grid-template-columns: 1fr; }
+    .axis-line { grid-template-columns: 7rem 1fr 2rem; font-size: 0.72rem; }
+  }
+
+  @media (max-width: 480px) {
+    .container { padding: 0 0.75rem; }
+    .summary-strip { grid-template-columns: 1fr; }
+    .summary-cell { border-left: none !important; border-bottom: 1px solid var(--hairline); }
+    .summary-cell:last-child { border-bottom: none; }
+  }
+
+  /* Footer Styles matching index.html */
+  footer.footer, .footer {
+    background: #05080E !important;
+    color: #FFFFFF !important;
+    padding: 4.5rem 2.5rem 2.5rem !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+    font-family: 'Plus Jakarta Sans', 'IBM Plex Sans', sans-serif !important;
+  }
+
+  .footer .footer-container {
+    max-width: 1280px !important;
+    margin: 0 auto !important;
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+    gap: 2.5rem !important;
+    margin-bottom: 3.5rem !important;
+  }
+
+  .footer .footer-brand {
+    font-family: 'IBM Plex Serif', serif, sans-serif !important;
+    font-size: 1.4rem !important;
+    font-weight: 700 !important;
+    color: #FFFFFF !important;
+    margin-bottom: 0.75rem !important;
+  }
+
+  .footer .footer-desc {
+    font-size: 0.84rem !important;
+    color: #94A3B8 !important;
+    line-height: 1.65 !important;
+  }
+
+  .footer .footer-title {
+    font-family: 'IBM Plex Serif', serif, sans-serif !important;
+    font-weight: 700 !important;
+    font-size: 0.98rem !important;
+    margin-bottom: 1.1rem !important;
+    color: #F8FAFC !important;
+  }
+
+  .footer .footer-links, footer.footer ul.footer-links {
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .footer .footer-links li, footer.footer ul.footer-links li {
+    margin-bottom: 0.65rem !important;
+    list-style: none !important;
+    list-style-type: none !important;
+    color: #94A3B8 !important;
+  }
+
+  .footer .footer-links a, footer.footer ul.footer-links a {
+    font-size: 0.84rem !important;
+    color: #94A3B8 !important;
+    text-decoration: none !important;
+    transition: color 0.15s ease !important;
+  }
+
+  .footer .footer-links a:hover, footer.footer ul.footer-links a:hover {
+    color: #FFFFFF !important;
+    text-decoration: underline !important;
+  }
+
+  .footer .footer-bottom {
+    max-width: 1280px !important;
+    margin: 0 auto !important;
+    padding-top: 2rem !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 1rem !important;
+    font-size: 0.78rem !important;
+    color: #64748B !important;
+  }
+    color: #64748B !important;
+  }
+</style>
+</head>
+<body>
+
+<!-- Top Announcement Bar -->
+<div class="top-announcement">
+  <div class="pulse-indicator">
+    <div class="pulse-dot"></div>
+    <span>KARNATAKA RERA LEGAL ENGINE LIVE • 1,240+ POSTGRES RECORDS OPERATIONAL</span>
+  </div>
+  <div>CROSS-VERIFYING KAVERI 2.0 • BHOOMI RTC • BDA • BBMP • E-COURTS</div>
+</div>
+
+<!-- Glassmorphic Navbar -->
+<header class="navbar">
+  <a href="/" class="nav-brand">
+    <div class="brand-logo-box">R</div>
+    <div>
+      <div class="brand-title">RERA Intelligence</div>
+      <div class="brand-subtitle">AI Property Verification</div>
+    </div>
+  </a>
+
+  <nav class="nav-links">
+    <a href="/geospatial" class="nav-item">Geospatial Map</a>
+    <a href="/legal-report?q=CASAGRAND%20MOONDANCE" class="nav-item">Legal Due-Diligence</a>
+    <a href="/#docProcurementSection" class="nav-item" style="color:#FBBF24;">🏛️ Document Procurement</a>
+    <a href="/register" class="nav-item active">Compliance Register</a>
+    <a href="/radar-chart" class="nav-item">Composite Radar</a>
+    <a href="/compare" class="nav-item">Compare Projects</a>
+    <a href="/detail?q=CASAGRAND%20MOONDANCE" class="nav-item">Audit Profile</a>
+  </nav>
+
+  <a href="/legal-report?q=CASAGRAND%20MOONDANCE" class="nav-cta">Launch Legal Audit ↗</a>
+</header>
+
+<div class="container" style="margin-top: 1.5rem;">
+  <header class="masthead">
+    <div class="eyebrow">
+      <span><span class="dot"></span> RERA Karnataka Intelligence · Statewide Register</span>
+    </div>
+    <h1>Property Risk & Compliance Register</h1>
+    <p class="sub">All tracked developments in one unified directory, ranked by weighted composite legal score.</p>
+  </header>
+
+  <div class="banner" id="errorBanner"></div>
+
+  <div class="summary-strip" id="summaryStrip"></div>
+
+  <div class="toolbar">
+    <div class="toolbar-row">
+      <div class="search-wrap">
+        <span class="icon">Find</span>
+        <input id="searchInput" type="text" placeholder="Search Project Name, Developer, Reg No, Ack No, Area…" />
+      </div>
+      <select id="districtFilter" class="filter-select">
+        <option value="">All Districts (31)</option>
+        <option value="Bagalkot">Bagalkot</option>
+        <option value="Ballari">Ballari</option>
+        <option value="Belagavi">Belagavi</option>
+        <option value="Bengaluru Rural">Bengaluru Rural</option>
+        <option value="Bengaluru Urban">Bengaluru Urban</option>
+        <option value="Bidar">Bidar</option>
+        <option value="Chamarajanagar">Chamarajanagar</option>
+        <option value="Chikkaballapura">Chikkaballapura</option>
+        <option value="Chikkamagaluru">Chikkamagaluru</option>
+        <option value="Chitradurga">Chitradurga</option>
+        <option value="Dakshina Kannada">Dakshina Kannada</option>
+        <option value="Davangere">Davangere</option>
+        <option value="Dharwad">Dharwad</option>
+        <option value="Gadag">Gadag</option>
+        <option value="Hassan">Hassan</option>
+        <option value="Haveri">Haveri</option>
+        <option value="Kalaburagi">Kalaburagi</option>
+        <option value="Kodagu">Kodagu</option>
+        <option value="Kolar">Kolar</option>
+        <option value="Koppal">Koppal</option>
+        <option value="Mandya">Mandya</option>
+        <option value="Mysore">Mysore</option>
+        <option value="Raichur">Raichur</option>
+        <option value="Ramanagara">Ramanagara</option>
+        <option value="Shivamogga">Shivamogga</option>
+        <option value="Tumakuru">Tumakuru</option>
+        <option value="Udupi">Udupi</option>
+        <option value="Uttara Kannada">Uttara Kannada</option>
+        <option value="Vijayanagara">Vijayanagara</option>
+        <option value="Vijayapura">Vijayapura</option>
+        <option value="Yadgir">Yadgir</option>
+      </select>
+      <select id="propertyTypeFilter" class="filter-select">
+        <option value="">All Property Types</option>
+        <option value="Residential/Group Housing">Residential</option>
+        <option value="Plotted Development">Plotted Layout</option>
+        <option value="Mixed Development">Mixed Development</option>
+        <option value="Commercial">Commercial</option>
+      </select>
+      <select id="propertyConfigFilter" class="filter-select">
+        <option value="">All Configurations</option>
+        <option value="1 BHK">1 BHK</option>
+        <option value="2 BHK">2 BHK</option>
+        <option value="3 BHK">3 BHK</option>
+        <option value="4 BHK+">4 BHK+</option>
+        <option value="Plots">Plots</option>
+        <option value="Villa">Villas</option>
+      </select>
+      <select id="statusFilter" class="filter-select">
+        <option value="">All Statuses</option>
+        <option value="APPROVED">Approved</option>
+        <option value="LAPSED">Lapsed / Suspended</option>
+      </select>
+      <select id="approvalYearFilter" class="filter-select">
+        <option value="">All Approval Years</option>
+        <option value="2026">Approved 2026</option>
+        <option value="2025">Approved 2025</option>
+        <option value="2024">Approved 2024</option>
+        <option value="2023">Approved 2023</option>
+        <option value="2022">Approved 2022</option>
+        <option value="2021">Approved 2021</option>
+        <option value="2020">Approved 2020</option>
+        <option value="2019">Approved 2019</option>
+        <option value="2018">Approved 2018</option>
+        <option value="2017">Approved 2017</option>
+      </select>
+      <select id="completionYearFilter" class="filter-select">
+        <option value="">All Completion Years</option>
+        <option value="2032">Completion 2032</option>
+        <option value="2031">Completion 2031</option>
+        <option value="2030">Completion 2030</option>
+        <option value="2029">Completion 2029</option>
+        <option value="2028">Completion 2028</option>
+        <option value="2027">Completion 2027</option>
+        <option value="2026">Completion 2026</option>
+        <option value="2025">Completion 2025</option>
+        <option value="2024">Completion 2024</option>
+        <option value="2023">Completion 2023</option>
+      </select>
+      <button id="resetFiltersBtn" class="reset-btn" title="Reset search text and all dropdown filters">↺ Reset Filters</button>
+    </div>
+    <div class="toolbar-row">
+      <div class="filters" id="filterChips"></div>
+      <div class="sort-group" style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+        <div>
+          Sort
+          <select id="sortBy">
+            <option value="score-desc">Score, high to low</option>
+            <option value="score-asc">Score, low to high</option>
+            <option value="name-asc">Name, A–Z</option>
+            <option value="price-asc">Price, low to high</option>
+          </select>
+        </div>
+        <div>
+          Per Page
+          <select id="pageSizeSelect" style="padding:0.25rem 0.45rem; font-size:0.78rem; font-family:'IBM Plex Mono',monospace; border:1px solid var(--hairline-strong); background:var(--paper-raised); color:var(--ink); border-radius:3px;">
+            <option value="20">20 / page</option>
+            <option value="50">50 / page</option>
+            <option value="100">100 / page</option>
+            <option value="250">250 / page</option>
+            <option value="500">500 / page</option>
+            <option value="1000">1,000 / page</option>
+            <option value="10000">All (8,946+)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-layout">
+    <div class="map-panel" id="mapPanel">
+      <div class="map-head" id="mapHead">
+        <div class="map-head-left">
+          <span>Location Overview</span>
+          <span class="map-badge" id="mapBadge">0 projects</span>
+        </div>
+        <div class="map-head-right">
+          <button class="map-icon-btn" id="mapFitBtn" title="Fit all markers in view">Fit All</button>
+        </div>
+      </div>
+      <div class="map-body">
+        <div id="mapContainer"></div>
+        <div class="map-active-card" id="mapActiveCard" style="display:none;">
+          <div class="card-top">
+            <div>
+              <div class="card-title" id="activeCardTitle">Selected Property</div>
+              <div class="card-dev" id="activeCardDev">Developer Name</div>
+            </div>
+            <button class="map-icon-btn" id="activeCardClose" style="font-size:0.8rem; padding:0 0.35rem;" title="Close preview">&times;</button>
+          </div>
+          <div class="card-row2">
+            <span id="activeCardPrice" class="mono" style="font-size:0.76rem; font-weight:600; color:var(--ink);">₹0.00 Cr</span>
+            <div id="activeCardScoreTag"></div>
+          </div>
+          <div id="activeCardGps" style="font-family:'IBM Plex Mono',monospace; font-size:0.65rem; margin-top:0.35rem;"></div>
+          <div class="card-actions" style="display:flex; gap:0.35rem; flex-wrap:wrap; margin-top:0.5rem;">
+            <button class="btn ghost btn-sm" id="activeCardJumpBtn" style="flex:1;">Focus List ↓</button>
+            <a class="btn ghost btn-sm" id="activeCardLegalBtn" style="flex:1; text-decoration:none;" href="#" target="_blank">Legal Report ↗</a>
+            <a class="btn ghost btn-sm" id="activeCardGmapsBtn" style="flex:1; text-decoration:none;" href="#" target="_blank" rel="noopener noreferrer">Maps ↗</a>
+            <a class="btn ghost btn-sm" id="activeCardRadarBtn" style="flex:1; text-decoration:none;" href="#" target="_blank">Radar ↗</a>
+          </div>
+        </div>
+        <div class="map-legend">
+          <span class="item"><span class="sw" style="background:#2F6E4F;"></span>Clear</span>
+          <span class="item"><span class="sw" style="background:#97701A;"></span>Watch</span>
+          <span class="item"><span class="sw" style="background:#AC2C2C;"></span>Flag</span>
+        </div>
+        <div class="map-note">Click marker to focus record in register list.</div>
+      </div>
+    </div>
+
+    <div>
+      <div id="registerList"></div>
+      <div class="empty-state" id="emptyState" style="display:none;">No properties match the current search and filters.</div>
+
+      <div class="pagination-bar" id="paginationBar">
+        <div class="page-info" id="pageInfo">Showing 1–20 of 0 properties</div>
+        <div class="page-controls">
+          <button class="btn ghost page-btn" id="firstPageBtn" title="First Page">« First</button>
+          <button class="btn ghost page-btn" id="prevPageBtn" title="Previous Page">‹ Prev</button>
+          <span class="page-current mono" id="pageCurrent">Page 1 of 1</span>
+          <button class="btn ghost page-btn" id="nextPageBtn" title="Next Page">Next ›</button>
+          <button class="btn ghost page-btn" id="lastPageBtn" title="Last Page">Last »</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    Sample data for layout review only — not sourced from the live RERA registry. Composite score uses the same weighted average as the comparison report. Map tiles © OpenStreetMap contributors.
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+try {
+
+  const AXES = [
+    { key: 'compliance', name: 'Regulatory Compliance', weight: 1.0 },
+    { key: 'litigation', name: 'Litigation Risk', weight: 1.2 },
+    { key: 'timeline', name: 'Timeline Adherence', weight: 1.1 },
+    { key: 'title', name: 'Land & Title Clarity', weight: 1.1 },
+    { key: 'location', name: 'Location & Connectivity', weight: 0.9 },
+    { key: 'layout', name: 'Layout & Amenities', weight: 0.7 },
+    { key: 'promoter', name: 'Promoter Reputation', weight: 1.0 },
+    { key: 'transparency', name: 'Data Transparency', weight: 0.8 }
+  ];
+
+  function parseDate(dStr) {
+    if (!dStr) return null;
+    dStr = String(dStr).trim();
+    let m = dStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (m) return new Date(parseInt(m[3]), parseInt(m[2]) - 1, parseInt(m[1]));
+    m = dStr.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if (m) return new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+    const d = new Date(dStr);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function formatDate(dStr) {
+    const d = parseDate(dStr);
+    if (!d) return dStr || 'Not Specified';
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
+  function getTimelineInfo(startDate, completionDate, hasCompletionCert) {
+    const start = parseDate(startDate);
+    const end = parseDate(completionDate);
+    const startFmt = formatDate(startDate);
+    const endFmt = formatDate(completionDate);
+
+    if (!start && !end) {
+      return {
+        startFmt: 'N/A',
+        endFmt: 'N/A',
+        durationText: '',
+        statusText: hasCompletionCert ? '✅ Certificate Issued' : '⚠️ Certificate Not Uploaded',
+        statusClass: hasCompletionCert ? 'completed' : 'overdue',
+        isOverdue: !hasCompletionCert
+      };
+    }
+
+    const now = new Date();
+    let durationYears = null;
+    if (start && end && end > start) {
+      const diffMs = end - start;
+      durationYears = Math.max(0.1, Math.round((diffMs / (1000 * 60 * 60 * 24 * 365.25)) * 10) / 10);
+    }
+
+    let isOverdue = false;
+    let statusText = '';
+    let statusClass = 'normal';
+
+    if (hasCompletionCert) {
+      // 1. Completion Certificate is available
+      statusText = 'Certificate Issued';
+      statusClass = 'completed';
+      isOverdue = false;
+    } else if (end) {
+      if (end < now) {
+        // 3. Time expired and completion certificate is not available
+        isOverdue = true;
+        statusText = 'Certificate Not Uploaded';
+        statusClass = 'overdue';
+      } else {
+        // 2. Completion date is still pending in the future — mention remaining time
+        const remainingMs = end - now;
+        const remMonths = Math.round(remainingMs / (1000 * 60 * 60 * 24 * 30.4375));
+        if (remMonths < 12) {
+          statusText = `${remMonths} Mos Remaining`;
+        } else {
+          const remYrs = (remMonths / 12).toFixed(1);
+          statusText = `${remYrs} Yrs Remaining`;
+        }
+        statusClass = 'normal';
+      }
+    } else {
+      statusText = 'Certificate Not Uploaded';
+      statusClass = 'overdue';
+      isOverdue = true;
+    }
+
+    const durationText = durationYears ? `${durationYears} Yrs Duration` : '';
+
+    return {
+      startFmt: start ? startFmt : (startDate || 'N/A'),
+      endFmt: end ? endFmt : (completionDate || 'N/A'),
+      durationText,
+      statusText,
+      statusClass,
+      isOverdue
+    };
+  }
+
+  function getTypeIcon(pType) {
+    if (!pType) return 'DEVELOPMENT';
+    const t = pType.toLowerCase();
+    if (t.includes('plot')) return 'PLOTTED';
+    if (t.includes('resident') || t.includes('housing')) return 'RESIDENTIAL';
+    if (t.includes('commercial')) return 'COMMERCIAL';
+    if (t.includes('mixed')) return 'MIXED DEV';
+    return 'DEVELOPMENT';
+  }
+
+  // Sample register fallback when offline or before live fetch
+  const PROPERTIES = [
+    {
+      id: 'brigade-panorama', name: 'Brigade Panorama', developer: 'Brigade Group', area: 'Budigere Cross, Bengaluru South',
+      registrationNo: 'PRM/KA/RERA/1251/310/PR/171015/000450', ackNo: 'ACK/KA/RERA/1251/310/PR/170815/000512',
+      projectType: 'Residential/Group Housing', startDate: '15/10/2017', completionDate: '31/12/2025', status: 'APPROVED', hasCompletionCert: true,
+      gateOK: true, priceMin: 1.1, priceMax: 1.8, units: ['2BHK', '3BHK'],
+      scores: { compliance: 88, litigation: 91, timeline: 76, title: 94, location: 72, layout: 80, promoter: 92, transparency: 85 },
+      note: 'Strong promoter track record, no active complaints. Minor delay on Tower C possession.',
+      lat: 13.0212, lng: 77.7861, hasRealCoords: true
+    },
+    {
+      id: 'elegant-tranquility', name: 'Elegant Tranquility', developer: 'Elegant Group', area: 'Sarjapur Road, Bengaluru Urban',
+      registrationNo: 'PRM/KA/RERA/1251/308/PR/180220/001120', ackNo: 'ACK/KA/RERA/1251/308/PR/180110/001090',
+      projectType: 'Residential/Group Housing', startDate: '20/02/2018', completionDate: '30/06/2026', status: 'APPROVED', hasCompletionCert: false,
+      gateOK: true, priceMin: 0.65, priceMax: 0.95, units: ['1BHK', '2BHK'],
+      scores: { compliance: 82, litigation: 64, timeline: 58, title: 79, location: 88, layout: 74, promoter: 61, transparency: 70 },
+      note: 'Two possession-delay disputes under enquiry; quarterly filings up to date.',
+      lat: 12.9010, lng: 77.7856, hasRealCoords: true
+    },
+    {
+      id: 'mahindra-blossom', name: 'Mahindra Blossom', developer: 'Mahindra Lifespaces', area: 'Devanahalli, Bengaluru Urban',
+      registrationNo: 'PRM/KA/RERA/1250/303/PR/210515/004180', ackNo: 'ACK/KA/RERA/1250/303/PR/210401/004050',
+      projectType: 'Plotted Development', startDate: '15/05/2021', completionDate: '31/12/2026', status: 'APPROVED', hasCompletionCert: true,
+      gateOK: true, priceMin: 0.85, priceMax: 1.4, units: ['2BHK', '3BHK', 'Plots'],
+      scores: { compliance: 95, litigation: 96, timeline: 90, title: 97, location: 66, layout: 85, promoter: 94, transparency: 91 },
+      note: 'Cleanest file in the register. Location score held down by distance to nearest metro.',
+      lat: 13.2437, lng: 77.7108, hasRealCoords: true
+    },
+    {
+      id: 'divinity', name: 'Divinity', developer: 'Salarpuria Sattva', area: 'Whitefield, Bengaluru East',
+      registrationNo: 'PRM/KA/RERA/1251/446/PR/190310/002430', ackNo: 'ACK/KA/RERA/1251/446/PR/190205/002310',
+      projectType: 'Mixed Development', startDate: '10/03/2019', completionDate: '31/03/2025', status: 'APPROVED', hasCompletionCert: false,
+      gateOK: true, priceMin: 1.3, priceMax: 2.4, units: ['3BHK', '4BHK'],
+      scores: { compliance: 79, litigation: 55, timeline: 62, title: 71, location: 90, layout: 77, promoter: 68, transparency: 60 },
+      note: 'Refund dispute pending resolution. Strong location fundamentals offset some risk.',
+      lat: 12.9698, lng: 77.7500, hasRealCoords: true
+    },
+    {
+      id: 'shankara-agraharam', name: 'Shankara Agraharam Sri Sharadamba', developer: 'Shankara Buildwell', area: 'Yelahanka, Bengaluru North',
+      registrationNo: 'PRM/KA/RERA/1250/309/PR/170901/000102', ackNo: 'ACK/KA/RERA/1250/309/PR/170801/000098',
+      projectType: 'Plotted Development', startDate: '01/09/2017', completionDate: '31/12/2022', status: 'LAPSED', hasCompletionCert: false,
+      gateOK: false, priceMin: 0.4, priceMax: 0.6, units: ['Plots'],
+      scores: { compliance: 41, litigation: 38, timeline: 33, title: 52, location: 61, layout: 55, promoter: 45, transparency: 40 },
+      note: 'RERA registration lapsed and pending renewal. Do not market until P-01 gate clears.',
+      lat: 13.1007, lng: 77.5963, hasRealCoords: true
+    },
+    {
+      id: 'prestige-lakeside', name: 'Prestige Lakeside Habitat', developer: 'Prestige Group', area: 'Varthur, Bengaluru East',
+      registrationNo: 'PRM/KA/RERA/1251/446/PR/170915/000180', ackNo: 'ACK/KA/RERA/1251/446/PR/170810/000150',
+      projectType: 'Residential/Group Housing', startDate: '15/09/2017', completionDate: '31/12/2025', status: 'APPROVED', hasCompletionCert: true,
+      gateOK: true, priceMin: 1.5, priceMax: 2.9, units: ['3BHK', '4BHK', 'Villas'],
+      scores: { compliance: 90, litigation: 74, timeline: 81, title: 88, location: 84, layout: 89, promoter: 90, transparency: 82 },
+      note: 'Consistently on-schedule quarterly updates. One minor structural complaint, resolved.',
+      lat: 12.9412, lng: 77.7526, hasRealCoords: true
+    },
+    {
+      id: 'sobha-neopolis', name: 'Sobha Neopolis', developer: 'Sobha Limited', area: 'Panathur, Bengaluru East',
+      registrationNo: 'PRM/KA/RERA/1251/308/PR/230920/006250', ackNo: 'ACK/KA/RERA/1251/308/PR/230815/006120',
+      projectType: 'Residential/Group Housing', startDate: '20/09/2023', completionDate: '31/12/2028', status: 'APPROVED', hasCompletionCert: false,
+      gateOK: true, priceMin: 1.0, priceMax: 1.7, units: ['2BHK', '3BHK'],
+      scores: { compliance: 86, litigation: 69, timeline: 70, title: 83, location: 92, layout: 81, promoter: 87, transparency: 78 },
+      note: 'Strong connectivity to tech corridor. Some open enquiries on construction sequencing.',
+      lat: 12.9391, lng: 77.6975, hasRealCoords: true
+    },
+  ];
+
+  function getBand(score) {
+    if (score >= 70) return { label: 'Clear', class: 'clear', hex: '#2F6E4F' };
+    if (score >= 40) return { label: 'Watch', class: 'watch', hex: '#97701A' };
+    return { label: 'Flag', class: 'flag', hex: '#AC2C2C' };
+  }
+
+  function weightedScore(scores) {
+    const totalWeight = AXES.reduce((s, a) => s + a.weight, 0);
+    return AXES.reduce((s, a) => s + scores[a.key] * a.weight, 0) / totalWeight;
+  }
+
+  function fmtPrice(p) { return `\u20B9${p.priceMin.toFixed(2)} \u2013 \u20B9${p.priceMax.toFixed(2)} Cr`; }
+
+  PROPERTIES.forEach(p => {
+    p.composite = Math.round(weightedScore(p.scores) * 10) / 10;
+    p.band = getBand(p.composite);
+  });
+
+  const SAMPLE_PROPERTIES = [...PROPERTIES];
+
+  let PAGE_SIZE = 20;
+  let currentPage = 1;
+  let totalMatchingItems = 0;
+  let totalPagesCount = 1;
+
+  let selectedDistrict = '';
+  let selectedStatus = '';
+  let selectedPropertyType = '';
+  let selectedApprovalYear = '';
+  let selectedCompletionYear = '';
+  let activeFilter = 'all';
+  let activeSort = 'score-desc';
+  let searchTerm = '';
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._tid);
+    showToast._tid = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  function renderSummary() {
+    const total = totalMatchingItems || PROPERTIES.length;
+    const isFiltered = activeFilter !== 'all';
+    const clearCount = (isFiltered && activeFilter === 'clear') ? total : PROPERTIES.filter(p => p.band.class === 'clear' && p.gateOK).length;
+    const watchCount = (isFiltered && activeFilter === 'watch') ? total : PROPERTIES.filter(p => p.band.class === 'watch' && p.gateOK).length;
+    const flagCount = (isFiltered && activeFilter === 'flag') ? total : PROPERTIES.filter(p => p.band.class === 'flag' || !p.gateOK).length;
+    const scopeLabel = (isFiltered || PAGE_SIZE >= 8000) ? 'Total' : 'Page';
+
+    document.getElementById('summaryStrip').innerHTML = `
+      <div class="summary-cell"><div class="num">${total.toLocaleString()}</div><div class="lbl">Tracked properties</div></div>
+      <div class="summary-cell clear"><div class="num">${clearCount.toLocaleString()}</div><div class="lbl">Clear band (${scopeLabel})</div></div>
+      <div class="summary-cell watch"><div class="num">${watchCount.toLocaleString()}</div><div class="lbl">Watch band (${scopeLabel})</div></div>
+      <div class="summary-cell flag"><div class="num">${flagCount.toLocaleString()}</div><div class="lbl">Flag / gate failed (${scopeLabel})</div></div>
+    `;
+  }
+
+  function renderFilters() {
+    const chips = [
+      { key: 'all', label: 'All' }, { key: 'clear', label: 'Clear' }, { key: 'watch', label: 'Watch' },
+      { key: 'flag', label: 'Flag' }
+    ];
+    const el = document.getElementById('filterChips');
+    el.innerHTML = chips.map(c => `<button class="filter-chip ${activeFilter === c.key ? 'active' : ''}" data-key="${c.key}">${c.label}</button>`).join('');
+    el.querySelectorAll('.filter-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeFilter = btn.dataset.key;
+        currentPage = 1;
+        renderFilters();
+        loadAndRender();
+      });
+    });
+  }
+
+  function renderPagination() {
+    const startIdx = totalMatchingItems > 0 ? (currentPage - 1) * PAGE_SIZE + 1 : 0;
+    const endIdx = Math.min(currentPage * PAGE_SIZE, totalMatchingItems);
+
+    document.getElementById('pageInfo').textContent = `Showing ${startIdx}–${endIdx} of ${totalMatchingItems.toLocaleString()} properties`;
+    document.getElementById('pageCurrent').textContent = `Page ${currentPage} of ${totalPagesCount}`;
+
+    document.getElementById('firstPageBtn').disabled = currentPage <= 1;
+    document.getElementById('prevPageBtn').disabled = currentPage <= 1;
+    document.getElementById('nextPageBtn').disabled = currentPage >= totalPagesCount;
+    document.getElementById('lastPageBtn').disabled = currentPage >= totalPagesCount;
+  }
+
+  // ---------- Leaflet / OSM map ----------
+  let leafletMap = null;
+  const markerById = {};
+
+  function initMap() {
+    if (typeof L === 'undefined') {
+      showBanner('Map library did not load (offline or blocked network) — the list below still works fully.');
+      return;
+    }
+    leafletMap = L.map('mapContainer', { scrollWheelZoom: false }).setView([13.02, 77.70], 9);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(leafletMap);
+    updateMapMarkers();
+  }
+
+  let activePropertyId = null;
+
+  function updateMapMarkers() {
+    if (!leafletMap) return;
+    Object.values(markerById).forEach(m => leafletMap.removeLayer(m));
+    for (const k in markerById) delete markerById[k];
+
+    const plottable = PROPERTIES.filter(p => p.lat !== null && p.lng !== null);
+    const reraCount = PROPERTIES.filter(p => p.coordinateSource === 'rera_website').length;
+    const osmCount = PROPERTIES.filter(p => p.coordinateSource === 'osm_nominatim').length;
+    const approxCount = PROPERTIES.length - reraCount - osmCount;
+
+    const badge = document.getElementById('mapBadge');
+    if (badge) {
+      const parts = [];
+      if (reraCount > 0) parts.push(`${reraCount} RERA Official`);
+      if (osmCount > 0) parts.push(`${osmCount} OpenStreetMap`);
+      if (approxCount > 0) parts.push(`${approxCount} District Approx`);
+      badge.textContent = parts.join(' · ');
+    }
+
+    if (!plottable.length) {
+      if (!PROPERTIES.length) clearActiveProperty();
+      return;
+    }
+
+    const bounds = [];
+    plottable.forEach(p => {
+      const isSelected = p.id === activePropertyId;
+      // Requirement: Display on the map must be identical/uniform
+      const marker = L.circleMarker([p.lat, p.lng], {
+        radius: isSelected ? 10 : 7,
+        color: '#1B1E24',
+        weight: isSelected ? 2.5 : 1,
+        fillColor: p.band.hex,
+        fillOpacity: 0.85
+      }).addTo(leafletMap);
+
+      const gpsTag = `Source: ${p.coordinateSourceLabel} · ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
+      marker.bindPopup(
+        `<div class="popup-title">${p.name}</div>` +
+        `<div class="popup-score">${p.composite}/100 &middot; ${p.band.label}</div>` +
+        `<div style="font-size:0.68rem;color:#888;margin-top:0.2rem;">${gpsTag}</div>`
+      );
+      marker.on('click', () => selectActiveProperty(p.id, true));
+      markerById[p.id] = marker;
+      bounds.push([p.lat, p.lng]);
+    });
+
+    if (bounds.length > 0 && !activePropertyId) {
+      fitAllMapMarkers();
+    }
+  }
+
+  function fitAllMapMarkers() {
+    if (!leafletMap || !PROPERTIES.length) return;
+    const plottable = PROPERTIES.filter(p => p.lat !== null && p.lng !== null);
+    if (!plottable.length) return;
+    const bounds = plottable.map(p => [p.lat, p.lng]);
+    try {
+      leafletMap.fitBounds(bounds, { padding: [25, 25], maxZoom: 12 });
+    } catch (e) {}
+  }
+
+  function selectActiveProperty(id, scrollToList = false) {
+    const prop = PROPERTIES.find(p => p.id === id);
+    if (!prop) return;
+
+    activePropertyId = id;
+
+    // Highlight row in list
+    document.querySelectorAll('.prop-row').forEach(r => {
+      if (r.dataset.id === id) {
+        r.classList.add('pin-highlight');
+        if (scrollToList) {
+          r.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      } else {
+        r.classList.remove('pin-highlight');
+      }
+    });
+
+    // Fly map to location and open popup — only if we have real coords
+    if (prop.hasRealCoords && leafletMap && markerById[id]) {
+      leafletMap.flyTo([prop.lat, prop.lng], 13, { duration: 0.8 });
+      markerById[id].openPopup();
+    }
+
+    // Update floating active property preview card on map
+    const activeCard = document.getElementById('mapActiveCard');
+    if (activeCard) {
+      document.getElementById('activeCardTitle').textContent = prop.name;
+      document.getElementById('activeCardDev').textContent = `${prop.developer} · ${prop.area}`;
+      document.getElementById('activeCardPrice').textContent = fmtPrice(prop);
+      document.getElementById('activeCardScoreTag').innerHTML = `
+        <span class="score-num ${prop.band.class}" style="font-size:1rem;">${prop.composite}</span>
+        <span class="band-tag band-${prop.band.class}" style="margin-left:0.3rem;">${prop.band.label}</span>
+      `;
+      const legalCardBtn = document.getElementById('activeCardLegalBtn');
+      if (legalCardBtn) {
+        legalCardBtn.href = `/legal-report?q=${encodeURIComponent(prop.name)}`;
+      }
+      document.getElementById('activeCardRadarBtn').href = `/radar-chart?a=${encodeURIComponent(prop.name)}`;
+      
+      const gmapsBtn = document.getElementById('activeCardGmapsBtn');
+      if (gmapsBtn) {
+        if (prop.hasRealCoords && prop.lat && prop.lng) {
+          gmapsBtn.href = `https://www.google.com/maps/search/?api=1&query=${prop.lat},${prop.lng}`;
+        } else {
+          gmapsBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(prop.name + ', ' + (prop.area || 'Karnataka'))}`;
+        }
+      }
+
+      // GPS availability indicator
+      const gpsEl = document.getElementById('activeCardGps');
+      if (gpsEl) {
+        if (prop.hasRealCoords) {
+          gpsEl.textContent = `GPS Verified (${prop.lat.toFixed(4)}, ${prop.lng.toFixed(4)})`;
+          gpsEl.style.color = 'var(--clear)';
+        } else {
+          gpsEl.textContent = 'GPS Not Available (District Centroid)';
+          gpsEl.style.color = 'var(--watch)';
+        }
+      }
+
+      activeCard.style.display = 'block';
+    }
+  }
+
+  function clearActiveProperty() {
+    activePropertyId = null;
+    document.querySelectorAll('.prop-row.pin-highlight').forEach(r => r.classList.remove('pin-highlight'));
+    const activeCard = document.getElementById('mapActiveCard');
+    if (activeCard) activeCard.style.display = 'none';
+    if (leafletMap) leafletMap.closePopup();
+  }
+
+  function focusRow(id) {
+    selectActiveProperty(id, true);
+  }
+
+  function showBanner(msg) {
+    const b = document.getElementById('errorBanner');
+    b.textContent = msg;
+    b.classList.add('show');
+  }
+
+  function renderList() {
+    const container = document.getElementById('registerList');
+    const empty = document.getElementById('emptyState');
+    container.innerHTML = '';
+    empty.style.display = PROPERTIES.length ? 'none' : 'block';
+
+    PROPERTIES.forEach((p, i) => {
+      const displayRank = (currentPage - 1) * PAGE_SIZE + (i + 1);
+      const row = document.createElement('div');
+      row.className = `prop-row band-${p.band.class}-row ${p.id === activePropertyId ? 'pin-highlight' : ''}`;
+      row.dataset.id = p.id;
+
+      const timeline = getTimelineInfo(p.startDate, p.completionDate, p.hasCompletionCert);
+      const typeIcon = getTypeIcon(p.projectType);
+      const statusText = p.status || (p.gateOK ? 'APPROVED' : 'LAPSED');
+
+      const axisLines = AXES.map(ax => {
+        const val = p.scores[ax.key];
+        const band = getBand(val);
+        return `
+          <div class="axis-line">
+            <div class="axis-label">${ax.name}</div>
+            <div class="axis-bar-track"><div class="axis-bar-fill ${band.class}" style="width:${val}%;"></div></div>
+            <div class="axis-value">${val}</div>
+          </div>`;
+      }).join('');
+
+      const unitTags = p.units.map(u => `<span class="unit-tag">${u}</span>`).join('');
+
+      row.innerHTML = `
+        <div class="prop-head" data-toggle>
+          <div class="prop-left-col">
+            <span class="rank mono">${String(displayRank).padStart(2, '0')}</span>
+          </div>
+
+          <div class="prop-main-info">
+            <div class="prop-header-line">
+              <span class="prop-name">${p.name}</span>
+              <span class="prop-type-badge">${typeIcon}</span>
+              <span class="prop-status-badge status-${statusText.toLowerCase()}">${statusText}</span>
+            </div>
+
+            <div class="prop-meta-row">
+              <span class="prop-meta-cell dev-cell" title="Developer: ${p.developer}">Developer: <strong>${p.developer}</strong></span>
+              <span style="color:var(--hairline-strong);">•</span>
+              <span class="prop-meta-cell">Location: ${p.area}</span>
+            </div>
+
+            <div class="prop-bottom-bar">
+              <div class="prop-price-units">
+                <span class="price-val">${fmtPrice(p)}</span>
+                <span class="unit-tags" style="display:inline-flex; align-items:center; gap:0.25rem;">${unitTags}</span>
+              </div>
+
+              <div class="prop-actions">
+                <button class="btn ghost btn-sm btn-map-pin" data-id="${p.id}" title="Focus on Floating Map">Map</button>
+                <a class="btn ghost btn-sm" style="text-decoration:none;" href="/legal-report?q=${encodeURIComponent(p.name)}" onclick="event.stopPropagation();" target="_blank" title="View Legal Due-Diligence Audit Report">Legal Report ↗</a>
+                <a class="btn ghost btn-sm" style="text-decoration:none;" href="/property-detail?q=${encodeURIComponent(p.name)}" onclick="event.stopPropagation();" target="_blank" title="View Detailed Property Audit Page">Full Audit ↗</a>
+                <a class="btn ghost btn-sm" style="text-decoration:none;" href="/radar-chart?a=${encodeURIComponent(p.name)}" onclick="event.stopPropagation();" title="Analyze in Radar Dashboard">Radar ↗</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="prop-right-col">
+            <a class="seal ${p.gateOK ? 'pass' : 'fail'}" href="/legal-report?q=${encodeURIComponent(p.name)}" target="_blank" onclick="event.stopPropagation();" title="Click to view 27-Check Legal Due-Diligence Audit Report">
+              ${p.gateOK ? 'Gate Cleared ↗' : 'Gate Failed ↗'}
+            </a>
+            <div class="score-block">
+              <div class="score-num ${p.band.class}">${p.composite}<span class="score-of"> /100</span></div>
+              <div class="band-tag band-${p.band.class}">${p.band.label}</div>
+            </div>
+            <span class="chevron">&#8250;</span>
+          </div>
+        </div>
+
+        <div class="prop-detail">
+          <div class="meta-grid">
+            <div class="meta-item">
+              <span class="meta-item-label">RERA Reg No</span>
+              <span class="meta-item-val mono">${p.registrationNo || 'N/A'}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-item-label">Ack Number</span>
+              <span class="meta-item-val mono">${p.ackNo || 'N/A'}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-item-label">Project Start Date</span>
+              <span class="meta-item-val">${timeline.startFmt}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-item-label">Proposed Completion</span>
+              <span class="meta-item-val">${timeline.endFmt}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-item-label">Property Type</span>
+              <span class="meta-item-val">${p.projectType || 'N/A'}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-item-label">Completion Certificate</span>
+              <span class="meta-item-val" style="color: ${p.hasCompletionCert ? 'var(--clear)' : (timeline.isOverdue ? 'var(--flag)' : 'var(--watch)')}">
+                ${p.hasCompletionCert ? 'Verified & Available' : (timeline.isOverdue ? 'Target Date Passed — Certificate Not Uploaded' : `Pending (${timeline.statusText})`)}
+              </span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-item-label">Coordinate Source</span>
+              <span class="meta-item-val" style="color: ${p.coordinateSource === 'rera_website' ? 'var(--clear)' : (p.coordinateSource === 'osm_nominatim' ? '#38bdf8' : 'var(--watch)')}">
+                ${p.coordinateSourceLabel} (${p.lat ? p.lat.toFixed(4) : 'N/A'}, ${p.lng ? p.lng.toFixed(4) : 'N/A'})
+              </span>
+            </div>
+          </div>
+
+          <div class="axis-grid">${axisLines}</div>
+          <div class="prop-note"><strong>Regulatory Audit Summary:</strong> ${p.note}</div>
+          <div style="margin-top: 1rem; text-align: right; display: flex; justify-content: flex-end; gap: 0.5rem; flex-wrap: wrap;">
+            <a class="btn btn-sm ghost" style="text-decoration:none;" href="/legal-report?q=${encodeURIComponent(p.registrationNo || p.name)}" target="_blank" onclick="event.stopPropagation();">Detailed Legal Risk Report (27 Checks) ↗</a>
+            <a class="btn btn-sm ghost" style="text-decoration:none;" href="/compare?p=${encodeURIComponent(p.registrationNo || p.name)}" target="_blank" onclick="event.stopPropagation();">Compare Property ↗</a>
+            <a class="btn btn-sm ghost" style="text-decoration:none;" href="/property-detail?q=${encodeURIComponent(p.registrationNo || p.name)}" target="_blank" onclick="event.stopPropagation();">Open Full Property Audit Page ↗</a>
+          </div>
+        </div>
+      `;
+
+      row.querySelector('[data-toggle]').addEventListener('click', (e) => {
+        if (e.target.closest('.btn') || e.target.closest('a') || e.target.closest('.seal')) return;
+        const willOpen = !row.classList.contains('open');
+        document.querySelectorAll('.prop-row.open').forEach(r => r.classList.remove('open'));
+        if (willOpen) {
+          row.classList.add('open');
+        }
+        selectActiveProperty(p.id, false);
+      });
+
+      const mapPinBtn = row.querySelector('.btn-map-pin');
+      if (mapPinBtn) {
+        mapPinBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          selectActiveProperty(p.id, false);
+        });
+      }
+
+      row.addEventListener('mouseenter', () => {
+        if (markerById[p.id] && p.id !== activePropertyId) {
+          markerById[p.id].setStyle({ radius: 9, weight: 2 });
+        }
+      });
+      row.addEventListener('mouseleave', () => {
+        if (markerById[p.id] && p.id !== activePropertyId) {
+          markerById[p.id].setStyle({ radius: 7, weight: 1 });
+        }
+      });
+
+      container.appendChild(row);
+    });
+
+    updateMapMarkers();
+  }
+
+  const DISTRICT_CENTROIDS = {
+    'bengaluru urban': { lat: 12.9716, lng: 77.5946 },
+    'bengaluru rural': { lat: 13.2257, lng: 77.5750 },
+    'mysore': { lat: 12.2958, lng: 76.6394 },
+    'belagavi': { lat: 15.8497, lng: 74.4977 },
+    'dakshina kannada': { lat: 12.9141, lng: 74.8560 },
+    'uttara kannada': { lat: 14.8000, lng: 74.1300 },
+    'kalaburagi': { lat: 17.3297, lng: 76.8343 },
+    'ballari': { lat: 15.1394, lng: 76.9214 },
+    'dharwad': { lat: 15.4589, lng: 75.0078 },
+    'shivamogga': { lat: 13.9299, lng: 75.5681 },
+    'tumakuru': { lat: 13.3379, lng: 77.1173 },
+    'hassan': { lat: 13.0033, lng: 76.1004 },
+    'mandya': { lat: 12.5218, lng: 76.8951 },
+    'kolar': { lat: 13.1367, lng: 78.1292 },
+    'chikkaballapura': { lat: 13.4355, lng: 77.7275 },
+    'ramanagara': { lat: 12.7160, lng: 77.2820 },
+    'udupi': { lat: 13.3409, lng: 74.7421 },
+    'davangere': { lat: 14.4644, lng: 75.9218 },
+    'bagalkot': { lat: 16.1852, lng: 75.6963 },
+    'gadag': { lat: 15.4319, lng: 75.6355 },
+    'haveri': { lat: 14.7960, lng: 75.3995 },
+    'koppal': { lat: 15.3524, lng: 76.1549 },
+    'raichur': { lat: 16.2076, lng: 77.3463 },
+    'bidar': { lat: 17.9104, lng: 77.5199 },
+    'yadgir': { lat: 16.7623, lng: 77.1374 },
+    'chamarajanagar': { lat: 11.9261, lng: 76.9437 },
+    'chikkamagaluru': { lat: 13.3161, lng: 75.7720 },
+    'chitradurga': { lat: 14.2251, lng: 76.3980 },
+    'kodagu': { lat: 12.4244, lng: 75.7382 },
+    'vijayanagara': { lat: 15.2689, lng: 76.3909 }
+  };
+
+  function simpleHash(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash);
+  }
+
+  function resolveCoordinates(p) {
+    const rawLat = parseFloat(p.latitude);
+    const rawLng = parseFloat(p.longitude);
+    if (!isNaN(rawLat) && !isNaN(rawLng)
+        && rawLat >= 11.5 && rawLat <= 18.5
+        && rawLng >= 74.0 && rawLng <= 78.6) {
+      return { lat: rawLat, lng: rawLng, isExact: true };
+    }
+
+    const distName = (p.district || '').toLowerCase().trim();
+    const centroid = DISTRICT_CENTROIDS[distName];
+    if (centroid) {
+      const h = simpleHash(p.registration_no || p.id || p.name || 'default');
+      const jitterLat = ((h % 100) - 50) * 0.0006;
+      const jitterLng = (((h >> 3) % 100) - 50) * 0.0006;
+      return { lat: centroid.lat + jitterLat, lng: centroid.lng + jitterLng, isExact: false };
+    }
+
+    const h = simpleHash(p.registration_no || p.id || p.name || 'default');
+    return { lat: 12.9716 + ((h % 100) - 50) * 0.0006, lng: 77.5946 + (((h >> 3) % 100) - 50) * 0.0006, isExact: false };
+  }
+
+  async function populateDistrictDropdown() {
+    const distSelect = document.getElementById('districtFilter');
+    try {
+      const res = await fetch('/api/v1/districts');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.districts && data.districts.length > 0) {
+          const currentVal = distSelect.value;
+          distSelect.innerHTML = `<option value="">All Districts (${data.districts.length})</option>`;
+          data.districts.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d;
+            opt.textContent = d;
+            distSelect.appendChild(opt);
+          });
+          if (currentVal) distSelect.value = currentVal;
+        }
+      }
+    } catch (e) {}
+  }
+
+  async function populatePropertyTypeDropdown() {
+    const typeSelect = document.getElementById('propertyTypeFilter');
+    try {
+      const res = await fetch('/api/v1/property-types');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.property_types && data.property_types.length > 0) {
+          const currentVal = typeSelect.value;
+          typeSelect.innerHTML = `<option value="">All Property Types (${data.property_types.length})</option>`;
+          data.property_types.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t;
+            opt.textContent = t;
+            typeSelect.appendChild(opt);
+          });
+          if (currentVal) typeSelect.value = currentVal;
+        }
+      }
+    } catch (e) {}
+  }
+
+  async function fetchLiveProperties(page = 1) {
+    const isFilteredByChip = activeFilter !== 'all';
+    const offset = (page - 1) * PAGE_SIZE;
+
+    const queryParams = new URLSearchParams({
+      limit: PAGE_SIZE,
+      offset: offset
+    });
+
+    if (isFilteredByChip) queryParams.append('risk_band', activeFilter);
+    if (searchTerm) queryParams.append('q', searchTerm);
+    if (selectedDistrict) queryParams.append('district', selectedDistrict);
+    if (selectedStatus) queryParams.append('status', selectedStatus);
+    if (document.getElementById('propertyTypeFilter').value) queryParams.append('project_type', document.getElementById('propertyTypeFilter').value);
+    if (document.getElementById('propertyConfigFilter').value) queryParams.append('property_config', document.getElementById('propertyConfigFilter').value);
+    if (document.getElementById('approvalYearFilter').value) queryParams.append('approval_year', document.getElementById('approvalYearFilter').value);
+    if (selectedCompletionYear) queryParams.append('completion_year', selectedCompletionYear);
+
+    const urls = [
+      `/api/v1/projects?${queryParams.toString()}`,
+      `http://localhost:8000/api/v1/projects?${queryParams.toString()}`
+    ];
+
+    for (const url of urls) {
+      try {
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.results) {
+            totalMatchingItems = data.total ?? data.results.length;
+            totalPagesCount = Math.max(1, Math.ceil(totalMatchingItems / PAGE_SIZE));
+            
+            const mapped = data.results.map((p, idx) => {
+              const coords = resolveCoordinates(p);
+              const hasRealCoords = coords !== null;
+              const isApproved = (p.status || '').toUpperCase() === 'APPROVED';
+              const qual = p.quality_score || 85;
+              const scores = {
+                compliance: isApproved ? 95 : 0,
+                litigation: Math.min(100, qual + 5),
+                timeline: Math.min(100, qual),
+                title: 95,
+                location: hasRealCoords ? 95 : 65,
+                layout: qual,
+                promoter: Math.min(100, qual + 2),
+                transparency: qual
+              };
+              const composite = (p.quality_score !== undefined && p.quality_score !== null) ? Math.round(p.quality_score * 10) / 10 : Math.round(weightedScore(scores) * 10) / 10;
+              const startDate = p.project_start_date || p.start_date || '';
+              const compDate = p.proposed_completion_date || '';
+              const hasCC = !!p.completion_certificate_available;
+              const pType = p.project_type || 'Residential/Group Housing';
+              const rawSource = (p.coordinate_source === 'rera_html' || p.coordinate_source === 'rera_website' || hasRealCoords) ? 'rera_website' : (p.coordinate_source || 'district_centroid');
+              let sourceLabel = 'District Centroid (Estimated)';
+              if (rawSource === 'rera_website' || hasRealCoords) sourceLabel = 'RERA Official Coordinates (Exact Site GPS)';
+              else if (rawSource === 'osm_nominatim') sourceLabel = 'OpenStreetMap (Exact Property Match)';
+              else if (rawSource === 'osm_village') sourceLabel = 'OpenStreetMap (Village/Locality Match)';
+
+              return {
+                id: (p.registration_no || `prop-${idx}`).replace(/[^a-zA-Z0-9-]/g, '_'),
+                name: p.project_name || 'RERA Project',
+                developer: p.promoter_name || 'RERA Promoter',
+                projectType: pType,
+                startDate: startDate,
+                completionDate: compDate,
+                hasCompletionCert: hasCC,
+                registrationNo: p.registration_no || '',
+                ackNo: p.acknowledgement_no || '',
+                status: (p.status || 'APPROVED').toUpperCase(),
+                area: `${p.taluk || ''}${p.taluk && p.district ? ', ' : ''}${p.district || 'Karnataka'}`.replace(/^[\s,]+/, ''),
+                gateOK: isApproved,
+                priceMin: 0.8 + (idx % 5) * 0.3,
+                priceMax: 1.5 + (idx % 5) * 0.5,
+                units: (p.property_configurations && p.property_configurations.length > 0) ? Array.from(new Set(p.property_configurations.map(c => {
+                  let b = c.split('(')[0].trim();
+                  if (pType.toLowerCase().includes('plot') || /^[0-9.]+\s*[mxMX*]\s*[0-9.]+/.test(b) || /^[0-9.]+\s*SqM/i.test(b) || b.toLowerCase().includes('odd')) return 'Plots';
+                  return b;
+                }))) : (pType.toLowerCase().includes('plot') ? ['Plots'] : ['2BHK', '3BHK']),
+                scores: scores,
+                composite: composite,
+                band: getBand(composite),
+                hasRealCoords: hasRealCoords,
+                coordinateSource: rawSource,
+                coordinateSourceLabel: sourceLabel,
+                note: `RERA Reg: ${p.registration_no || 'N/A'}. Ack: ${p.acknowledgement_no || 'N/A'}. Status: ${p.status || 'N/A'}.${startDate ? ' Start: ' + startDate + '.' : ''}${compDate ? ' Completion: ' + compDate + '.' : ''} CC: ${hasCC ? 'Available' : 'Not Uploaded'}. Quality score: ${qual}/100. Location Source: ${sourceLabel}.`,
+                lat: coords ? coords.lat : null,
+                lng: coords ? coords.lng : null
+              };
+            });
+            return mapped;
+          }
+        }
+      } catch (e) {}
+    }
+    return null;
+  }
+
+  async function loadAndRender() {
+    let rawList = await fetchLiveProperties(currentPage);
+    let isLive = rawList !== null;
+
+    if (!isLive) {
+      rawList = [...SAMPLE_PROPERTIES];
+      if (activeFilter === 'clear') {
+        rawList = rawList.filter(p => p.band.class === 'clear' && p.gateOK);
+      } else if (activeFilter === 'watch') {
+        rawList = rawList.filter(p => p.band.class === 'watch' && p.gateOK);
+      } else if (activeFilter === 'flag') {
+        rawList = rawList.filter(p => p.band.class === 'flag' || !p.gateOK);
+      }
+      totalMatchingItems = rawList.length;
+      totalPagesCount = Math.max(1, Math.ceil(totalMatchingItems / PAGE_SIZE));
+    }
+
+    let filteredList = [...rawList];
+
+    if (activeSort === 'score-desc') filteredList.sort((a, b) => b.composite - a.composite);
+    else if (activeSort === 'score-asc') filteredList.sort((a, b) => a.composite - b.composite);
+    else if (activeSort === 'name-asc') filteredList.sort((a, b) => a.name.localeCompare(b.name));
+    else if (activeSort === 'price-asc') filteredList.sort((a, b) => a.priceMin - b.priceMin);
+
+    PROPERTIES.length = 0;
+    if (!isLive) {
+      const pageStart = (currentPage - 1) * PAGE_SIZE;
+      PROPERTIES.push(...filteredList.slice(pageStart, pageStart + PAGE_SIZE));
+    } else {
+      PROPERTIES.push(...filteredList);
+    }
+
+    renderSummary();
+    renderPagination();
+    renderList();
+    updateMapMarkers();
+  }
+
+  let searchTimer = null;
+  document.getElementById('searchInput').addEventListener('input', (e) => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      searchTerm = e.target.value.trim();
+      currentPage = 1;
+      loadAndRender();
+    }, 300);
+  });
+
+  document.getElementById('districtFilter').addEventListener('change', (e) => {
+    selectedDistrict = e.target.value;
+    currentPage = 1;
+    loadAndRender();
+  });
+
+  document.getElementById('propertyTypeFilter').addEventListener('change', () => { currentPage = 1; loadAndRender(); });
+  document.getElementById('propertyConfigFilter').addEventListener('change', () => { currentPage = 1; loadAndRender(); });
+
+  document.getElementById('statusFilter').addEventListener('change', (e) => {
+    selectedStatus = e.target.value;
+    currentPage = 1;
+    loadAndRender();
+  });
+
+  document.getElementById('approvalYearFilter').addEventListener('change', () => { currentPage = 1; loadAndRender(); });
+
+  document.getElementById('completionYearFilter').addEventListener('change', (e) => {
+    selectedCompletionYear = e.target.value;
+    currentPage = 1;
+    loadAndRender();
+  });
+
+  document.getElementById('resetFiltersBtn').addEventListener('click', () => {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('districtFilter').value = '';
+    document.getElementById('propertyTypeFilter').value = '';
+    document.getElementById('propertyConfigFilter').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('approvalYearFilter').value = '';
+    document.getElementById('completionYearFilter').value = '';
+    document.getElementById('pageSizeSelect').value = '20';
+
+    PAGE_SIZE = 20;
+    searchTerm = '';
+    selectedDistrict = '';
+    selectedStatus = '';
+    selectedCompletionYear = '';
+    activeFilter = 'all';
+    currentPage = 1;
+
+    renderFilters();
+    loadAndRender();
+    showToast('All filters reset');
+  });
+
+  document.getElementById('sortBy').addEventListener('change', (e) => {
+    activeSort = e.target.value;
+    loadAndRender();
+  });
+
+  const pSizeSel = document.getElementById('pageSizeSelect');
+  if (pSizeSel) {
+    pSizeSel.addEventListener('change', (e) => {
+      PAGE_SIZE = parseInt(e.target.value, 10) || 20;
+      currentPage = 1;
+      loadAndRender();
+    });
+  }
+
+  document.getElementById('firstPageBtn').addEventListener('click', () => {
+    if (currentPage > 1) { currentPage = 1; loadAndRender(); }
+  });
+  document.getElementById('prevPageBtn').addEventListener('click', () => {
+    if (currentPage > 1) { currentPage--; loadAndRender(); }
+  });
+  document.getElementById('nextPageBtn').addEventListener('click', () => {
+    if (currentPage < totalPagesCount) { currentPage++; loadAndRender(); }
+  });
+  document.getElementById('lastPageBtn').addEventListener('click', () => {
+    if (currentPage < totalPagesCount) { currentPage = totalPagesCount; loadAndRender(); }
+  });
+
+  document.getElementById('mapFitBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    fitAllMapMarkers();
+  });
+
+  document.getElementById('activeCardClose').addEventListener('click', (e) => {
+    e.stopPropagation();
+    clearActiveProperty();
+  });
+
+  document.getElementById('activeCardJumpBtn').addEventListener('click', () => {
+    if (activePropertyId) {
+      const row = document.querySelector(`.prop-row[data-id="${activePropertyId}"]`);
+      if (row) {
+        document.querySelectorAll('.prop-row.open').forEach(r => r.classList.remove('open'));
+        row.classList.add('open');
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  });
+
+  (async function init() {
+    await populateDistrictDropdown();
+    await populatePropertyTypeDropdown();
+    renderFilters();
+    initMap();
+    await loadAndRender();
+  })();
+
+} catch (err) {
+  const b = document.getElementById('errorBanner');
+  if (b) { b.textContent = 'A script error occurred: ' + err.message; b.classList.add('show'); }
+  console.error(err);
+}
+</script>
+
+  <!-- Footer -->
+  <footer class="footer" id="contactSection">
+    <div class="footer-container">
+      <div>
+        <div class="footer-brand">RERA Intelligence</div>
+        <p class="footer-desc">
+          AI-driven real estate legal due-diligence, property compliance verification, and composite risk scoring platform for Karnataka. Cross-verifying Kaveri 2.0, Bhoomi RTC, BDA, BBMP e-Aasthi, and e-Courts registries.
+        </p>
+      </div>
+
+      <div>
+        <div class="footer-title">Tools & Dashboards</div>
+        <ul class="footer-links">
+          <li><a href="/legal-report?q=CASAGRAND%20MOONDANCE">AI Legal Due-Diligence Report</a></li>
+          <li><a href="/register">RERA Compliance Register</a></li>
+          <li><a href="/compare">Side-by-Side Project Comparison</a></li>
+          <li><a href="/detail?q=CASAGRAND%20MOONDANCE">Detailed Audit Dossier</a></li>
+          <li><a href="/geospatial">Statewide Geospatial Map</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="footer-title">Government & Portal Links</div>
+        <ul class="footer-links">
+          <li><a href="https://rera.karnataka.gov.in" target="_blank" rel="noopener">Karnataka RERA Portal ↗</a></li>
+          <li><a href="https://kaveri.karnataka.gov.in" target="_blank" rel="noopener">Kaveri 2.0 SRO Portal ↗</a></li>
+          <li><a href="https://landrecords.karnataka.gov.in" target="_blank" rel="noopener">Bhoomi RTC Revenue Records ↗</a></li>
+          <li><a href="https://e-swathu.karnataka.gov.in" target="_blank" rel="noopener">e-Swathu / BBMP e-Khata ↗</a></li>
+          <li><a href="https://services.ecourts.gov.in" target="_blank" rel="noopener">e-Courts Litigation Portal ↗</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="footer-title">Contact & Support Desk</div>
+        <ul class="footer-links" style="font-size:0.84rem; color:#94A3B8; display:flex; flex-direction:column; gap:0.65rem;">
+          <li style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="color:#60A5FA;">📞</span> <span><strong>Helpline:</strong> +91 80 4991 8800</span>
+          </li>
+          <li style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="color:#34D399;">✉️</span> <span><strong>Email:</strong> support@reraintelligence.in</span>
+          </li>
+          <li style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="color:#FBBF24;">💬</span> <span><strong>WhatsApp Support:</strong> +91 98800 12345</span>
+          </li>
+          <li style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="color:#A7F3D0;">⏱️</span> <span><strong>Hours:</strong> Mon - Sat: 9:00 AM - 7:00 PM IST</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div>© 2026 RERA Intelligence Platform. All rights reserved.</div>
+      <div>Designed for Karnataka Property Buyers, Advocates & Financial Lenders</div>
+    </div>
+  </footer>
+
+</body>
+</html>

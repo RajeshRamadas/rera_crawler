@@ -1,0 +1,8 @@
+psycopg2-binary
+pytest
+osmium
+Pillow
+requests
+fastapi
+uvicorn
+httpx

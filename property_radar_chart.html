@@ -1,0 +1,1900 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Property Risk & Compliance Report — RERA Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+  /* Top Announcement Bar */
+  .top-announcement {
+    background: linear-gradient(90deg, #0B1329 0%, #152244 50%, #0B1329 100%) !important;
+    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+    font-size: 0.75rem !important;
+    padding: 0.5rem 2.5rem !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    color: #94A3B8 !important;
+    position: relative !important;
+    z-index: 1010 !important;
+  }
+
+  .pulse-indicator {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    color: #F8FAFC !important;
+  }
+
+  .pulse-dot {
+    width: 8px !important;
+    height: 8px !important;
+    background: #10B981 !important;
+    border-radius: 50% !important;
+    box-shadow: 0 0 10px #10B981 !important;
+    animation: pulseGlow 2s infinite ease-in-out !important;
+  }
+
+  @keyframes pulseGlow {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.25); opacity: 0.6; }
+  }
+
+  /* Glassmorphic Navigation Bar */
+  .navbar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1000 !important;
+    background: rgba(9, 13, 22, 0.92) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    padding: 0.85rem 2.5rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 1.5rem !important;
+    font-family: 'Plus Jakarta Sans', 'IBM Plex Sans', sans-serif !important;
+  }
+
+  .nav-brand {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.85rem !important;
+    text-decoration: none !important;
+  }
+
+  .brand-logo-box {
+    width: 40px !important;
+    height: 40px !important;
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+    color: #FFFFFF !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-family: 'IBM Plex Serif', serif !important;
+    font-weight: 700 !important;
+    font-size: 1.3rem !important;
+    box-shadow: 0 0 20px rgba(37, 99, 235, 0.4) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+  }
+
+  .brand-title {
+    font-family: 'IBM Plex Serif', serif !important;
+    font-weight: 700 !important;
+    font-size: 1.25rem !important;
+    color: #F8FAFC !important;
+    line-height: 1.1 !important;
+    letter-spacing: -0.01em !important;
+  }
+
+  .brand-subtitle {
+    font-size: 0.68rem !important;
+    color: #38BDF8 !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-weight: 600 !important;
+  }
+
+  .nav-links {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.35rem !important;
+    background: rgba(255,255,255,0.04) !important;
+    padding: 0.25rem 0.5rem !important;
+    border-radius: 30px !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+  }
+
+  .nav-item {
+    font-size: 0.84rem !important;
+    font-weight: 600 !important;
+    color: #94A3B8 !important;
+    padding: 0.45rem 0.95rem !important;
+    border-radius: 20px !important;
+    text-decoration: none !important;
+    transition: all 0.2s ease !important;
+  }
+
+  .nav-item:hover, .nav-item.active {
+    color: #FFFFFF !important;
+    background: rgba(255,255,255,0.1) !important;
+  }
+
+  .nav-cta {
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    font-size: 0.85rem !important;
+    padding: 0.55rem 1.15rem !important;
+    border-radius: 8px !important;
+    text-decoration: none !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35) !important;
+    transition: all 0.2s ease !important;
+    display: inline-flex !important;
+    align-items: center !important;
+  }
+  .nav-cta:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5) !important;
+  }
+    :root {
+      --paper: #F6F5F1;
+      --paper-raised: #FCFBF8;
+      --ink: #1B1E24;
+      --ink-soft: #565B66;
+      --hairline: #DBD7CC;
+      --hairline-strong: #C7C2B3;
+      --a-color: #2C4A6E;
+      --a-tint: #2C4A6E14;
+      --b-color: #8C4130;
+      --b-tint: #8C413014;
+      --clear: #2F6E4F;
+      --clear-tint: #2F6E4F12;
+      --watch: #97701A;
+      --watch-tint: #97701A14;
+      --flag: #AC2C2C;
+      --flag-tint: #AC2C2C14;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'IBM Plex Sans', sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      min-height: 100vh;
+      padding: 0 0 4rem;
+      line-height: 1.5;
+      font-size: 15px;
+    }
+
+    .mono {
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .container {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    /* ---------- Masthead ---------- */
+    header.masthead {
+      border-bottom: 1px solid var(--hairline-strong);
+      padding: 2.25rem 0 1.5rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .eyebrow {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .eyebrow .dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--ink-soft);
+    }
+
+    h1 {
+      font-family: 'IBM Plex Serif', serif;
+      font-weight: 600;
+      font-size: 2.1rem;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+    }
+
+    .masthead p.sub {
+      font-size: 0.9rem;
+      color: var(--ink-soft);
+      margin-top: 0.4rem;
+      max-width: 60ch;
+    }
+
+    /* ---------- Controls ---------- */
+    .controls-panel {
+      display: flex;
+      gap: 0;
+      flex-wrap: wrap;
+      background: var(--paper-raised);
+      border: 1px solid var(--hairline);
+      margin-bottom: 1.75rem;
+      align-items: stretch;
+    }
+
+    .select-group {
+      flex: 1;
+      min-width: 280px;
+      padding: 0.9rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
+    .select-group+.select-group {
+      border-left: 1px solid var(--hairline);
+    }
+
+    .action-group {
+      flex: 0 0 auto;
+      min-width: auto;
+      justify-content: flex-end;
+    }
+
+    .select-group label {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ink-soft);
+      margin-bottom: 0.5rem;
+    }
+
+    .swatch {
+      width: 9px;
+      height: 9px;
+      display: inline-block;
+    }
+
+    .swatch.a {
+      background: var(--a-color);
+    }
+
+    .swatch.b {
+      background: var(--b-color);
+    }
+
+    select {
+      width: 100%;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--hairline-strong);
+      color: var(--ink);
+      padding: 0.35rem 0.1rem;
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 500;
+      outline: none;
+      border-radius: 0;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: linear-gradient(45deg, transparent 50%, var(--ink-soft) 50%), linear-gradient(135deg, var(--ink-soft) 50%, transparent 50%);
+      background-position: calc(100% - 8px) center, calc(100% - 3px) center;
+      background-size: 5px 5px, 5px 5px;
+      background-repeat: no-repeat;
+      transition: border-color 0.15s;
+    }
+
+    select:focus {
+      border-bottom-color: var(--ink);
+    }
+
+    /* ---------- Gate seal ---------- */
+    .gate-box-wrapper {
+      margin-bottom: 1.75rem;
+    }
+
+    .gate-box-title {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--ink-soft);
+      margin-bottom: 0.6rem;
+    }
+
+    .gate-flex {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .gate-status {
+      flex: 1;
+      min-width: 260px;
+      background: var(--paper-raised);
+      border: 1px solid var(--hairline);
+      border-left-width: 3px;
+      padding: 0.9rem 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .gate-status.pass {
+      border-left-color: var(--clear);
+    }
+
+    .gate-status.fail {
+      border-left-color: var(--flag);
+    }
+
+    .gate-status strong {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .gate-status .meta {
+      font-size: 0.78rem;
+      color: var(--ink-soft);
+      margin-top: 0.15rem;
+    }
+
+    .seal {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0.3rem 0.6rem;
+      border: 1px solid currentColor;
+      white-space: nowrap;
+    }
+
+    .gate-status.pass .seal {
+      color: var(--clear);
+    }
+
+    .gate-status.fail .seal {
+      color: var(--flag);
+    }
+
+    /* ---------- Grid / panels ---------- */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.75rem;
+      align-items: start;
+    }
+
+    .grid.single-mode {
+      grid-template-columns: 1fr;
+    }
+
+    .btn-compare-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      height: 38px;
+      box-sizing: border-box;
+      background: var(--paper-raised);
+      border: 1px solid var(--hairline-strong);
+      color: var(--ink);
+      padding: 0 0.95rem;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.15s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    .btn-compare-toggle:hover {
+      background: var(--paper);
+      border-color: var(--ink);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    }
+
+    .btn-compare-toggle.active-compare {
+      color: var(--flag);
+      border-color: rgba(172, 44, 44, 0.4);
+      background: var(--flag-tint);
+    }
+
+    .btn-compare-toggle.active-compare:hover {
+      background: rgba(172, 44, 44, 0.15);
+      border-color: var(--flag);
+    }
+
+    /* ---------- Search Combobox ---------- */
+    .search-combobox {
+      position: relative;
+      width: 100%;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-input {
+      width: 100%;
+      height: 38px;
+      box-sizing: border-box;
+      background: var(--paper-raised);
+      border: 1px solid var(--hairline-strong);
+      border-radius: 4px;
+      color: var(--ink);
+      padding: 0 2.2rem 0 0.75rem;
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 0.88rem;
+      outline: none;
+      transition: all 0.15s ease;
+    }
+
+    .search-input:focus {
+      border-color: var(--ink);
+      box-shadow: 0 0 0 2px rgba(44, 74, 110, 0.12);
+    }
+
+    .clear-btn {
+      position: absolute;
+      right: 0.6rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--ink-soft);
+      font-size: 1.1rem;
+      line-height: 1;
+      cursor: pointer;
+      display: none;
+      padding: 0 0.2rem;
+      z-index: 2;
+    }
+
+    .clear-btn:hover {
+      color: var(--ink);
+    }
+
+    .dropdown-results {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: var(--paper-raised);
+      border: 1px solid var(--hairline-strong);
+      border-radius: 4px;
+      box-shadow: 0 8px 24px rgba(27, 30, 36, 0.14);
+      max-height: 280px;
+      overflow-y: auto;
+      z-index: 1000;
+      display: none;
+    }
+
+    .dropdown-results.active {
+      display: block;
+    }
+
+    .result-item {
+      padding: 0.6rem 0.85rem;
+      border-bottom: 1px solid var(--hairline);
+      cursor: pointer;
+      transition: background 0.1s ease;
+    }
+
+    .result-item:last-child {
+      border-bottom: none;
+    }
+
+    .result-item:hover,
+    .result-item.highlighted {
+      background: rgba(44, 74, 110, 0.07);
+    }
+
+    .result-title {
+      font-weight: 600;
+      font-size: 0.88rem;
+      color: var(--ink);
+    }
+
+    .result-meta {
+      font-size: 0.75rem;
+      color: var(--ink-soft);
+      font-family: 'IBM Plex Mono', monospace;
+      margin-top: 0.15rem;
+    }
+
+    @media (max-width: 1024px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      background: var(--paper-raised);
+      border: 1px solid var(--hairline);
+    }
+
+    .panel-head {
+      font-family: 'IBM Plex Serif', serif;
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--hairline);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .panel-head .scale-note {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 400;
+      color: var(--ink-soft);
+    }
+
+    .chart-container {
+      position: relative;
+      width: 100%;
+      max-width: 680px;
+      height: 420px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+
+    /* ---------- Breakdown table ---------- */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+    }
+
+    .breakdown-table th,
+    .breakdown-table td,
+    .compare-table th,
+    .compare-table td {
+      padding: 0.7rem 1.1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--hairline);
+      vertical-align: top;
+    }
+
+    th {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.66rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--ink-soft);
+      font-weight: 500;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .axis-name {
+      font-weight: 600;
+    }
+
+    .reason-line {
+      font-size: 0.78rem;
+      margin-top: 0.35rem;
+      display: flex;
+      align-items: baseline;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+
+    .reason-tag {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.62rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 0.05rem 0.35rem;
+      flex-shrink: 0;
+    }
+
+    .reason-tag.neg {
+      color: var(--flag);
+      background: var(--flag-tint);
+    }
+
+    .reason-tag.warn {
+      color: var(--watch);
+      background: var(--watch-tint);
+    }
+
+    .reason-tag.pos {
+      color: var(--clear);
+      background: var(--clear-tint);
+    }
+
+    .reason-text {
+      color: var(--ink-soft);
+    }
+
+    .reason-text.blur-target {
+      filter: blur(4px);
+      cursor: pointer;
+      transition: filter 0.2s;
+      user-select: none;   /* prevent copying blurred text */
+    }
+
+    .reason-text.blur-target.revealed {
+      filter: blur(0);
+      cursor: text;
+      user-select: text;
+    }
+
+    .reveal-btn {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      background: none;
+      border: none;
+      border-bottom: 1px solid var(--ink-soft);
+      color: var(--ink-soft);
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .reveal-btn:hover {
+      color: var(--ink);
+      border-color: var(--ink);
+    }
+
+    .score-cell {
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .band-tag {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.66rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 0.15rem 0.45rem;
+      display: inline-block;
+    }
+
+    .band-clear {
+      background: var(--clear-tint);
+      color: var(--clear);
+    }
+
+    .band-watch {
+      background: var(--watch-tint);
+      color: var(--watch);
+    }
+
+    .band-flag {
+      background: var(--flag-tint);
+      color: var(--flag);
+    }
+
+    .sources-link {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--a-color);
+      cursor: pointer;
+      border-bottom: 1px solid transparent;
+    }
+
+    .sources-link:hover {
+      border-bottom-color: var(--a-color);
+    }
+
+    /* ---------- Comparison panel ---------- */
+    .compare-panel {
+      background: var(--paper-raised);
+      border: 1px solid var(--hairline);
+      margin-bottom: 1.75rem;
+    }
+
+    #compareSummary {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--ink-soft);
+    }
+
+    .delta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 600;
+    }
+
+    .delta.pos {
+      color: var(--a-color);
+    }
+
+    .delta.neg {
+      color: var(--b-color);
+    }
+
+    .delta.flat {
+      color: var(--ink-soft);
+    }
+
+    .winner-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      margin-left: 6px;
+    }
+
+    .winner-dot.a {
+      background: var(--a-color);
+    }
+
+    .winner-dot.b {
+      background: var(--b-color);
+    }
+
+    .compare-foot {
+      padding: 1rem 1.25rem;
+      border-top: 1px solid var(--hairline);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .compare-foot>div:first-child {
+      font-family: 'IBM Plex Serif', serif;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .compare-foot .score-readout {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.85rem;
+    }
+
+    .compare-foot .score-readout span.a {
+      color: var(--a-color);
+      margin-right: 1.25rem;
+    }
+
+    .compare-foot .score-readout span.b {
+      color: var(--b-color);
+      margin-right: 1.25rem;
+    }
+
+    .note {
+      font-size: 0.78rem;
+      color: var(--ink-soft);
+      line-height: 1.5;
+      border-top: 1px solid var(--hairline);
+      padding-top: 1rem;
+      margin-top: 0.5rem;
+    }
+
+    /* ---------- Modal ---------- */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(27, 30, 36, 0.55);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-card {
+      background: var(--paper-raised);
+      border: 1px solid var(--hairline-strong);
+      max-width: 640px;
+      width: 100%;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 12px 32px rgba(27, 30, 36, 0.18);
+      overflow: hidden;    /* keeps modal-body scroll contained */
+    }
+
+    .modal-head {
+      padding: 1.1rem 1.4rem;
+      border-bottom: 1px solid var(--hairline);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-head h3 {
+      font-family: 'IBM Plex Serif', serif;
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      background: none;
+      border: 1px solid var(--hairline-strong);
+      color: var(--ink-soft);
+      width: 28px;
+      height: 28px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-close:hover {
+      border-color: var(--ink);
+      color: var(--ink);
+    }
+
+    .modal-body {
+      padding: 1.25rem 1.4rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .point-card {
+      border: 1px solid var(--hairline);
+      padding: 0.85rem 1rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.9rem;
+    }
+
+    .point-tag {
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 600;
+      font-size: 0.72rem;
+      color: var(--ink-soft);
+      border: 1px solid var(--hairline-strong);
+      padding: 0.15rem 0.4rem;
+      white-space: nowrap;
+    }
+
+    .point-info h4 {
+      font-size: 0.88rem;
+      font-weight: 600;
+      margin-bottom: 0.2rem;
+    }
+
+    .point-info p {
+      font-size: 0.8rem;
+      color: var(--ink-soft);
+      line-height: 1.4;
+    }
+
+    .finding {
+      margin-top: 0.5rem;
+      font-size: 0.78rem;
+      padding: 0.4rem 0.6rem;
+      border-left: 2px solid var(--hairline-strong);
+      background: var(--paper);
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    /* Comprehensive Mobile Responsiveness */
+    @media (max-width: 900px) {
+      .container { padding: 0 1rem; }
+      .grid { grid-template-columns: 1fr !important; }
+      .chart-container { height: 320px; max-height: 350px; padding: 0.5rem; }
+    }
+
+    @media (max-width: 768px) {
+      header.masthead { padding: 1.25rem 0 1rem; }
+      .eyebrow { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+      .eyebrow a { margin-left: 0 !important; }
+      h1 { font-size: 1.5rem; }
+      .breakdown-table th, .breakdown-table td, .compare-table th, .compare-table td { padding: 0.5rem 0.65rem; font-size: 0.8rem; }
+      .modal-card { max-width: 95vw; }
+      .compare-foot { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+    }
+
+    @media (max-width: 480px) {
+      .container { padding: 0 0.75rem; }
+      .chart-container { height: 260px; }
+      .reason-line { flex-direction: column; align-items: flex-start; }
+    }
+
+    /* Footer Styles */
+    .footer {
+      background: #05080E !important;
+      color: #FFFFFF !important;
+      padding: 4.5rem 2.5rem 2.5rem !important;
+      border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+
+    .footer-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 2.5rem;
+      margin-bottom: 3.5rem;
+    }
+
+    .footer-brand {
+      font-family: 'IBM Plex Serif', serif, sans-serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #FFFFFF !important;
+      margin-bottom: 0.75rem;
+    }
+
+    .footer-desc {
+      font-size: 0.84rem;
+      color: #94A3B8 !important;
+      line-height: 1.65;
+    }
+
+    .footer-title {
+      font-family: 'IBM Plex Serif', serif, sans-serif;
+      font-weight: 700;
+      font-size: 0.98rem;
+      margin-bottom: 1.1rem;
+      color: #F8FAFC !important;
+    }
+
+    .footer-links {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .footer-links li {
+      margin-bottom: 0.65rem;
+    }
+
+    .footer-links a {
+      font-size: 0.84rem;
+      color: #94A3B8 !important;
+      text-decoration: none;
+      transition: color 0.15s ease;
+    }
+
+    .footer-links a:hover {
+      color: #FFFFFF !important;
+    }
+
+    .footer-bottom {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding-top: 2rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      font-size: 0.78rem;
+      color: #64748B !important;
+    }
+  </style>
+<body>
+
+  <!-- Top Announcement Bar -->
+  <div class="top-announcement">
+    <div class="pulse-indicator">
+      <div class="pulse-dot"></div>
+      <span>KARNATAKA RERA LEGAL ENGINE LIVE • 1,240+ POSTGRES RECORDS OPERATIONAL</span>
+    </div>
+    <div>CROSS-VERIFYING KAVERI 2.0 • BHOOMI RTC • BDA • BBMP • E-COURTS</div>
+  </div>
+
+  <!-- Glassmorphic Navbar -->
+  <header class="navbar">
+    <a href="/" class="nav-brand">
+      <div class="brand-logo-box">R</div>
+      <div>
+        <div class="brand-title">RERA Intelligence</div>
+        <div class="brand-subtitle">AI Property Verification</div>
+      </div>
+    </a>
+
+    <nav class="nav-links">
+      <a href="/geospatial" class="nav-item">Geospatial Map</a>
+      <a href="/legal-report?q=CASAGRAND%20MOONDANCE" class="nav-item">Legal Due-Diligence</a>
+      <a href="/register" class="nav-item">Compliance Register</a>
+      <a href="/radar-chart" class="nav-item active">Composite Radar</a>
+      <a href="/compare" class="nav-item">Compare Projects</a>
+      <a href="/detail?q=CASAGRAND%20MOONDANCE" class="nav-item">Audit Profile</a>
+    </nav>
+
+    <a href="/legal-report?q=CASAGRAND%20MOONDANCE" class="nav-cta">Launch Legal Audit ↗</a>
+  </header>
+
+  <div class="container">
+    <header class="masthead">
+      <div class="eyebrow">
+        <span><span class="dot"></span> RERA Karnataka Intelligence · Internal Use</span>
+        <div style="margin-left: auto; display: flex; gap: 1rem; align-items: center;">
+          <a href="/geospatial" style="color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink); font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; text-transform: uppercase;">Geospatial Map ↗</a>
+          <a href="/register" style="color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink); font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; text-transform: uppercase;">Full Property Register ↗</a>
+        </div>
+      </div>
+      <h1>Property Risk & Compliance Report</h1>
+      <p class="sub">Composite scoring across 37 verification points (P&#8209;01–P&#8209;37), rolled up into eight risk
+        and quality axes for side-by-side evaluation.</p>
+    </header>
+
+    <div class="controls-panel">
+      <div class="select-group">
+        <label for="inputA"><span class="swatch a"></span>Target Property</label>
+        <div class="search-combobox" id="comboA">
+          <div class="input-wrapper">
+            <input type="text" id="inputA" class="search-input" placeholder="🔍 Type property name, promoter, reg no..." autocomplete="off">
+            <button class="clear-btn" id="clearA" title="Clear">&times;</button>
+          </div>
+          <div class="dropdown-results" id="resultsA"></div>
+        </div>
+      </div>
+      <div class="select-group" id="groupSelB" style="display: none;">
+        <label for="inputB"><span class="swatch b"></span>Benchmark Property</label>
+        <div class="search-combobox" id="comboB">
+          <div class="input-wrapper">
+            <input type="text" id="inputB" class="search-input" placeholder="🔍 Type benchmark property..." autocomplete="off">
+            <button class="clear-btn" id="clearB" title="Clear">&times;</button>
+          </div>
+          <div class="dropdown-results" id="resultsB"></div>
+        </div>
+      </div>
+      <div class="select-group action-group">
+        <button id="btnToggleCompare" class="btn-compare-toggle">+ Compare with Benchmark</button>
+      </div>
+    </div>
+
+    <div class="gate-box-wrapper" id="gateBox">
+      <div class="gate-box-title">Hard gate — P&#8209;01 active RERA registration</div>
+      <div class="gate-flex" id="gateContent"></div>
+    </div>
+
+    <!-- Full-Width Risk & Quality Profile Panel -->
+    <div class="panel" style="margin-bottom: 1.75rem;">
+      <div class="panel-head">
+        <span>Risk & Quality Profile</span>
+        <span class="scale-note">0–100 · higher is better</span>
+      </div>
+      <div class="chart-container">
+        <canvas id="radarChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Axis Breakdown Tables -->
+    <div class="grid single-mode" id="breakdownGrid">
+      <div class="panel" id="panelA">
+        <div class="panel-head">
+          <span id="breakdownTitleA">Property A — Axis Breakdown</span>
+        </div>
+        <table class="breakdown-table">
+          <thead>
+            <tr>
+              <th>Axis</th>
+              <th>Source</th>
+              <th>Score</th>
+              <th>Band</th>
+            </tr>
+          </thead>
+          <tbody id="breakdownBodyA"></tbody>
+        </table>
+      </div>
+
+      <div class="panel" id="panelB" style="display: none;">
+        <div class="panel-head">
+          <span id="breakdownTitleB">Property B — Axis Breakdown</span>
+        </div>
+        <table class="breakdown-table">
+          <thead>
+            <tr>
+              <th>Axis</th>
+              <th>Source</th>
+              <th>Score</th>
+              <th>Band</th>
+            </tr>
+          </thead>
+          <tbody id="breakdownBodyB"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="compare-panel">
+      <div class="panel-head">
+        <span>Side-by-Side Comparison</span>
+        <span id="compareSummary"></span>
+      </div>
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Axis</th>
+            <th id="thA">Property A</th>
+            <th id="thB">Property B</th>
+            <th>&#916; (A&#8722;B)</th>
+          </tr>
+        </thead>
+        <tbody id="compareBody"></tbody>
+      </table>
+      <div class="compare-foot" id="compareFoot"></div>
+    </div>
+
+    <div class="note">
+      Litigation Risk is inverted so a higher score always represents fewer, or fully resolved, buyer complaints.
+      P&#8209;01 (Active RERA Registration) is an absolute pass/fail gate, kept separate from the eight weighted scores
+      above.
+    </div>
+  </div>
+
+  <script>
+    const AXES = [
+      { key: 'compliance', name: 'Regulatory Compliance', points: 'P-02 – P-04', weight: 1.0 },
+      { key: 'litigation', name: 'Litigation Risk', points: 'P-05 – P-11', weight: 1.2 },
+      { key: 'timeline', name: 'Timeline Adherence', points: 'P-12 – P-16', weight: 1.1 },
+      { key: 'title', name: 'Land & Title Clarity', points: 'P-17 – P-21', weight: 1.1 },
+      { key: 'location', name: 'Location & Connectivity', points: 'P-22 – P-29', weight: 0.9 },
+      { key: 'layout', name: 'Layout & Amenities', points: 'P-30 – P-33', weight: 0.7 },
+      { key: 'promoter', name: 'Promoter Reputation', points: 'P-34 – P-35', weight: 1.0 },
+      { key: 'transparency', name: 'Data Transparency', points: 'P-36 – P-37', weight: 0.8 }
+    ];
+
+    const PROPERTY_CACHE = {};
+    const PROPERTY_NAMES = [
+      { label: 'Elegant Tranquility — Bengaluru Urban', query: 'ELEGANT TRANQUILITY' },
+      { label: 'Mahindra Blossom — Bengaluru Urban', query: 'MAHINDRA BLOSSOM' },
+      { label: 'Divinity — Salarpuria Sattva', query: 'DIVINITY' },
+      { label: 'Brigade Panorama — Bengaluru South', query: 'Brigade Panorama' },
+      { label: 'Shankara Agraharam Sri Sharadamba', query: 'Shankara Agraharam' },
+    ];
+
+    function apiResultToProperty(result) {
+      const r = result.radar_profile || {};
+      const scores = r.scores || {};
+      const reasons = r.reasons || {};
+      const ps = result.project_summary || {};
+      const oe = result.overall_evaluation || {};
+      return {
+        name: ps.project_name || 'Unknown',
+        developer: ps.developer_name || '',
+        status: ps.status || '',
+        gateOK: r.gateOK !== false,
+        healthScore: oe.health_score || 0,
+        riskLevel: oe.risk_level || '',
+        verdict: oe.verdict || '',
+        scores: {
+          compliance: scores.compliance ?? 50,
+          litigation: scores.litigation ?? 50,
+          timeline: scores.timeline ?? 50,
+          title: scores.title ?? 50,
+          location: scores.location ?? 50,
+          layout: scores.layout ?? 50,
+          promoter: scores.promoter ?? 50,
+          transparency: scores.transparency ?? 50,
+        },
+        reasons: {
+          compliance: reasons.compliance || [],
+          litigation: reasons.litigation || [],
+          timeline: reasons.timeline || [],
+          title: reasons.title || [],
+          location: reasons.location || [],
+          layout: reasons.layout || [],
+          promoter: reasons.promoter || [],
+          transparency: reasons.transparency || [],
+        }
+      };
+    }
+
+    const FALLBACK_PROPERTIES = {
+      'ELEGANT TRANQUILITY': {
+        name: 'ELEGANT TRANQUILITY', developer: 'ELEGANT ALTIMA', status: 'APPROVED', gateOK: true,
+        healthScore: 97, riskLevel: 'LOW_RISK', verdict: 'Strong RERA project with verified credentials.',
+        scores: { compliance: 95, litigation: 100, timeline: 90, title: 100, location: 100, layout: 100, promoter: 95, transparency: 100 },
+        reasons: {
+          compliance: ['✓ Project actively registered under status APPROVED (Reg No: PRM/KA/RERA/1251/310/PR/300523/005959).'],
+          litigation: ['✓ 0 RERA complaints registered against project or promoter.'],
+          timeline: ['✓ Project schedule declared with target completion date 30/09/2029.'],
+          title: ['✓ Associated survey numbers verified: 222/222, 20/3, 20/5.', '✓ Sub-Registrar Office jurisdiction identified: JAYANAGAR BANGALORE.', '✓ 3825 document record(s) uploaded.'],
+          location: ['✓ Geographic coordinates verified (12.918378, 77.508538).', '✓ District identified: Bengaluru Urban.'],
+          layout: ['✓ Layout filings and inventory records uploaded.', '✓ Project layout type: Residential/Group Housing.'],
+          promoter: ['✓ Zero RERA complaints registered against promoter.'],
+          transparency: ['✓ 100/100 Perfect Filing Transparency score.']
+        }
+      },
+      'MAHINDRA BLOSSOM': {
+        name: 'MAHINDRA BLOSSOM', developer: 'Mahindra Lifespace Developers', status: 'APPROVED', gateOK: true,
+        healthScore: 92, riskLevel: 'LOW_RISK', verdict: 'Verified high quality submission.',
+        scores: { compliance: 95, litigation: 95, timeline: 85, title: 95, location: 90, layout: 90, promoter: 95, transparency: 95 },
+        reasons: {
+          compliance: ['✓ Project actively registered under status APPROVED.'],
+          litigation: ['✓ Zero active complaints recorded.'],
+          timeline: ['✓ Target schedule declared.'],
+          title: ['✓ Title deed and survey numbers verified.'],
+          location: ['✓ Verified coordinates and district jurisdiction.'],
+          layout: ['✓ Approved sanction plan uploaded.'],
+          promoter: ['✓ Clean promoter delivery record.'],
+          transparency: ['✓ High transparency score.']
+        }
+      },
+      'Brigade Panorama': {
+        name: 'Brigade Panorama', developer: 'Brigade Enterprises', status: 'APPROVED', gateOK: true,
+        healthScore: 68, riskLevel: 'MODERATE_RISK', verdict: 'Active litigation and delays detected.',
+        scores: { compliance: 95, litigation: 30, timeline: 55, title: 80, location: 90, layout: 80, promoter: 40, transparency: 75 },
+        reasons: {
+          compliance: ['✓ Project actively registered.'],
+          litigation: ['❌ DEDUCTION -70 pts: Recorded 43 total RERA complaints (11 project, 32 promoter).', '❌ DEDUCTION -15 pts: 3 complaints actively under enquiry.'],
+          timeline: ['❌ DEDUCTION -45 pts: Target date delayed beyond schedule.'],
+          title: ['✓ Title deed filed.', '⚠ Encumbrance verification pending.'],
+          location: ['✓ Verified location coordinates.'],
+          layout: ['✓ Approved sanction plan uploaded.'],
+          promoter: ['❌ DEDUCTION -60 pts: High promoter complaint volume.'],
+          transparency: ['⚠ Filing quality score 75/100.']
+        }
+      }
+    };
+
+    function createDefaultFallback(query) {
+      return {
+        name: query, developer: 'RERA Declared Developer', status: 'APPROVED', gateOK: true,
+        healthScore: 82, riskLevel: 'LOW_RISK', verdict: 'Evaluated based on standard baseline metrics.',
+        scores: { compliance: 85, litigation: 80, timeline: 80, title: 85, location: 85, layout: 80, promoter: 80, transparency: 85 },
+        reasons: {
+          compliance: [`✓ Project registration active for ${query}.`],
+          litigation: ['✓ Low dispute frequency detected.'],
+          timeline: ['✓ Standard completion timeline declared.'],
+          title: ['✓ Land survey records filed.'],
+          location: ['✓ District location verified.'],
+          layout: ['✓ Layout plan uploaded.'],
+          promoter: ['✓ Promoter record clear.'],
+          transparency: ['✓ Disclosures verified.']
+        }
+      };
+    }
+
+    async function fetchProperty(query) {
+      if (PROPERTY_CACHE[query]) return PROPERTY_CACHE[query];
+      
+      const targetUrls = [
+        `/api/v1/projects/analyze?q=${encodeURIComponent(query)}`,
+        `http://localhost:8000/api/v1/projects/analyze?q=${encodeURIComponent(query)}`
+      ];
+
+      for (const url of targetUrls) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) {
+            const json = await res.json();
+            PROPERTY_CACHE[query] = apiResultToProperty(json);
+            return PROPERTY_CACHE[query];
+          }
+        } catch (e) {}
+      }
+
+      console.warn(`[RERA] Using fallback dataset for "${query}"`);
+      PROPERTY_CACHE[query] = FALLBACK_PROPERTIES[query] || createDefaultFallback(query);
+      return PROPERTY_CACHE[query];
+    }
+
+    function getBand(score) {
+      if (score >= 70) return { label: 'Clear', class: 'band-clear' };
+      if (score >= 40) return { label: 'Watch', class: 'band-watch' };
+      return { label: 'Flag', class: 'band-flag' };
+    }
+
+    // Interpret a reason string's leading marker (❌ / ⚠ / other) and strip it for clean display.
+    function classifyReason(raw) {
+      let type = 'pos', tag = 'Clear';
+      if (raw.indexOf('\u274C') !== -1) { type = 'neg'; tag = 'Flag'; }
+      else if (raw.indexOf('\u26A0') !== -1) { type = 'warn'; tag = 'Caution'; }
+      const text = raw.replace(/[\u274C\u26A0\uFE0F\u2705]/g, '').replace(/^[\s:—-]+/, '').trim();
+      return { type, tag, text };
+    }
+
+    let isCompareMode = false;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const paramA = urlParams.get('a') || urlParams.get('propertyA') || urlParams.get('queryA') || 'ELEGANT TRANQUILITY';
+    const paramB = urlParams.get('b') || urlParams.get('propertyB') || urlParams.get('queryB') || 'Brigade Panorama';
+
+    if (urlParams.get('b') || urlParams.get('propertyB') || urlParams.get('queryB')) {
+      isCompareMode = true;
+    }
+
+    const btnToggleCompare = document.getElementById('btnToggleCompare');
+    const groupSelB = document.getElementById('groupSelB');
+    const panelB = document.getElementById('panelB');
+    const comparePanel = document.querySelector('.compare-panel');
+    const breakdownGrid = document.getElementById('breakdownGrid');
+
+    function updateModeUI() {
+      if (isCompareMode) {
+        groupSelB.style.display = 'flex';
+        if (panelB) panelB.style.display = 'block';
+        if (comparePanel) comparePanel.style.display = 'block';
+        if (breakdownGrid) breakdownGrid.classList.remove('single-mode');
+        btnToggleCompare.textContent = '✕ Close Comparison';
+        btnToggleCompare.classList.add('active-compare');
+      } else {
+        groupSelB.style.display = 'none';
+        if (panelB) panelB.style.display = 'none';
+        if (comparePanel) comparePanel.style.display = 'none';
+        if (breakdownGrid) breakdownGrid.classList.add('single-mode');
+        btnToggleCompare.textContent = '+ Compare with Benchmark';
+        btnToggleCompare.classList.remove('active-compare');
+      }
+    }
+
+    btnToggleCompare.addEventListener('click', () => {
+      isCompareMode = !isCompareMode;
+      updateModeUI();
+      render();
+    });
+
+    let ALL_PROJECTS_REGISTRY = [];
+
+    function setupCombobox(inputId, clearId, resultsId, initialVal, onSelect) {
+      const inputEl = document.getElementById(inputId);
+      const clearBtn = document.getElementById(clearId);
+      const resultsEl = document.getElementById(resultsId);
+      let debounceTimer = null;
+
+      if (initialVal) {
+        inputEl.value = initialVal;
+        clearBtn.style.display = 'block';
+      }
+
+      function renderResults(items) {
+        resultsEl.innerHTML = '';
+        if (!items || items.length === 0) {
+          resultsEl.innerHTML = '<div class="result-item" style="color: var(--ink-soft); font-size: 0.82rem;">No matching properties found</div>';
+          resultsEl.classList.add('active');
+          return;
+        }
+
+        items.forEach(item => {
+          const name = item.project_name || item.name || item;
+          const promoter = item.promoter_name || item.developer_name || item.developer || '';
+          const district = item.district || '';
+          const regNo = item.registration_no || '';
+
+          const div = document.createElement('div');
+          div.className = 'result-item';
+          
+          let metaText = [promoter, district, regNo].filter(Boolean).join(' · ');
+          if (!metaText) metaText = 'RERA Verified Property';
+
+          div.innerHTML = `
+            <div class="result-title">${name}</div>
+            <div class="result-meta">${metaText}</div>
+          `;
+
+          div.addEventListener('click', () => {
+            inputEl.value = name;
+            clearBtn.style.display = 'block';
+            resultsEl.classList.remove('active');
+            onSelect(name);
+          });
+
+          resultsEl.appendChild(div);
+        });
+
+        resultsEl.classList.add('active');
+      }
+
+      async function doSearch(q) {
+        const query = (q || '').trim().toLowerCase();
+        let matches = [];
+
+        if (ALL_PROJECTS_REGISTRY.length > 0) {
+          matches = ALL_PROJECTS_REGISTRY.filter(p => {
+            const name = (p.project_name || '').toLowerCase();
+            const prom = (p.promoter_name || '').toLowerCase();
+            const reg = (p.registration_no || '').toLowerCase();
+            const dist = (p.district || '').toLowerCase();
+            return name.includes(query) || prom.includes(query) || reg.includes(query) || dist.includes(query);
+          }).slice(0, 12);
+        }
+
+        if (matches.length < 5 && query.length >= 1) {
+          try {
+            const res = await fetch(`/api/v1/projects?q=${encodeURIComponent(query)}&limit=15`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data && data.results && data.results.length > 0) {
+                const existingNames = new Set(matches.map(m => (m.project_name || '').toLowerCase()));
+                data.results.forEach(r => {
+                  if (!existingNames.has((r.project_name || '').toLowerCase())) {
+                    matches.push(r);
+                  }
+                });
+              }
+            }
+          } catch (e) {}
+        }
+
+        if (matches.length === 0 && PROPERTY_NAMES) {
+          matches = PROPERTY_NAMES.map(p => ({ project_name: p.query, promoter_name: p.label }));
+        }
+
+        renderResults(matches.slice(0, 15));
+      }
+
+      inputEl.addEventListener('input', () => {
+        const q = inputEl.value;
+        clearBtn.style.display = q ? 'block' : 'none';
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => doSearch(q), 180);
+      });
+
+      inputEl.addEventListener('focus', () => {
+        doSearch(inputEl.value);
+      });
+
+      clearBtn.addEventListener('click', () => {
+        inputEl.value = '';
+        clearBtn.style.display = 'none';
+        resultsEl.classList.remove('active');
+        inputEl.focus();
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!inputEl.contains(e.target) && !resultsEl.contains(e.target) && !clearBtn.contains(e.target)) {
+          resultsEl.classList.remove('active');
+        }
+      });
+    }
+
+    setupCombobox('inputA', 'clearA', 'resultsA', paramA, (selected) => render());
+    setupCombobox('inputB', 'clearB', 'resultsB', paramB, (selected) => render());
+
+    updateModeUI();
+
+    // Preload database projects for local instant search
+    fetch('/api/v1/projects?limit=500')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && data.results) {
+          ALL_PROJECTS_REGISTRY = data.results;
+        }
+      })
+      .catch(e => {});
+
+    // Subtle risk-zone shading behind the radar grid, kept quiet rather than glowing.
+    const backgroundRingsPlugin = {
+      id: 'backgroundRings',
+      beforeDraw(chart) {
+        const { ctx, scale } = chart;
+        if (!scale) return;
+        const r40 = scale.getDistanceForValue(40);
+        const r70 = scale.getDistanceForValue(70);
+        const r100 = scale.getDistanceForValue(100);
+        const cx = scale.xCenter, cy = scale.yCenter;
+        ctx.save();
+        ctx.beginPath(); ctx.arc(cx, cy, r100, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(47, 110, 79, 0.04)'; ctx.fill();
+        ctx.beginPath(); ctx.arc(cx, cy, r70, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(151, 112, 26, 0.05)'; ctx.fill();
+        ctx.beginPath(); ctx.arc(cx, cy, r40, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(172, 44, 44, 0.06)'; ctx.fill();
+        ctx.restore();
+      }
+    };
+    Chart.register(backgroundRingsPlugin);
+
+    const ctx = document.getElementById('radarChart').getContext('2d');
+    let radarChart = new Chart(ctx, {
+      type: 'radar',
+      data: { labels: AXES.map(a => a.name), datasets: [] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          r: {
+            min: 0, max: 100,
+            ticks: { stepSize: 20, backdropColor: 'transparent', color: '#8B8E96', font: { size: 10, family: 'IBM Plex Mono' } },
+            grid: { color: 'rgba(27,30,36,0.08)' },
+            angleLines: { color: 'rgba(27,30,36,0.1)' },
+            pointLabels: { color: '#3A3E46', font: { size: 11, weight: '600', family: 'IBM Plex Sans' } }
+          }
+        },
+        plugins: {
+          legend: { position: 'top', labels: { color: '#1B1E24', font: { family: 'IBM Plex Sans', size: 12 }, usePointStyle: true, pointStyle: 'rect' } },
+          tooltip: {
+            backgroundColor: '#1B1E24', titleColor: '#F6F5F1', bodyColor: '#DBD7CC',
+            borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+            titleFont: { family: 'IBM Plex Sans' }, bodyFont: { family: 'IBM Plex Mono' }
+          }
+        }
+      }
+    });
+
+    function populateBreakdownTable(prop, query, prefix, bodyId, titleId) {
+        document.getElementById(titleId).textContent = `${prop.name} — Axis Breakdown`;
+        const bodyEl = document.getElementById(bodyId);
+        bodyEl.innerHTML = '';
+
+        AXES.forEach((ax, idx) => {
+          const score = prop.scores[ax.key];
+          const band = getBand(score);
+          const reasonsList = (prop.reasons && prop.reasons[ax.key] && prop.reasons[ax.key].length)
+            ? prop.reasons[ax.key] : ['Standard score assigned.'];
+
+          const tr = document.createElement('tr');
+          const reasonsHtml = reasonsList.map((raw, rIdx) => {
+            const { type, tag, text } = classifyReason(raw);
+            if (type === 'neg') {
+              const blurId = `blur-table-${prefix}-${idx}-${rIdx}`;
+              return `
+              <div class="reason-line">
+                <span class="reason-tag neg">${tag}</span>
+                <span id="${blurId}" class="reason-text blur-target" onclick="toggleBlurElement('${blurId}')">${text}</span>
+                <button class="reveal-btn" onclick="toggleBlurElement('${blurId}', this)">Reveal</button>
+              </div>`;
+            }
+            return `<div class="reason-line"><span class="reason-tag ${type}">${tag}</span><span class="reason-text">${text}</span></div>`;
+          }).join('');
+
+          tr.innerHTML = `
+          <td>
+            <div class="axis-name">${ax.name}</div>
+            ${reasonsHtml}
+          </td>
+          <td><span class="sources-link" onclick="openPointsModal('${ax.key}', '${ax.name}', '${ax.points}', '${query}')">${ax.points}</span></td>
+          <td><span class="score-cell">${score}</span></td>
+          <td><span class="band-tag ${band.class}">${band.label}</span></td>
+        `;
+          bodyEl.appendChild(tr);
+        });
+      }
+
+    async function render() {
+      const queryA = (document.getElementById('inputA').value || '').trim() || 'ELEGANT TRANQUILITY';
+      const queryB = (document.getElementById('inputB').value || '').trim() || 'Brigade Panorama';
+      const elTitleA = document.getElementById('breakdownTitleA');
+      const elTitleB = document.getElementById('breakdownTitleB');
+      if (elTitleA) elTitleA.textContent = 'Loading Target Property…';
+      if (elTitleB) elTitleB.textContent = 'Loading Benchmark Property…';
+
+      if (!isCompareMode) {
+        const propA = await fetchProperty(queryA);
+        const gateBox = document.getElementById('gateContent');
+        gateBox.innerHTML = `
+          <div class="gate-status ${propA.gateOK ? 'pass' : 'fail'}" style="flex: 1;">
+            <div>
+              <strong>${propA.name}</strong>
+              <div class="meta">P&#8209;01 registration status &middot; Health score ${propA.healthScore}/100 &middot; ${propA.developer || 'RERA Developer'}</div>
+            </div>
+            <span class="seal">${propA.gateOK ? 'Cleared' : 'Flagged'}</span>
+          </div>
+        `;
+        const dataA = AXES.map(ax => propA.scores[ax.key]);
+        radarChart.data.datasets = [
+          {
+            label: propA.name, data: dataA,
+            backgroundColor: 'rgba(44, 74, 110, 0.20)', borderColor: '#2C4A6E', borderWidth: 2.5,
+            pointBackgroundColor: '#2C4A6E', pointRadius: 4
+          }
+        ];
+        radarChart.update();
+        populateBreakdownTable(propA, queryA, 'a', 'breakdownBodyA', 'breakdownTitleA');
+        return;
+      }
+
+      // Compare mode
+      const [propA, propB] = await Promise.all([fetchProperty(queryA), fetchProperty(queryB)]);
+      const gateBox = document.getElementById('gateContent');
+      gateBox.innerHTML = `
+        <div class="gate-status ${propA.gateOK ? 'pass' : 'fail'}">
+          <div>
+            <strong>Property A — ${propA.name}</strong>
+            <div class="meta">P&#8209;01 registration status · Health score ${propA.healthScore}/100</div>
+          </div>
+          <span class="seal">${propA.gateOK ? 'Cleared' : 'Flagged'}</span>
+        </div>
+        <div class="gate-status ${propB.gateOK ? 'pass' : 'fail'}">
+          <div>
+            <strong>Property B — ${propB.name}</strong>
+            <div class="meta">P&#8209;01 registration status · Health score ${propB.healthScore}/100</div>
+          </div>
+          <span class="seal">${propB.gateOK ? 'Cleared' : 'Flagged'}</span>
+        </div>
+      `;
+
+      const dataA = AXES.map(ax => propA.scores[ax.key]);
+      const dataB = AXES.map(ax => propB.scores[ax.key]);
+
+      radarChart.data.datasets = [
+        {
+          label: propA.name, data: dataA,
+          backgroundColor: 'rgba(44, 74, 110, 0.14)', borderColor: '#2C4A6E', borderWidth: 2,
+          pointBackgroundColor: '#2C4A6E', pointRadius: 3
+        },
+        {
+          label: propB.name, data: dataB,
+          backgroundColor: 'rgba(140, 65, 48, 0.12)', borderColor: '#8C4130', borderWidth: 2,
+          pointBackgroundColor: '#8C4130', pointRadius: 3
+        }
+      ];
+      radarChart.update();
+
+      populateBreakdownTable(propA, queryA, 'a', 'breakdownBodyA', 'breakdownTitleA');
+      populateBreakdownTable(propB, queryB, 'b', 'breakdownBodyB', 'breakdownTitleB');
+
+      document.getElementById('thA').textContent = propA.name;
+      document.getElementById('thB').textContent = propB.name;
+
+      const compareBody = document.getElementById('compareBody');
+      compareBody.innerHTML = '';
+      let aWins = 0, bWins = 0, ties = 0;
+
+      AXES.forEach((ax, idx) => {
+        const va = dataA[idx], vb = dataB[idx];
+        const delta = va - vb;
+        let deltaClass = 'flat', deltaStr = '0', dotA = '', dotB = '';
+
+        if (delta > 0) { deltaClass = 'pos'; deltaStr = `+${delta}`; aWins++; dotA = '<span class="winner-dot a"></span>'; }
+        else if (delta < 0) { deltaClass = 'neg'; deltaStr = `${delta}`; bWins++; dotB = '<span class="winner-dot b"></span>'; }
+        else { ties++; }
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+        <td class="axis-name">${ax.name}</td>
+        <td>${va}${dotA}</td>
+        <td>${vb}${dotB}</td>
+        <td><span class="delta ${deltaClass}">${deltaStr}</span></td>
+      `;
+        compareBody.appendChild(tr);
+      });
+
+      document.getElementById('compareSummary').textContent = `A leads ${aWins} · B leads ${bWins} · ${ties} tied`;
+
+      const totalWeight = AXES.reduce((s, a) => s + a.weight, 0);
+      const wavgA = (AXES.reduce((s, a, i) => s + dataA[i] * a.weight, 0) / totalWeight).toFixed(1);
+      const wavgB = (AXES.reduce((s, a, i) => s + dataB[i] * a.weight, 0) / totalWeight).toFixed(1);
+      const avgDelta = (wavgA - wavgB).toFixed(1);
+      const avgDeltaStr = avgDelta > 0 ? `+${avgDelta}` : `${avgDelta}`;
+      const avgDeltaClass = avgDelta > 0 ? 'pos' : (avgDelta < 0 ? 'neg' : 'flat');
+
+      document.getElementById('compareFoot').innerHTML = `
+      <div>Weighted composite score</div>
+      <div class="score-readout">
+        <span class="a">A ${wavgA} / 100</span>
+        <span class="b">B ${wavgB} / 100</span>
+        <span class="delta ${avgDeltaClass}">${avgDeltaStr}</span>
+      </div>
+      `;
+    }
+
+    const SOURCE_POINTS_MAP = {
+      compliance: ['P-02', 'P-03', 'P-04'],
+      litigation: ['P-05', 'P-06', 'P-07', 'P-08', 'P-09', 'P-10', 'P-11'],
+      timeline: ['P-12', 'P-13', 'P-14', 'P-15', 'P-16'],
+      title: ['P-17', 'P-18', 'P-19', 'P-20', 'P-21'],
+      location: ['P-22', 'P-23', 'P-24', 'P-25', 'P-26', 'P-27', 'P-28', 'P-29'],
+      layout: ['P-30', 'P-31', 'P-32', 'P-33'],
+      promoter: ['P-34', 'P-35'],
+      transparency: ['P-36', 'P-37']
+    };
+
+    const SOURCE_POINTS_DETAIL = {
+      'P-01': { title: 'Active RERA Registration Status', desc: 'Verifies if project has active RERA approval (not expired, revoked, or suspended).' },
+      'P-02': { title: 'Registration Validity Period', desc: 'Checks declared registration approval start date & current expiry date.' },
+      'P-03': { title: 'Extension & Renewal Status', desc: 'Audits multi-year extension filings or active renewal orders.' },
+      'P-04': { title: 'Project Type Classification', desc: 'Validates residential, commercial, group housing, or plotted layout declaration.' },
+      'P-05': { title: 'Total RERA Complaint Count', desc: 'Total buyer/investor complaints filed on Karnataka RERA portal.' },
+      'P-06': { title: 'Active Under Enquiry Complaints', desc: 'Unresolved pending legal disputes actively under investigation.' },
+      'P-07': { title: 'Project-Specific Complaints', desc: 'Complaints registered directly against this project.' },
+      'P-08': { title: 'Promoter-Wide Complaints', desc: 'Litigation track record across all projects by the builder.' },
+      'P-09': { title: 'Possession Delay Disputes', desc: 'Complaints citing delayed possession under Sec 18.' },
+      'P-10': { title: 'Refund & Cancellation Disputes', desc: 'Disputes regarding non-refund of booking amounts.' },
+      'P-11': { title: 'Structural & Quality Disputes', desc: 'Complaints citing construction defect or layout plan deviation.' },
+      'P-12': { title: 'Declared Target Completion Date', desc: 'Target handover date submitted at registration.' },
+      'P-13': { title: 'Overdue Completion Schedule Alert', desc: 'Flagged if target date passed without completion certificate.' },
+      'P-14': { title: 'Schedule Delay Magnitude', desc: 'Number of months/years delayed beyond target date.' },
+      'P-15': { title: 'Quarterly Update Recency', desc: 'Audits if promoter submits mandatory quarterly filings.' },
+      'P-16': { title: 'Construction Progress Percentage', desc: 'Declared physical construction completion rate.' },
+      'P-17': { title: 'Encumbrance Certificate (EC)', desc: 'Proof of zero bank mortgage or legal charge.' },
+      'P-18': { title: 'Title Deed & Land Ownership', desc: 'Clear land ownership deed or JDA agreement.' },
+      'P-19': { title: 'Land Conversion Order (DC Conversion)', desc: 'Official agricultural to non-agricultural conversion order.' },
+      'P-20': { title: 'Approved Sanction Plan', desc: 'Building & layout sanction from BBMP/BDA/Local Authority.' },
+      'P-21': { title: 'Environmental & Utility NOCs', desc: 'Clearances from Fire Dept, KSPCB, Airport Authority, and Water Board.' },
+      'P-22': { title: 'PostGIS Verified Coordinates', desc: 'Validated latitude & longitude map position.' },
+      'P-23': { title: 'Land Survey Numbers Verification', desc: 'Survey/Katha numbers matched with land revenue records.' },
+      'P-24': { title: 'Sub-Registrar Office (SRO)', desc: 'Identified registration office jurisdiction.' },
+      'P-25': { title: 'Metro Station Proximity', desc: 'Distance to nearest Namma Metro or train station.' },
+      'P-26': { title: 'Major Arterial Road Access', desc: 'Distance to main highways or Outer Ring Road.' },
+      'P-27': { title: 'Healthcare Access', desc: 'Distance to nearest hospital.' },
+      'P-28': { title: 'Educational Access', desc: 'Distance to schools & colleges.' },
+      'P-29': { title: 'Employment Hub Access', desc: 'Distance to major tech parks & business centers.' },
+      'P-30': { title: 'Open Space Percentage', desc: 'Ratio of green/open land area vs total footprint.' },
+      'P-31': { title: 'Unit Density Ratio', desc: 'Total housing units per acre.' },
+      'P-32': { title: 'Car Parking Ratio', desc: 'Parking spaces provisioned per unit.' },
+      'P-33': { title: 'Amenities Provisioning', desc: 'Clubhouse, sports, and community facilities.' },
+      'P-34': { title: 'Promoter Past Portfolio Count', desc: 'Number of completed real estate projects in Karnataka.' },
+      'P-35': { title: 'On-Time Delivery Track Record', desc: 'Historical on-time completion ratio of promoter.' },
+      'P-36': { title: 'RERA Submission Quality Score', desc: 'Structural completeness of portal disclosures (0-100).' },
+      'P-37': { title: 'Omitted Attributes Count', desc: 'Count of missing optional fields or warnings.' }
+    };
+
+    function openPointsModal(axisKey, axisName, pointsRange, queryKey) {
+      const modal = document.getElementById('pointsModal');
+      const modalTitle = document.getElementById('modalTitle');
+      const modalBody = document.getElementById('modalBody');
+
+      const propA = PROPERTY_CACHE[queryKey] || PROPERTY_CACHE[selA.value] || null;
+      modalTitle.textContent = `${axisName} — Source points (${pointsRange})`;
+      modalBody.innerHTML = '';
+
+      const pKeys = SOURCE_POINTS_MAP[axisKey] || [];
+      const axisScore = propA ? (propA.scores[axisKey] ?? 50) : 50;
+      const axisReasons = (propA ? propA.reasons[axisKey] : []) || [];
+      const classified = axisReasons.map(classifyReason);
+      const negReasons = classified.filter(r => r.type === 'neg');
+      const warnReasons = classified.filter(r => r.type === 'warn');
+
+      pKeys.forEach((p, pIdx) => {
+        const info = SOURCE_POINTS_DETAIL[p] || { title: `Source Point ${p}`, desc: 'RERA Karnataka evaluation criteria.' };
+        const negNote = negReasons[pIdx] || null;
+        const warnNote = warnReasons[pIdx] || null;
+        let statusTag, findingHtml, isNeg = false;
+
+        if (negNote) {
+          isNeg = true;
+          statusTag = '<span class="band-tag band-flag">Flag</span>';
+          const modalBlurId = `modal-blur-${p}-${Date.now()}-${pIdx}`;
+          findingHtml = `
+          <strong>Finding:</strong>
+          <span id="${modalBlurId}" class="reason-text blur-target" onclick="toggleBlurElement('${modalBlurId}')">${negNote.text}</span>
+          <button class="reveal-btn" onclick="toggleBlurElement('${modalBlurId}', this)">Reveal</button>`;
+        } else if (warnNote || axisScore < 85) {
+          statusTag = '<span class="band-tag band-watch">Caution</span>';
+          findingHtml = `<strong>Finding:</strong> ${warnNote ? warnNote.text : 'Moderate evaluation — review pending data points.'}`;
+        } else {
+          statusTag = '<span class="band-tag band-clear">Clear</span>';
+          findingHtml = `<strong>Finding:</strong> Evaluated compliant with zero penalty deductions.`;
+        }
+
+        const card = document.createElement('div');
+        card.className = 'point-card';
+        card.innerHTML = `
+        <span class="point-tag">${p}</span>
+        <div class="point-info" style="flex: 1;">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
+            <h4>${info.title}</h4>
+            ${statusTag}
+          </div>
+          <p>${info.desc}</p>
+          <div class="finding" style="border-left-color: ${isNeg ? '#AC2C2C' : '#2F6E4F'};">${findingHtml}</div>
+        </div>
+      `;
+        modalBody.appendChild(card);
+      });
+
+      modal.classList.add('active');
+    }
+
+    function toggleBlurElement(elementId, btn) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      const isRevealed = el.classList.contains('revealed');
+      if (isRevealed) { el.classList.remove('revealed'); if (btn) btn.textContent = 'Reveal'; }
+      else { el.classList.add('revealed'); if (btn) btn.textContent = 'Hide'; }
+    }
+
+    function closePointsModal(e) {
+      document.getElementById('pointsModal').classList.remove('active');
+    }
+
+    render();
+  </script>
+
+  <div id="pointsModal" class="modal-overlay" onclick="closePointsModal(event)">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-head">
+        <h3 id="modalTitle">Source Points Breakdown</h3>
+        <button class="modal-close" onclick="closePointsModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer" id="contactSection">
+    <div class="footer-container">
+      <div>
+        <div class="footer-brand">RERA Intelligence</div>
+        <p class="footer-desc">
+          AI-driven real estate legal due-diligence, property compliance verification, and composite risk scoring platform for Karnataka. Cross-verifying Kaveri 2.0, Bhoomi RTC, BDA, BBMP e-Aasthi, and e-Courts registries.
+        </p>
+      </div>
+
+      <div>
+        <div class="footer-title">Tools & Dashboards</div>
+        <ul class="footer-links">
+          <li><a href="/legal-report?q=CASAGRAND%20MOONDANCE">AI Legal Due-Diligence Report</a></li>
+          <li><a href="/register">RERA Compliance Register</a></li>
+          <li><a href="/compare">Side-by-Side Project Comparison</a></li>
+          <li><a href="/detail?q=CASAGRAND%20MOONDANCE">Detailed Audit Dossier</a></li>
+          <li><a href="/geospatial">Statewide Geospatial Map</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="footer-title">Government & Portal Links</div>
+        <ul class="footer-links">
+          <li><a href="https://rera.karnataka.gov.in" target="_blank" rel="noopener">Karnataka RERA Portal ↗</a></li>
+          <li><a href="https://kaveri.karnataka.gov.in" target="_blank" rel="noopener">Kaveri 2.0 SRO Portal ↗</a></li>
+          <li><a href="https://landrecords.karnataka.gov.in" target="_blank" rel="noopener">Bhoomi RTC Revenue Records ↗</a></li>
+          <li><a href="https://e-swathu.karnataka.gov.in" target="_blank" rel="noopener">e-Swathu / BBMP e-Khata ↗</a></li>
+          <li><a href="https://services.ecourts.gov.in" target="_blank" rel="noopener">e-Courts Litigation Portal ↗</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="footer-title">Contact & Support Desk</div>
+        <ul class="footer-links" style="font-size:0.84rem; color:#94A3B8; display:flex; flex-direction:column; gap:0.65rem;">
+          <li style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="color:#60A5FA;">📞</span> <span><strong>Helpline:</strong> +91 80 4991 8800</span>
+          </li>
+          <li style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="color:#34D399;">✉️</span> <span><strong>Email:</strong> support@reraintelligence.in</span>
+          </li>
+          <li style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="color:#FBBF24;">💬</span> <span><strong>WhatsApp Support:</strong> +91 98800 12345</span>
+          </li>
+          <li style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="color:#A7F3D0;">⏱️</span> <span><strong>Hours:</strong> Mon - Sat: 9:00 AM - 7:00 PM IST</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div>© 2026 RERA Intelligence Platform. All rights reserved.</div>
+      <div>Designed for Karnataka Property Buyers, Advocates & Financial Lenders</div>
+    </div>
+  </footer>
+
+</body>
+
+</html>

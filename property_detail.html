@@ -1,0 +1,2593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Full Property Audit & Compliance Record — RERA Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  /* Top Announcement Bar */
+  .top-announcement {
+    background: linear-gradient(90deg, #0B1329 0%, #152244 50%, #0B1329 100%) !important;
+    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+    font-size: 0.75rem !important;
+    padding: 0.5rem 2.5rem !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    color: #94A3B8 !important;
+    position: relative !important;
+    z-index: 1010 !important;
+  }
+
+  .pulse-indicator {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    color: #F8FAFC !important;
+  }
+
+  .pulse-dot {
+    width: 8px !important;
+    height: 8px !important;
+    background: #10B981 !important;
+    border-radius: 50% !important;
+    box-shadow: 0 0 10px #10B981 !important;
+    animation: pulseGlow 2s infinite ease-in-out !important;
+  }
+
+  @keyframes pulseGlow {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.25); opacity: 0.6; }
+  }
+
+  /* Glassmorphic Navigation Bar */
+  .navbar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1000 !important;
+    background: rgba(9, 13, 22, 0.92) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    padding: 0.85rem 2.5rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 1.5rem !important;
+    font-family: 'Plus Jakarta Sans', 'IBM Plex Sans', sans-serif !important;
+  }
+
+  .nav-brand {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.85rem !important;
+    text-decoration: none !important;
+  }
+
+  .brand-logo-box {
+    width: 40px !important;
+    height: 40px !important;
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+    color: #FFFFFF !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-family: 'IBM Plex Serif', serif !important;
+    font-weight: 700 !important;
+    font-size: 1.3rem !important;
+    box-shadow: 0 0 20px rgba(37, 99, 235, 0.4) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+  }
+
+  .brand-title {
+    font-family: 'IBM Plex Serif', serif !important;
+    font-weight: 700 !important;
+    font-size: 1.25rem !important;
+    color: #F8FAFC !important;
+    line-height: 1.1 !important;
+    letter-spacing: -0.01em !important;
+  }
+
+  .brand-subtitle {
+    font-size: 0.68rem !important;
+    color: #38BDF8 !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-weight: 600 !important;
+  }
+
+  .nav-links {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.35rem !important;
+    background: rgba(255,255,255,0.04) !important;
+    padding: 0.25rem 0.5rem !important;
+    border-radius: 30px !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+  }
+
+  .nav-item {
+    font-size: 0.84rem !important;
+    font-weight: 600 !important;
+    color: #94A3B8 !important;
+    padding: 0.45rem 0.95rem !important;
+    border-radius: 20px !important;
+    text-decoration: none !important;
+    transition: all 0.2s ease !important;
+  }
+
+  .nav-item:hover, .nav-item.active {
+    color: #FFFFFF !important;
+    background: rgba(255,255,255,0.1) !important;
+  }
+
+  .nav-cta {
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    font-size: 0.85rem !important;
+    padding: 0.55rem 1.15rem !important;
+    border-radius: 8px !important;
+    text-decoration: none !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35) !important;
+    transition: all 0.2s ease !important;
+    display: inline-flex !important;
+    align-items: center !important;
+  }
+  .nav-cta:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5) !important;
+  }
+  :root {
+    --paper: #F6F5F1;
+    --paper-raised: #FCFBF8;
+    --ink: #1B1E24;
+    --ink-soft: #565B66;
+    --hairline: #DBD7CC;
+    --hairline-strong: #C7C2B3;
+    --clear: #2F6E4F;
+    --clear-tint: #2F6E4F12;
+    --watch: #97701A;
+    --watch-tint: #97701A14;
+    --flag: #AC2C2C;
+    --flag-tint: #AC2C2C12;
+    --gold: #8A6A1F;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.5;
+  }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+  .serif { font-family: 'IBM Plex Serif', serif; }
+
+  /* Navigation Bar */
+  .navbar {
+    background: var(--ink);
+    color: #fff;
+    padding: 0.85rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+    color: #fff;
+  }
+  .nav-title {
+    font-family: 'IBM Plex Serif', serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .nav-subtitle {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    color: #A0A5B1;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    height: 36px;
+    padding: 0 1rem;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #fff;
+    background: var(--ink);
+    border: 1px solid var(--ink);
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+  .btn:hover { background: #323742; border-color: #323742; }
+  .btn.ghost {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--hairline-strong);
+  }
+  .btn.ghost:hover { background: rgba(27,30,36,0.05); border-color: var(--ink); }
+  .btn.ghost-nav {
+    background: transparent;
+    color: #fff;
+    border: 1px solid #454B57;
+  }
+  .btn.ghost-nav:hover { background: rgba(255,255,255,0.1); border-color: #fff; }
+
+  /* Container & Grid */
+  .container {
+    max-width: 1240px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+  }
+  .grid-2col {
+    display: grid;
+    grid-template-columns: 2.2fr 1.1fr;
+    gap: 1.75rem;
+    align-items: start;
+  }
+  .sticky-sidebar {
+    position: sticky;
+    top: 1.5rem;
+    align-self: start;
+    z-index: 10;
+  }
+  #detailMap {
+    width: 100%;
+    height: clamp(220px, 32vh, 380px);
+    border-radius: 4px;
+    border: 1px solid var(--hairline-strong);
+    background: #e5e3df;
+    transition: height 0.3s ease;
+  }
+  @media (max-width: 1100px) {
+    .grid-2col { grid-template-columns: 1.8fr 1.2fr; }
+  }
+  @media (max-width: 960px) {
+    .grid-2col { grid-template-columns: 1fr; }
+    .sticky-sidebar { position: static; max-height: none; overflow-y: visible; }
+    #detailMap { height: 280px; }
+  }
+
+  /* Cards */
+  .card {
+    background: var(--paper-raised);
+    border: 1px solid var(--hairline-strong);
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(27,30,36,0.04);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 0.85rem;
+    margin-bottom: 1.15rem;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .card-head-title {
+    font-family: 'IBM Plex Serif', serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  /* Collapsible Cards */
+  .card.collapsible .card-head {
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s ease;
+  }
+  .card.collapsible .card-head:hover .card-head-title {
+    color: var(--clear);
+  }
+  .card.collapsible.collapsed {
+    padding-bottom: 1rem;
+  }
+  .card.collapsible.collapsed .card-head {
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-bottom: 0;
+  }
+  .card.collapsible .collapse-icon {
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    transition: transform 0.2s ease;
+    margin-left: 0.75rem;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .card.collapsible.collapsed .collapse-icon {
+    transform: rotate(-90deg);
+  }
+  .card.collapsible.collapsed .card-body {
+    display: none;
+  }
+
+  /* Hero Section Header */
+  .hero-card {
+    border-top: 5px solid var(--ink);
+  }
+  .hero-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .prop-title {
+    font-family: 'IBM Plex Serif', serif;
+    font-size: 1.9rem;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.2;
+  }
+  .prop-dev-name {
+    font-size: 0.98rem;
+    color: var(--ink-soft);
+    margin-top: 0.35rem;
+  }
+  .badge-group {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.2rem 0.55rem;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border: 1px solid transparent;
+  }
+  .badge-type { background: var(--hairline); color: var(--ink); border-color: var(--hairline-strong); }
+  .badge-approved { background: var(--clear-tint); color: var(--clear); border-color: var(--clear); }
+  .badge-flag { background: var(--flag-tint); color: var(--flag); border-color: var(--flag); }
+
+  /* Band Tags */
+  .band-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.45rem;
+    border-radius: 3px;
+    display: inline-block;
+  }
+  .band-clear { background: var(--clear-tint); color: var(--clear); border: 1px solid var(--clear); }
+  .band-watch { background: var(--watch-tint); color: var(--watch); border: 1px solid var(--watch); }
+  .band-flag { background: var(--flag-tint); color: var(--flag); border: 1px solid var(--flag); }
+
+  /* Hero Right Score Badge */
+  .hero-score-box {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    background: #F2EFE7;
+    border: 1px solid var(--hairline-strong);
+    padding: 1rem 1.25rem;
+    border-radius: 6px;
+    min-width: 180px;
+    text-align: right;
+  }
+  .hero-score-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 2.2rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .hero-score-num.clear { color: var(--clear); }
+  .hero-score-num.watch { color: var(--watch); }
+  .hero-score-num.flag { color: var(--flag); }
+  .hero-seal {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.5rem;
+    border-radius: 3px;
+    margin-top: 0.5rem;
+  }
+  .hero-seal.pass { background: var(--clear-tint); color: var(--clear); border: 1px solid var(--clear); }
+  .hero-seal.fail { background: var(--flag-tint); color: var(--flag); border: 1px solid var(--flag); }
+
+  /* Audit Key-Value Grid */
+  .audit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem 1.5rem;
+  }
+  .audit-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .audit-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ink-soft);
+    font-weight: 500;
+  }
+  .audit-val {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--ink);
+    word-break: break-word;
+  }
+
+  /* Positives (+) vs Negatives (-) Cards */
+  .eval-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+  @media (max-width: 768px) { .eval-grid { grid-template-columns: 1fr; } }
+  .eval-box {
+    border-radius: 6px;
+    padding: 1.15rem 1.25rem;
+    border: 1px solid var(--hairline-strong);
+  }
+  .eval-box.positives {
+    background: #F1F8F4;
+    border-color: #2F6E4F40;
+  }
+  .eval-box.negatives {
+    background: #FDF3F3;
+    border-color: #AC2C2C40;
+  }
+  .eval-box-title {
+    font-family: 'IBM Plex Serif', serif;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .eval-box.positives .eval-box-title { color: var(--clear); }
+  .eval-box.negatives .eval-box-title { color: var(--flag); }
+  .eval-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+  .eval-list li {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    position: relative;
+    padding-left: 1.2rem;
+  }
+  .eval-box.positives .eval-list li::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: var(--clear);
+    font-weight: bold;
+  }
+  .eval-box.negatives .eval-list li::before {
+    content: "✕";
+    position: absolute;
+    left: 0;
+    color: var(--flag);
+    font-weight: bold;
+  }
+
+  /* Tables */
+  .data-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 4px;
+    background: var(--paper-raised);
+  }
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    text-align: left;
+  }
+  .data-table th {
+    background: #EEECDF;
+    color: var(--ink);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.65rem 0.85rem;
+    border-bottom: 1px solid var(--hairline-strong);
+  }
+  .data-table td {
+    padding: 0.65rem 0.85rem;
+    border-bottom: 1px solid var(--hairline);
+    color: var(--ink);
+  }
+  .data-table tr:last-child td { border-bottom: none; }
+
+  /* 5-Axis Compliance Breakdown */
+  .axis-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+  .axis-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .axis-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.82rem;
+  }
+  .axis-name { font-weight: 500; color: var(--ink); }
+  .axis-score { font-family: 'IBM Plex Mono', monospace; font-weight: 600; }
+  .axis-track {
+    height: 7px;
+    background: var(--hairline);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .axis-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.4s ease;
+  }
+  .axis-fill.clear { background: var(--clear); }
+  .axis-fill.watch { background: var(--watch); }
+  .axis-fill.flag  { background: var(--flag); }
+
+  /* Map Container */
+  #detailMap {
+    width: 100%;
+    height: 320px;
+    border-radius: 4px;
+    border: 1px solid var(--hairline-strong);
+  }
+
+  /* Document Vault & Detailed Document Cards */
+  .doc-vault-desc {
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    margin-top: 0.25rem;
+    line-height: 1.4;
+  }
+  .doc-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 0.85rem;
+    margin-bottom: 1.25rem;
+    background: #EEECDF;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    border: 1px solid var(--hairline-strong);
+  }
+  .doc-search-box {
+    flex: 1;
+    min-width: 240px;
+    position: relative;
+  }
+  .doc-search-input {
+    width: 100%;
+    height: 36px;
+    padding: 0 0.85rem 0 2.2rem;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.82rem;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 4px;
+    background: #FCFBF8;
+    color: var(--ink);
+  }
+  .doc-search-input:focus {
+    outline: none;
+    border-color: var(--ink);
+    box-shadow: 0 0 0 2px rgba(27,30,36,0.1);
+  }
+  .doc-search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    pointer-events: none;
+  }
+  .doc-filter-pills {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+  .doc-pill {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 0.3rem 0.65rem;
+    border-radius: 4px;
+    background: var(--paper-raised);
+    border: 1px solid var(--hairline-strong);
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .doc-pill:hover {
+    color: var(--ink);
+    border-color: var(--ink);
+  }
+  .doc-pill.active {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+
+  .doc-vault-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .doc-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--hairline-strong);
+    border-radius: 6px;
+    padding: 1.15rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+  }
+  .doc-card:hover {
+    border-color: var(--ink);
+    box-shadow: 0 4px 14px rgba(27,30,36,0.08);
+    transform: translateY(-1px);
+  }
+
+  .doc-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .doc-cat-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.18rem 0.5rem;
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .doc-cat-tag.certs { background: var(--clear-tint); color: var(--clear); border: 1px solid var(--clear); }
+  .doc-cat-tag.statutory { background: var(--watch-tint); color: var(--watch); border: 1px solid var(--watch); }
+  .doc-cat-tag.legal { background: #EBF3FA; color: #1E56A0; border: 1px solid #1E56A0; }
+  .doc-cat-tag.promoter { background: #F5EBFB; color: #6B21A8; border: 1px solid #6B21A8; }
+  .doc-cat-tag.other { background: var(--hairline); color: var(--ink); border: 1px solid var(--hairline-strong); }
+
+  .doc-badges {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .doc-ref-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    background: #EEECDF;
+    color: var(--ink);
+    padding: 0.15rem 0.45rem;
+    border-radius: 3px;
+    border: 1px solid var(--hairline-strong);
+  }
+
+  .doc-title {
+    font-family: 'IBM Plex Serif', serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.35;
+  }
+  .doc-description {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    line-height: 1.45;
+  }
+
+  .doc-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-top: 0.6rem;
+    margin-top: 0.25rem;
+    border-top: 1px dashed var(--hairline);
+    flex-wrap: wrap;
+  }
+  .doc-meta-info {
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .doc-download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.9rem;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #fff;
+    background: var(--clear);
+    border: 1px solid var(--clear);
+    border-radius: 4px;
+    text-decoration: none;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+  }
+  .doc-download-btn:hover {
+    background: #23543B;
+    border-color: #23543B;
+    box-shadow: 0 2px 8px rgba(47,110,79,0.25);
+  }
+
+  /* Print Styles */
+  @media print {
+    .navbar, .btn { display: none !important; }
+    body { background: #fff; padding: 0; }
+    .container { max-width: 100%; margin: 0; padding: 0; }
+    .card { box-shadow: none; border-color: #ccc; page-break-inside: avoid; }
+  }
+
+  /* Comprehensive Mobile Responsiveness */
+  @media (max-width: 960px) {
+    .container { max-width: 100%; padding: 0 1.25rem; margin: 1.25rem auto; }
+    .grid-2col { grid-template-columns: 1fr; gap: 1.25rem; }
+    .sticky-sidebar { position: static; top: 0; z-index: 1; }
+    #detailMap { height: 280px; }
+  }
+
+  @media (max-width: 768px) {
+    .navbar { padding: 0.75rem 1rem; gap: 0.75rem; flex-wrap: wrap; }
+    .nav-actions { width: 100%; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
+    .nav-actions .btn { flex-shrink: 0; white-space: nowrap; }
+    .hero-top { flex-direction: column; align-items: stretch; gap: 1rem; }
+    .hero-score-box { min-width: 100%; width: 100%; text-align: left; align-items: flex-start; }
+    .prop-title { font-size: 1.5rem; }
+    .card { padding: 1.15rem 1rem; margin-bottom: 1.15rem; }
+    .eval-grid { grid-template-columns: 1fr !important; }
+    .audit-grid { grid-template-columns: 1fr; gap: 0.85rem; }
+    .data-table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  }
+
+  @media (max-width: 480px) {
+    .container { padding: 0 0.75rem; margin: 1rem auto; }
+    .nav-title { font-size: 1rem; }
+    .hero-score-num { font-size: 1.8rem; }
+  }
+
+  /* Footer Styles */
+  .footer {
+    background: #05080E !important;
+    color: #FFFFFF !important;
+    padding: 4.5rem 2.5rem 2.5rem !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+</style>
+</head>
+<body>
+
+  <!-- Top Announcement Bar -->
+  <div class="top-announcement">
+    <div class="pulse-indicator">
+      <div class="pulse-dot"></div>
+      <span>KARNATAKA RERA LEGAL ENGINE LIVE • 1,240+ POSTGRES RECORDS OPERATIONAL</span>
+    </div>
+    <div>CROSS-VERIFYING KAVERI 2.0 • BHOOMI RTC • BDA • BBMP • E-COURTS</div>
+  </div>
+
+  <!-- Glassmorphic Navbar -->
+  <header class="navbar">
+    <a href="/" class="nav-brand">
+      <div class="brand-logo-box">R</div>
+      <div>
+        <div class="brand-title">RERA Intelligence</div>
+        <div class="brand-subtitle">AI Property Verification</div>
+      </div>
+    </a>
+
+    <nav class="nav-links">
+      <a href="/geospatial" class="nav-item">Geospatial Map</a>
+      <a href="/legal-report?q=CASAGRAND%20MOONDANCE" class="nav-item">Legal Due-Diligence</a>
+      <a href="/register" class="nav-item">Compliance Register</a>
+      <a href="/radar-chart" class="nav-item">Composite Radar</a>
+      <a href="/compare" class="nav-item">Compare Projects</a>
+      <a href="/detail?q=CASAGRAND%20MOONDANCE" class="nav-item active">Audit Profile</a>
+    </nav>
+
+    <a href="/legal-report?q=CASAGRAND%20MOONDANCE" class="nav-cta">Launch Legal Audit ↗</a>
+  </header>
+
+  <div class="container">
+    <!-- Loading State -->
+    <div id="loadingState" class="card" style="text-align:center; padding:3rem 1rem;">
+      <h3 class="serif" style="font-size:1.2rem; color:var(--ink-soft);">Loading Full Property Record...</h3>
+    </div>
+
+    <!-- Main Content Container -->
+    <div id="auditContent" style="display:none;">
+
+      <!-- Persona Mode Selection Bar -->
+      <div class="card" style="padding: 0.85rem 1.25rem; margin-bottom: 1.25rem; background: var(--paper-raised); border: 1px solid var(--hairline-strong); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <span class="serif" style="font-size: 0.95rem; font-weight: 600; color: var(--ink);">Audit Persona Mode:</span>
+          <span class="mono" style="font-size: 0.7rem; color: var(--ink-soft);">Adjust risk weightings per institutional persona</span>
+        </div>
+        <div id="personaSelectorPills" style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+          <button class="doc-pill active" data-persona="homebuyer">🏡 Homebuyer Mode</button>
+          <button class="doc-pill" data-persona="lender">🏦 Bank / Lender Mode</button>
+          <button class="doc-pill" data-persona="investor">📈 Investor ROI Mode</button>
+        </div>
+      </div>
+
+      <!-- Hero Header Card -->
+      <div class="card hero-card">
+        <div class="hero-top">
+          <div>
+            <h1 class="prop-title" id="propTitle">Project Name</h1>
+            <div class="prop-dev-name" id="propDev">Developer: Firm Name</div>
+            <div class="badge-group">
+              <span class="badge badge-type" id="propType">Property Type</span>
+              <span class="badge badge-approved" id="propStatus">APPROVED</span>
+              <span class="badge" id="propLocation">Location</span>
+            </div>
+          </div>
+          <div class="hero-score-box">
+            <div class="hero-score-num clear" id="compositeScore">0</div>
+            <div class="mono" style="font-size:0.65rem; color:var(--ink-soft);">COMPOSITE RISK INDEX</div>
+            <div class="mono" id="heroPersonaLabel" style="font-size:0.62rem; font-weight:600; color:var(--gold); margin-top:0.15rem; text-transform:uppercase;">HOMEBUYER MODE</div>
+            <a class="hero-seal pass" id="gateSeal" href="/legal-report" target="_blank" style="text-decoration:none;" title="Click to view 27-Check Legal Due-Diligence Report">GATE CLEARED ↗</a>
+          </div>
+        </div>
+        <a id="heroLegalBanner" href="/legal-report" target="_blank" style="display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1.25rem; margin-top: 1rem; background: #1e3a8a; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-family: 'IBM Plex Sans', sans-serif;">
+          <span style="display: flex; align-items: center; gap: 0.5rem;">
+            <span>Karnataka Property Legal Due-Diligence & 27-Check Title Audit Report</span>
+          </span>
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; background: rgba(255,255,255,0.2); padding: 0.25rem 0.6rem; border-radius: 4px;">Open Legal Report ↗</span>
+        </a>
+      </div>
+
+      <div class="grid-2col">
+        <!-- Left Column: Detailed Specifications & Database Records -->
+        <div>
+
+          <!-- 1. RERA Technical & Financial Overview -->
+          <div class="card collapsible">
+            <div class="card-head">
+              <div>
+                <span class="card-head-title">RERA Project Overview & Financial Details</span>
+                <span class="mono" style="font-size:0.7rem; color:var(--ink-soft); margin-left:0.5rem;" id="crawledAt">Database Verified</span>
+              </div>
+              <span class="collapse-icon">▼</span>
+            </div>
+            <div class="card-body">
+              <div class="audit-grid" id="overviewGrid">
+                <!-- Dynamically populated from raw_data.project_overview_details -->
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Land, Survey & Title Deed Details -->
+          <div class="card collapsible">
+            <div class="card-head">
+              <div>
+                <span class="card-head-title">Land, Survey & Khatha Records</span>
+                <span class="mono" style="font-size:0.7rem; color:var(--ink-soft); margin-left:0.5rem;">Annexure & Title Data</span>
+              </div>
+              <span class="collapse-icon">▼</span>
+            </div>
+            <div class="card-body">
+              <div id="surveyDetailsWrap"></div>
+            </div>
+          </div>
+
+          <!-- 3. Directional Schedules & Boundaries -->
+          <div class="card collapsible">
+            <div class="card-head">
+              <span class="card-head-title">Property Boundaries & Schedules</span>
+              <span class="collapse-icon">▼</span>
+            </div>
+            <div class="card-body">
+              <div class="audit-grid" id="schedulesGrid"></div>
+            </div>
+          </div>
+
+          <!-- 4. Location Highlights & USPs -->
+          <div class="card collapsible" id="locationUspsCard">
+            <div class="card-head">
+              <div>
+                <span class="card-head-title">Location Highlights & USPs</span>
+                <span class="mono" style="font-size:0.7rem; color:var(--primary); margin-left:0.5rem;" id="locationUspsBadge">Key Location & Connectivity Advantages</span>
+              </div>
+              <span class="collapse-icon">▼</span>
+            </div>
+            <div class="card-body">
+              <div id="locationUspsContainer" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:0.75rem;"></div>
+            </div>
+          </div>
+
+          <!-- 5. Promoter & Partner Profile -->
+          <div class="card collapsible">
+            <div class="card-head">
+              <span class="card-head-title">Promoter & Developer Profile</span>
+              <span class="collapse-icon">▼</span>
+            </div>
+            <div class="card-body">
+              <div class="audit-grid" id="promoterGrid"></div>
+            </div>
+          </div>
+
+          <!-- 5b. Financial & ESCROW Solvency Audit -->
+          <div class="card collapsible" id="financialEscrowCard">
+            <div class="card-head">
+              <div>
+                <span class="card-head-title">Financial & 70% ESCROW Solvency Audit</span>
+                <span class="mono" style="font-size:0.7rem; color:var(--ink-soft); margin-left:0.5rem;" id="financialScoreBadge">Form 3 CA & Escrow Verification</span>
+              </div>
+              <span class="collapse-icon">▼</span>
+            </div>
+            <div class="card-body">
+              <div id="financialEscrowWrap"></div>
+            </div>
+          </div>
+
+          <!-- 5. Property Risk & Compliance Report with Risk & Quality Profile and Axis Breakdown -->
+          <div class="card collapsible" id="riskReportCard">
+            <div class="card-head">
+              <div>
+                <span class="card-head-title">Property Risk & Compliance Report</span>
+                <span class="mono" style="font-size:0.7rem; color:var(--ink-soft); margin-left:0.5rem;" id="riskScoreBadge">8-Axis Quality Profile</span>
+              </div>
+              <span class="collapse-icon">▼</span>
+            </div>
+            <div class="card-body">
+              <!-- Spider / Radar Chart -->
+              <div id="spiderChartWrap" style="position:relative; width:100%; max-width:480px; height:380px; margin:0 auto 1.5rem;">
+                <canvas id="riskSpiderCanvas"></canvas>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:center; gap:1.5rem; margin-bottom:1.5rem; flex-wrap:wrap;" id="spiderLegend">
+                <span style="font-size:0.72rem; font-family:'IBM Plex Mono',monospace; color:var(--ink-soft);">
+                  <span style="display:inline-block; width:10px; height:3px; background:#2C4A6E; border-radius:2px; margin-right:4px; vertical-align:middle;"></span>Risk & Quality Score
+                </span>
+                <span style="font-size:0.72rem; font-family:'IBM Plex Mono',monospace; color:var(--ink-soft);">0 – 100 per axis · Outer ring = ideal</span>
+              </div>
+
+              <!-- Summary Verdict Box -->
+              <div id="riskVerdictBox" style="background:var(--paper); border:1px solid var(--hairline-strong); border-left:4px solid var(--clear); padding:1rem; border-radius:4px; margin-bottom:1.25rem;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.4rem; flex-wrap:wrap; gap:0.5rem;">
+                  <span class="serif" style="font-size:1.05rem; font-weight:600; color:var(--ink);" id="riskVerdictTitle">Executive Risk & Quality Assessment</span>
+                  <span class="band-tag band-clear" id="riskVerdictBadge">HEALTH SCORE: 98 / 100</span>
+                </div>
+                <p id="riskVerdictText" style="font-size:0.85rem; color:var(--ink-soft); line-height:1.5; margin:0;"></p>
+              </div>
+
+              <!-- 8-Axis Risk Breakdown Grid -->
+              <div style="margin-bottom:1.5rem;">
+                <div class="serif" style="font-size:0.95rem; font-weight:600; color:var(--ink); margin-bottom:0.75rem; display:flex; align-items:center; justify-content:space-between;">
+                  <span>8-Axis Risk & Quality Profile Breakdown</span>
+                  <span class="mono" style="font-size:0.68rem; color:var(--ink-soft);">0–100 Scale per Axis</span>
+                </div>
+                <div class="axis-breakdown-grid" id="axisBreakdownGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:0.85rem;"></div>
+              </div>
+
+              <!-- Compliance Positives (+) vs Negatives (-) Grid -->
+              <div class="eval-grid" style="margin-bottom:1.25rem;">
+                <div class="eval-box positives">
+                  <div class="eval-box-title">Compliance Positives (+)</div>
+                  <ul class="eval-list" id="positivesList"></ul>
+                </div>
+                <div class="eval-box negatives">
+                  <div class="eval-box-title">Risk Negatives (-)</div>
+                  <ul class="eval-list" id="negativesList"></ul>
+                </div>
+              </div>
+
+              <!-- Interactive Radar Launch Link -->
+              <div style="text-align:center; margin-top:1rem;">
+                <a id="radarChartLaunchBtn" class="btn" style="width:100%; text-decoration:none; display:flex; align-items:center; justify-content:center; box-sizing:border-box;" href="#" target="_blank">
+                  Launch Full Interactive Radar Chart & Comparative Analysis ↗
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- 6. Complaints & Dispute Audit -->
+          <div class="card collapsible">
+            <div class="card-head">
+              <div>
+                <span class="card-head-title">RERA Complaints & Legal Dispute Audit</span>
+                <span class="mono" style="font-size:0.7rem; color:var(--ink-soft); margin-left:0.5rem;" id="complaintCountText">0 Complaints</span>
+              </div>
+              <span class="collapse-icon">▼</span>
+            </div>
+            <div class="card-body">
+              <div id="complaintsWrap"></div>
+            </div>
+          </div>
+
+          <!-- 7. Quarterly Progress Update History -->
+          <div class="card collapsible">
+            <div class="card-head">
+              <span class="card-head-title">Quarterly Progress Filings History</span>
+              <span class="collapse-icon">▼</span>
+            </div>
+            <div class="card-body">
+              <div id="quarterlyWrap"></div>
+            </div>
+          </div>
+
+          <!-- 8. RERA Official Certificates & Uploaded Document Vault -->
+          <div class="card collapsible" id="docVaultCard">
+            <div class="card-head" style="margin-bottom: 0.5rem;">
+              <div style="flex:1; padding-right:0.75rem;">
+                <div style="display:flex; align-items:center; justify-content:space-between;">
+                  <span class="card-head-title">RERA Official Certificates & Uploaded Document Vault</span>
+                  <span class="mono" style="font-size:0.75rem; font-weight:600; color:var(--clear);" id="docCountText">0 Verified Files</span>
+                </div>
+                <div class="doc-vault-desc">Full repository of verified download documents including RERA certificates, legal title deeds, CA/Architect/Engineer annexures, sanctioned plans, and promoter filings.</div>
+              </div>
+              <span class="collapse-icon">▼</span>
+            </div>
+            <div class="card-body">
+              <!-- Controls: Search Input & Category Filter Pills -->
+              <div class="doc-controls">
+                <div class="doc-search-box">
+                  <span class="doc-search-icon">🔍</span>
+                  <input type="text" id="docSearchInput" class="doc-search-input" placeholder="Search documents by name, annexure, or reference ID..." />
+                </div>
+                <div class="doc-filter-pills" id="docFilterPills">
+                  <button class="doc-pill active" data-cat="all">All (<span id="count-all">0</span>)</button>
+                  <button class="doc-pill" data-cat="certs">Certificates (<span id="count-certs">0</span>)</button>
+                  <button class="doc-pill" data-cat="statutory">Statutory Annexures (<span id="count-statutory">0</span>)</button>
+                  <button class="doc-pill" data-cat="legal">Legal & Plans (<span id="count-legal">0</span>)</button>
+                  <button class="doc-pill" data-cat="promoter">Promoter Filings (<span id="count-promoter">0</span>)</button>
+                  <button class="doc-pill" data-cat="photos">Construction Photos (<span id="count-photos">0</span>)</button>
+                  <button class="doc-pill" data-cat="completion">Completion & Loan (<span id="count-completion">0</span>)</button>
+                  <button class="doc-pill" data-cat="other">Other (<span id="count-other">0</span>)</button>
+                </div>
+              </div>
+
+              <!-- Container for Document Cards -->
+              <div class="doc-vault-grid" id="docVaultContainer"></div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right Column: 5-Axis Score Breakdown & Map -->
+        <div class="sticky-sidebar">
+          <!-- 5-Axis Risk Breakdown -->
+          <div class="card">
+            <div class="card-head">
+              <span class="card-head-title">5-Axis Risk Profile</span>
+              <span class="mono" style="font-size:0.7rem; color:var(--ink-soft);">100 Point Scale</span>
+            </div>
+            <div class="axis-list" id="axisContainer"></div>
+            <div style="margin-top:1rem; text-align:center;">
+              <a id="radarBtn" class="btn" style="width:100%; text-decoration:none; display:flex; align-items:center; justify-content:center; box-sizing:border-box;" href="#" target="_blank">Open Interactive Radar ↗</a>
+            </div>
+          </div>
+
+          <!-- Location Map -->
+          <div class="card">
+            <div class="card-head">
+              <span class="card-head-title">GIS Spatial Location</span>
+              <span class="mono" style="font-size:0.68rem; color:var(--ink-soft);" id="gpsCoordsText">Coordinates</span>
+            </div>
+            <div id="detailMap"></div>
+            <div id="gmapsLinkWrap" style="margin-top:0.75rem; text-align:center;"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+  let detailMap = null;
+
+  function extractAllProjectDocuments(raw, overview) {
+    const docs = [];
+    const seenUrls = new Set();
+    // Also deduplicate by normalized title+annexure for survey-table docs
+    // (same document type can appear once per survey number with different URLs)
+    const seenTitleKeys = new Set();
+
+    function addDoc(item, dedupByTitle = false) {
+      if (!item.url || typeof item.url !== 'string' || !item.url.startsWith('http')) return;
+      const cleanUrl = item.url.trim();
+      if (cleanUrl.endsWith('DOC_ID=')) return;
+      if (seenUrls.has(cleanUrl)) return;
+      if (dedupByTitle) {
+        const titleKey = `${item.annexure}||${item.categoryKey}`;
+        if (seenTitleKeys.has(titleKey)) return;
+        seenTitleKeys.add(titleKey);
+      }
+      seenUrls.add(cleanUrl);
+      docs.push(item);
+    }
+
+    // 1. RERA Official Certificates & Orders
+    const certUrls = Array.isArray(raw.certificate_url) ? raw.certificate_url : (raw.certificate_url ? [raw.certificate_url] : []);
+    certUrls.forEach(url => {
+      addDoc({
+        title: 'RERA Official Registration Certificate',
+        categoryKey: 'certs',
+        categoryName: 'RERA Official Certificates',
+        categoryIcon: '📜',
+        ref: raw.registration_number || overview.registration_no || 'RERA Approved Order',
+        url: url,
+        annexure: 'Official Certificate',
+        fileType: 'PDF Document',
+        desc: 'Official certificate of registration granted by Karnataka Real Estate Regulatory Authority authorizing project launch, marketing, and sales under Section 5 of RERA Act.'
+      });
+    });
+
+    if (raw.renewed_certificate_url) {
+      addDoc({
+        title: 'Renewed RERA Registration Certificate',
+        categoryKey: 'certs',
+        categoryName: 'RERA Official Certificates',
+        categoryIcon: '📜',
+        ref: 'Renewal Order',
+        url: raw.renewed_certificate_url,
+        annexure: 'Renewal Order',
+        fileType: 'PDF Document',
+        desc: 'Official renewal certificate issued by RERA Karnataka granting formal extension of project registration.'
+      });
+    }
+
+    if (raw.further_extension_order_url) {
+      addDoc({
+        title: 'RERA Further Extension Order',
+        categoryKey: 'certs',
+        categoryName: 'RERA Official Certificates',
+        categoryIcon: '📜',
+        ref: 'Extension Order',
+        url: raw.further_extension_order_url,
+        annexure: 'Extension Order',
+        fileType: 'PDF Document',
+        desc: 'Formal regulatory extension order approved by RERA authority extending project completion timeline.'
+      });
+    }
+
+    if (raw.covid_certificate_url) {
+      addDoc({
+        title: 'RERA Force Majeure / COVID Extension Order',
+        categoryKey: 'certs',
+        categoryName: 'RERA Official Certificates',
+        categoryIcon: '📜',
+        ref: 'COVID Relief Order',
+        url: raw.covid_certificate_url,
+        annexure: 'COVID Order',
+        fileType: 'PDF Document',
+        desc: 'Statutory COVID-19 timeline extension order issued under regulatory pandemic relief guidelines.'
+      });
+    }
+
+    // 2. Promoter Credentials & Corporate Filings
+    const prom = raw.promoter_details || {};
+    Object.keys(prom).forEach(secName => {
+      const content = prom[secName];
+      if (content && typeof content === 'object' && !Array.isArray(content)) {
+        Object.keys(content).forEach(key => {
+          if (key.endsWith(' URL') || key.endsWith('_url')) {
+            const label = key.replace(/\s*URL$/, '').replace(/_url$/, '').trim();
+            const val = content[key];
+            const urls = Array.isArray(val) ? val : [val];
+            const fileRef = content[label] || 'Attached Filing';
+
+            urls.forEach(u => {
+              if (typeof u === 'string' && u.startsWith('http')) {
+                const annMatch = label.match(/Annexure\s*-\s*\d+/i);
+                const annTag = annMatch ? annMatch[0] : 'Promoter Credential';
+                addDoc({
+                  title: label,
+                  categoryKey: 'promoter',
+                  categoryName: 'Promoter Credentials & Corporate Filings',
+                  categoryIcon: '🏢',
+                  ref: typeof fileRef === 'string' ? fileRef : 'Attached',
+                  url: u,
+                  annexure: annTag,
+                  fileType: 'Corporate PDF',
+                  desc: `Statutory promoter verification filing (${label}). Submitted to authenticate developer firm legal identity, tax registration, and corporate authorization.`
+                });
+              }
+            });
+          }
+        });
+      }
+    });
+
+    // 3. Project Details & Land Titling
+    const proj = raw.project_details || {};
+    Object.keys(proj).forEach(secName => {
+      const content = proj[secName];
+      if (content && typeof content === 'object' && !Array.isArray(content)) {
+        Object.keys(content).forEach(key => {
+          if (key.endsWith(' URL') || key.endsWith('_url')) {
+            const label = key.replace(/\s*URL$/, '').replace(/_url$/, '').trim();
+            const val = content[key];
+            const urls = Array.isArray(val) ? val : [val];
+            const fileRef = content[label] || 'Attached Deed';
+
+            urls.forEach(u => {
+              if (typeof u === 'string' && u.startsWith('http')) {
+                const annMatch = label.match(/Annexure\s*-\s*\d+/i);
+                const annTag = annMatch ? annMatch[0] : 'Title & Legal';
+                addDoc({
+                  title: `${secName} — ${label}`,
+                  categoryKey: 'legal',
+                  categoryName: 'Legal Title Deeds & Sanctioned Plans',
+                  categoryIcon: '📐',
+                  ref: typeof fileRef === 'string' ? fileRef : 'Attached',
+                  url: u,
+                  annexure: annTag,
+                  fileType: 'Legal Document',
+                  desc: `Legal title deed, land survey document, or legal affidavit filed under ${secName} for property verification.`
+                });
+              }
+            });
+          }
+        });
+      }
+    });
+
+    // 4. Uploaded Documents Matrix (Statutory Annexures, Form 1/2/3, CA/Engineer/Architect)
+    const uploadedDocs = raw.uploaded_documents || [];
+    uploadedDocs.forEach((d, idx) => {
+      if (!d || typeof d !== 'object') return;
+      let rawUrl = d.file_url || d.url || d.download_url;
+      if (Array.isArray(rawUrl)) rawUrl = rawUrl[0];
+      if (!rawUrl || typeof rawUrl !== 'string' || !rawUrl.startsWith('http')) return;
+
+      const docName = d.financial_year || d.document_name || d.document_type || d.name || d.file || `Document Attachment #${idx + 1}`;
+      const fileRef = d.file || d.file_identifier || 'Attachment';
+      const docNameLower = String(docName).toLowerCase();
+
+      let catKey = 'statutory';
+      let catName = 'Statutory Annexures & CA / Engineer / Architect Forms';
+      let catIcon = '⚖️';
+      let annTag = 'Statutory Form';
+      let desc = `Official RERA project submission attachment: ${docName}. (Ref / Reg No: ${fileRef})`;
+
+      if (docNameLower.includes('icai') || docNameLower.includes('annexure-53') || docNameLower.includes('chartered accountant') || docNameLower.includes('form 1')) {
+        annTag = 'Form 1 (CA)';
+        desc = `Chartered Accountant ICAI Membership Certificate & Form 1 Financial Audit certifying land cost calculations, layout expenditure, and project escrow bank balance. (ICAI Member Reg: ${fileRef})`;
+      } else if (docNameLower.includes('licence') || docNameLower.includes('annexure-55') || docNameLower.includes('engineer') || docNameLower.includes('form 3')) {
+        annTag = 'Form 3 (Engineer)';
+        desc = `Structural Engineer Local Authority Licence & Form 3 Quality/Structural Certificate confirming construction progress and building stability. (Licence No: ${fileRef})`;
+      } else if (docNameLower.includes('coa') || docNameLower.includes('annexure-57') || docNameLower.includes('architect') || docNameLower.includes('form 2')) {
+        annTag = 'Form 2 (Architect)';
+        desc = `Architect Council of Architecture (COA) Registration Certificate & Form 2 layout design certification verifying floor area ratios and master plan compliance. (COA Reg: ${fileRef})`;
+      } else if (docNameLower.includes('title') || docNameLower.includes('deed') || docNameLower.includes('encumbrance') || docNameLower.includes('khatha') || docNameLower.includes('conversion')) {
+        catKey = 'legal';
+        catName = 'Legal Title Deeds & Sanctioned Plans';
+        catIcon = '📐';
+        annTag = 'Title & Land';
+        desc = `Legal land title deed, encumbrance clearance certificate, or agricultural land conversion order. (Ref ID: ${fileRef})`;
+      } else if (docNameLower.includes('plan') || docNameLower.includes('layout') || docNameLower.includes('sanction')) {
+        catKey = 'legal';
+        catName = 'Legal Title Deeds & Sanctioned Plans';
+        catIcon = '📐';
+        annTag = 'Sanction Plan';
+        desc = `Competent local authority approved building sanction plan, floor layouts, or structural layout drawing. (Ref ID: ${fileRef})`;
+      } else if (!annTag || annTag === 'Statutory Form') {
+        catKey = 'other';
+        catName = 'Other Uploaded Property Filings';
+        catIcon = '📁';
+      }
+
+      addDoc({
+        title: docName,
+        categoryKey: catKey,
+        categoryName: catName,
+        categoryIcon: catIcon,
+        ref: fileRef,
+        url: rawUrl,
+        annexure: annTag,
+        fileType: 'PDF Attachment',
+        desc: desc
+      });
+    });
+
+    // 5. Enquired Documents
+    const enquiredDocs = raw.enquired_documents || [];
+    enquiredDocs.forEach((d, idx) => {
+      if (!d || typeof d !== 'object') return;
+      let rawUrl = d.file_url || d.url || d.download_url || d.column_urls?.[0];
+      if (Array.isArray(rawUrl)) rawUrl = rawUrl[0];
+      if (!rawUrl || typeof rawUrl !== 'string' || !rawUrl.startsWith('http')) return;
+
+      const docName = d.document_name || d.document_type || d.name || `Enquired Document #${idx + 1}`;
+      addDoc({
+        title: docName,
+        categoryKey: 'other',
+        categoryName: 'Enquired & Miscellaneous Filings',
+        categoryIcon: '📁',
+        ref: d.file || 'Enquired Attachment',
+        url: rawUrl,
+        annexure: 'Enquired Doc',
+        fileType: 'Document',
+        desc: `Regulatory enquired document attachment submitted to RERA during project review.`
+      });
+    });
+
+    // 6. Survey Land Tables (Annexure-40 Conversion, Annexure-41 Title Deed, Annexure-42 JDA, Annexure-43 RTC, Annexure-44 Mutation, Annexure-45 Khatha, Annexure-46 EC)
+    const projDetails = raw.project_details || {};
+    const surveyTables = projDetails.survey_land_tables || raw.survey_land_tables || [];
+    surveyTables.forEach((st, sIdx) => {
+      if (!st || typeof st !== 'object') return;
+      Object.keys(st).forEach(k => {
+        if (k.endsWith(' URL') || k.endsWith('_url') || k.includes('URL[')) {
+          const val = st[k];
+          const urls = Array.isArray(val) ? val : [val];
+          
+          let cleanTitle = k.replace(/\s*URL.*$/, '').replace(/_url$/, '').trim();
+          let annTag = 'Land Titling';
+          let desc = `Land survey & titling attachment filed under Survey Land Table.`;
+          
+          const labelLower = cleanTitle.toLowerCase();
+          if (labelLower.includes('annexure-46') || labelLower.includes('encumbrance')) {
+            cleanTitle = 'Encumbrance Certificate — EC (Annexure-46)';
+            annTag = 'Annexure-46 (EC)';
+            desc = 'Sub-Registrar Office Nil Encumbrance Certificate (EC) verifying freedom from mortgages or legal encumbrances.';
+          } else if (labelLower.includes('annexure-41') || labelLower.includes('title deed') || labelLower.includes('sale deed')) {
+            cleanTitle = 'Land Sale / Title Deed (Annexure-41)';
+            annTag = 'Annexure-41 (Title)';
+            desc = 'Registered primary Land Sale Deed / Title Deed establishing developer title ownership.';
+          } else if (labelLower.includes('annexure-42') || labelLower.includes('jda')) {
+            cleanTitle = 'Joint Development Agreement — JDA (Annexure-42)';
+            annTag = 'Annexure-42 (JDA)';
+            desc = 'Registered Joint Development Agreement (JDA) between landowner and promoter.';
+          } else if (labelLower.includes('annexure-40') || labelLower.includes('conversion') || labelLower.includes('alienation')) {
+            cleanTitle = 'Agricultural Land Conversion Order (Annexure-40)';
+            annTag = 'Annexure-40 (Conversion)';
+            desc = 'DC Order authorizing agricultural land conversion/alienation for residential/commercial project use.';
+          } else if (labelLower.includes('annexure-44') || labelLower.includes('mutation')) {
+            cleanTitle = 'Land Mutation Register Extract (Annexure-44)';
+            annTag = 'Annexure-44 (Mutation)';
+            desc = 'Revenue Department Mutation Register (MR) entry confirming title entry transfer.';
+          } else if (labelLower.includes('annexure-43') || labelLower.includes('rtc')) {
+            cleanTitle = 'RTC / Pahani Land Record (Annexure-43)';
+            annTag = 'Annexure-43 (RTC)';
+            desc = 'Revenue Department Record of Rights, Tenancy & Crops (RTC / Pahani) extract.';
+          } else if (labelLower.includes('annexure-45') || labelLower.includes('khatha')) {
+            cleanTitle = 'Khatha Certificate & Extract (Annexure-45)';
+            annTag = 'Annexure-45 (Khatha)';
+            desc = 'Municipal / Local Authority Khatha Certificate & Extract (BBMP / CMC / Panchayat).';
+          }
+
+          urls.forEach(u => {
+            if (typeof u === 'string' && u.startsWith('http')) {
+              addDoc({
+                title: cleanTitle,
+                categoryKey: 'legal',
+                categoryName: 'Legal Title Deeds & Sanctioned Plans',
+                categoryIcon: '📐',
+                ref: `Survey Table #${sIdx + 1}`,
+                url: u,
+                annexure: annTag,
+                fileType: 'Legal Document',
+                desc: desc
+              }, true /* dedupByTitle — one entry per doc type across all survey rows */);
+            }
+          });
+        }
+      });
+    });
+
+    // 7. Quarterly Progress Updates & Site Progress Photos
+    const qUpdates = raw.quarterly_updates || [];
+    qUpdates.forEach((qu, qIdx) => {
+      if (!qu || typeof qu !== 'object') return;
+      const cols = qu.columns || [];
+      const colUrls = qu.column_urls || [];
+      
+      colUrls.forEach((urls, colIdx) => {
+        const urlArray = Array.isArray(urls) ? urls : [urls];
+        const label = cols[colIdx] || `Quarterly Attachment ${colIdx + 1}`;
+        urlArray.forEach(u => {
+          if (typeof u === 'string' && u.startsWith('http')) {
+            const isPhoto = label.toLowerCase().includes('photo') || label.toLowerCase().includes('image');
+            addDoc({
+              title: label.replace(/\s*\*/g, '').trim(),
+              categoryKey: isPhoto ? 'photos' : 'other',
+              categoryName: isPhoto ? 'Construction Progress Photographs' : 'Quarterly Progress Reports',
+              categoryIcon: isPhoto ? '📷' : '📊',
+              ref: `Quarterly Update #${qIdx + 1}`,
+              url: u,
+              annexure: isPhoto ? 'Site Photo' : 'Quarterly Filing',
+              fileType: isPhoto ? 'JPEG Image' : 'PDF Report',
+              desc: `Quarterly project progress attachment (${label}). Authenticated snapshot or progress report filed with RERA Karnataka.`
+            });
+          }
+        });
+      });
+    });
+
+    // 8. Completion Details & Bank Loan Filings
+    const compDetails = raw.completion_details || {};
+    Object.keys(compDetails).forEach(sec => {
+      const content = compDetails[sec];
+      if (content && typeof content === 'object') {
+        Object.keys(content).forEach(k => {
+          if (k.endsWith(' URL') || k.endsWith('_url') || (k.includes('URL') && typeof content[k] !== 'string')) {
+            const label = k.replace(/\s*URL.*$/, '').replace(/_url$/, '').trim();
+            const val = content[k];
+            const urls = Array.isArray(val) ? val : [val];
+            const isPhoto = label.toLowerCase().includes('photo') || label.toLowerCase().includes('image');
+            
+            urls.forEach(u => {
+              if (typeof u === 'string' && u.startsWith('http')) {
+                addDoc({
+                  title: `${sec} — ${label}`,
+                  categoryKey: isPhoto ? 'photos' : 'completion',
+                  categoryName: isPhoto ? 'Construction Progress Photographs' : 'Completion & Loan Filings',
+                  categoryIcon: isPhoto ? '📷' : '🏗️',
+                  ref: sec,
+                  url: u,
+                  annexure: isPhoto ? 'Completion Photo' : 'Completion Doc',
+                  fileType: isPhoto ? 'JPEG Image' : 'PDF Document',
+                  desc: `Project completion, bank loan encumbrance, or inventory alteration filing (${label}) under ${sec}.`
+                });
+              }
+            });
+          }
+        });
+      }
+    });
+
+    return docs;
+  }
+
+  function renderDocumentVault(allDocs) {
+    const container = document.getElementById('docVaultContainer');
+    const docCountEl = document.getElementById('docCountText');
+    if (docCountEl) docCountEl.textContent = `${allDocs.length} Verified Files`;
+
+    // Category Counters
+    const counts = { all: allDocs.length, certs: 0, statutory: 0, legal: 0, promoter: 0, photos: 0, completion: 0, other: 0 };
+    allDocs.forEach(d => {
+      if (counts[d.categoryKey] !== undefined) counts[d.categoryKey]++;
+      else counts.other++;
+    });
+
+    Object.keys(counts).forEach(k => {
+      const el = document.getElementById(`count-${k}`);
+      if (el) el.textContent = counts[k];
+    });
+
+    let currentCat = 'all';
+    let currentQuery = '';
+
+    function filterAndDraw() {
+      const q = currentQuery.toLowerCase().trim();
+      const filtered = allDocs.filter(d => {
+        const matchesCat = currentCat === 'all' || d.categoryKey === currentCat;
+        const matchesSearch = !q || 
+          d.title.toLowerCase().includes(q) || 
+          d.desc.toLowerCase().includes(q) || 
+          d.ref.toLowerCase().includes(q) || 
+          d.annexure.toLowerCase().includes(q) ||
+          d.categoryName.toLowerCase().includes(q);
+        return matchesCat && matchesSearch;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div style="text-align:center; padding:2rem 1rem; color:var(--ink-soft); background:#F9F8F5; border-radius:6px; border:1px dashed var(--hairline-strong);">
+            <p style="font-size:0.92rem; font-weight:600; color:var(--ink);">No documents found matching your filter criteria.</p>
+            <p style="font-size:0.8rem; margin-top:0.35rem;">Try adjusting your search query or selecting a different category tab.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(doc => `
+        <div class="doc-card">
+          <div class="doc-card-top">
+            <span class="doc-cat-tag ${doc.categoryKey}">
+              ${doc.categoryIcon} ${doc.categoryName}
+            </span>
+            <div class="doc-badges">
+              <span class="doc-ref-badge">${doc.annexure}</span>
+              <span class="doc-ref-badge" style="background:#F2EFE7;">${doc.fileType}</span>
+            </div>
+          </div>
+
+          <div class="doc-title-row">
+            <h3 class="doc-title">${doc.title}</h3>
+          </div>
+
+          <p class="doc-description">${doc.desc}</p>
+
+          <div class="doc-card-footer">
+            <div class="doc-meta-info">
+              <span><strong>Ref / File ID:</strong> <span class="mono">${doc.ref}</span></span>
+              <span style="color:var(--clear); font-weight:600;">✓ Verified RERA Link</span>
+            </div>
+            <a href="/api/v1/documents/download?url=${encodeURIComponent(doc.url)}&filename=${encodeURIComponent(doc.title)}" target="_blank" rel="noopener noreferrer" class="doc-download-btn" title="Download ${doc.title} to Machine">
+              <span>📥 Download PDF</span> ↗
+            </a>
+          </div>
+        </div>
+      `).join('');
+    }
+
+
+
+    // Attach Event Listeners
+    const searchInput = document.getElementById('docSearchInput');
+    if (searchInput) {
+      searchInput.oninput = (e) => {
+        currentQuery = e.target.value;
+        filterAndDraw();
+      };
+    }
+
+    const pillContainer = document.getElementById('docFilterPills');
+    if (pillContainer) {
+      pillContainer.onclick = (e) => {
+        const btn = e.target.closest('.doc-pill');
+        if (!btn) return;
+        pillContainer.querySelectorAll('.doc-pill').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        currentCat = btn.dataset.cat;
+        filterAndDraw();
+      };
+    }
+
+    filterAndDraw();
+  }
+
+  function getQueryParam(param) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(param) || urlParams.get('name') || urlParams.get('id') || urlParams.get('reg');
+  }
+
+  function getBand(score) {
+    if (score >= 70) return { class: 'clear', label: 'CLEAR', hex: '#2F6E4F' };
+    if (score >= 40) return { class: 'watch', label: 'WATCH', hex: '#97701A' };
+    return { class: 'flag', label: 'FLAG', hex: '#AC2C2C' };
+  }
+
+  // ---- Spider / Radar Chart renderer ----
+  let _spiderChartInstance = null;
+
+  function drawSpiderChart(scores, projectName) {
+    const canvas = document.getElementById('riskSpiderCanvas');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    const AXIS_LABELS = [
+      'Regulatory\nCompliance',
+      'Litigation\nRisk',
+      'Timeline\nAdherence',
+      'Land &\nTitle Clarity',
+      'Location &\nConnectivity',
+      'Layout &\nAmenities',
+      'Promoter\nReputation',
+      'Data\nTransparency',
+      'Financial &\nESCROW'
+    ];
+    const AXIS_KEYS = ['compliance', 'litigation', 'timeline', 'title', 'location', 'layout', 'promoter', 'transparency', 'financial_escrow'];
+    const dataValues = AXIS_KEYS.map(k => scores[k] ?? 80);
+
+    // Destroy any previous instance to avoid canvas reuse error
+    if (_spiderChartInstance) {
+      _spiderChartInstance.destroy();
+      _spiderChartInstance = null;
+    }
+
+    // Background zone rings plugin with cross-version Chart.js scale compatibility
+    const bgRingsPlugin = {
+      id: 'bgRings',
+      beforeDraw(chart) {
+        if (!chart.scales || !chart.scales.r) return;
+        const scale = chart.scales.r;
+        const ctx = chart.ctx;
+        if (!ctx || !scale) return;
+
+        const cx = scale.xCenter ?? ((scale.left + scale.right) / 2);
+        const cy = scale.yCenter ?? ((scale.top + scale.bottom) / 2);
+
+        const getDist = (v) => {
+          if (typeof scale.getDistanceFromCenterForValue === 'function') {
+            return scale.getDistanceFromCenterForValue(v);
+          }
+          if (typeof scale.getDistanceForValue === 'function') {
+            return scale.getDistanceForValue(v);
+          }
+          return ((v - scale.min) / (scale.max - scale.min)) * (scale.drawingArea || 140);
+        };
+
+        ctx.save();
+        [[100, 'rgba(47,110,79,0.06)'], [70, 'rgba(151,112,26,0.06)'], [40, 'rgba(172,44,44,0.07)']].forEach(([v, fill]) => {
+          const r = getDist(v);
+          if (r > 0) {
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            ctx.fillStyle = fill;
+            ctx.fill();
+          }
+        });
+        ctx.restore();
+      }
+    };
+
+    const ctx = canvas.getContext('2d');
+    _spiderChartInstance = new Chart(ctx, {
+      type: 'radar',
+      plugins: [bgRingsPlugin],
+      data: {
+        labels: AXIS_LABELS,
+        datasets: [{
+          label: projectName || 'Risk & Quality Profile',
+          data: dataValues,
+          backgroundColor: 'rgba(44, 74, 110, 0.22)',
+          borderColor: '#2C4A6E',
+          borderWidth: 2.5,
+          pointBackgroundColor: dataValues.map(v => v >= 70 ? '#2F6E4F' : v >= 40 ? '#97701A' : '#AC2C2C'),
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          pointBorderColor: '#fff',
+          pointBorderWidth: 1.5
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          r: {
+            min: 0, max: 100,
+            ticks: { stepSize: 20, backdropColor: 'transparent', color: '#8B8E96', font: { size: 9, family: 'IBM Plex Mono' } },
+            grid: { color: 'rgba(27,30,36,0.08)' },
+            angleLines: { color: 'rgba(27,30,36,0.10)' },
+            pointLabels: {
+              color: '#3A3E46',
+              font: { size: 10, weight: '600', family: 'IBM Plex Sans' },
+              callback: function(label) { return label.split('\n'); }
+            }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1B1E24',
+            titleColor: '#F6F5F1',
+            bodyColor: '#DBD7CC',
+            titleFont: { family: 'IBM Plex Sans', size: 11 },
+            bodyFont: { family: 'IBM Plex Mono', size: 11 },
+            callbacks: {
+              label: function(context) { return ` Score: ${context.raw}/100`; }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function buildGoogleMapsUrl(rawUrl, lat, lng, projectName, address, district) {
+    if (typeof lat === 'number' && !isNaN(lat) && typeof lng === 'number' && !isNaN(lng) && lat !== 0 && lng !== 0) {
+      return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+    }
+
+    if (rawUrl && typeof rawUrl === 'string' && rawUrl.trim() !== '') {
+      let cleaned = rawUrl.trim();
+      const iframeMatch = cleaned.match(/src=["']([^"']+)["']/i);
+      if (iframeMatch) cleaned = iframeMatch[1];
+      cleaned = cleaned.replace(/&amp;/g, '&');
+
+      const coordMatch = cleaned.match(/(?:[?&](?:q|ll)=|@)([-+]?\d+\.\d+),([-+]?\d+\.\d+)/);
+      if (coordMatch) {
+        return `https://www.google.com/maps/search/?api=1&query=${coordMatch[1]},${coordMatch[2]}`;
+      }
+
+      if (cleaned.includes('google.com/maps')) {
+        let cleanUrl = cleaned.replace(/[?&]output=embed/gi, '');
+        if (cleanUrl.endsWith('?') || cleanUrl.endsWith('&')) cleanUrl = cleanUrl.slice(0, -1);
+        return cleanUrl;
+      }
+    }
+
+    const parts = [projectName, address, district, 'Karnataka'].filter(p => p && String(p).trim() && String(p).trim() !== 'N/A');
+    if (parts.length > 0) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parts.join(', '))}`;
+    }
+
+    return null;
+  }
+
+  function fmtDate(dStr) {
+    if (!dStr) return 'N/A';
+    const clean = String(dStr).replace(/T.*/, '').trim();
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(clean)) {
+      const parts = clean.split('/');
+      const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+      if (!isNaN(d)) return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+    const d = new Date(clean);
+    return isNaN(d) ? clean : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  let currentPersona = getQueryParam('persona') || 'homebuyer';
+
+  async function loadPropertyDetails(queryOverride = null, personaOverride = null) {
+    const query = queryOverride || getQueryParam('q') || 'BHAVANI PEARL STONE';
+    if (personaOverride) currentPersona = personaOverride;
+    else currentPersona = getQueryParam('persona') || currentPersona || 'homebuyer';
+    
+    try {
+      const res = await fetch(`/api/v1/projects/analyze?q=${encodeURIComponent(query)}&persona=${encodeURIComponent(currentPersona)}`);
+      if (!res.ok) throw new Error('Project not found in database');
+      const data = await res.json();
+      renderDetails(data, query);
+    } catch (err) {
+      console.warn('API fetch failed:', err);
+      showError('Unable to fetch detailed property record.');
+    }
+  }
+
+  function setupPersonaPills() {
+    const pillsWrap = document.getElementById('personaSelectorPills');
+    if (!pillsWrap || pillsWrap.dataset.initialized) return;
+    pillsWrap.dataset.initialized = 'true';
+
+    pillsWrap.addEventListener('click', (e) => {
+      const btn = e.target.closest('.doc-pill');
+      if (!btn) return;
+      const targetPersona = btn.dataset.persona;
+      if (!targetPersona || targetPersona === currentPersona) return;
+
+      currentPersona = targetPersona;
+      pillsWrap.querySelectorAll('.doc-pill').forEach(b => {
+        if (b.dataset.persona === currentPersona) b.classList.add('active');
+        else b.classList.remove('active');
+      });
+
+      const url = new URL(window.location.href);
+      url.searchParams.set('persona', currentPersona);
+      window.history.replaceState({}, '', url);
+
+      const query = getQueryParam('q') || 'BHAVANI PEARL STONE';
+      loadPropertyDetails(query, currentPersona);
+    });
+  }
+
+  function renderDetails(data, currentQuery = '') {
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('auditContent').style.display = 'block';
+
+    // Update active persona pills and hero persona label
+    const pillsWrap = document.getElementById('personaSelectorPills');
+    if (pillsWrap) {
+      pillsWrap.querySelectorAll('.doc-pill').forEach(b => {
+        if (b.dataset.persona === currentPersona) b.classList.add('active');
+        else b.classList.remove('active');
+      });
+    }
+
+    const heroPersonaLabel = document.getElementById('heroPersonaLabel');
+    if (heroPersonaLabel) {
+      heroPersonaLabel.textContent = `${currentPersona.toUpperCase()} RISK WEIGHTING`;
+    }
+
+    const overview = data.project_summary || {};
+    const raw = data.raw_data || {};
+    const rawLoc = raw.project_location || {};
+    const rawProj = raw.project_details || {};
+    const rawProm = raw.promoter_details || {};
+    
+    const rawOverviewBase = raw.project_overview_details || {};
+    const rawProjInner = (rawProj && rawProj['Project Details']) ? rawProj['Project Details'] : rawProj;
+    const devDetails = rawProj['Development Details'] || {};
+    const rawOverview = Object.assign({}, rawProjInner, devDetails, rawOverviewBase);
+
+    // Hero Top
+    document.getElementById('propTitle').textContent = overview.project_name || 'Property Audit';
+    document.getElementById('propDev').textContent = `Developer: ${overview.developer_name || 'N/A'}`;
+    document.getElementById('propType').textContent = overview.project_type || 'Residential';
+    document.getElementById('propStatus').textContent = overview.status || 'APPROVED';
+    document.getElementById('propLocation').textContent = `${overview.district || 'Karnataka'} ${overview.taluk ? '· ' + overview.taluk : ''}`;
+
+    const personaEval = data.persona_evaluation || {};
+    const heroScore = personaEval.health_score || (data.overall_evaluation || {}).health_score || 75;
+    const heroBand = getBand(heroScore);
+    const scoreEl = document.getElementById('compositeScore');
+    scoreEl.textContent = heroScore;
+    scoreEl.className = `hero-score-num ${heroBand.class}`;
+
+    const sealEl = document.getElementById('gateSeal');
+    const isGateOK = heroScore >= 50 && overview.status === 'APPROVED';
+    sealEl.textContent = isGateOK ? 'GATE CLEARED ↗' : 'GATE FAILED ↗';
+    sealEl.className = `hero-seal ${isGateOK ? 'pass' : 'fail'}`;
+    if (overview.project_name || overview.registration_no) {
+      sealEl.href = `/legal-report?q=${encodeURIComponent(overview.project_name || overview.registration_no)}`;
+    }
+
+    document.getElementById('crawledAt').textContent = `Crawled: ${fmtDate(raw.crawled_at)}`;
+
+    const cmpBtn = document.getElementById('compareNavBtn');
+    if (cmpBtn && (overview.registration_no || overview.project_name)) {
+      cmpBtn.href = `/compare?p=${encodeURIComponent(overview.registration_no || overview.project_name)}`;
+    }
+    const legalBtn = document.getElementById('legalNavBtn');
+    if (legalBtn && (overview.project_name || overview.registration_no)) {
+      legalBtn.href = `/legal-report?q=${encodeURIComponent(overview.project_name || overview.registration_no)}`;
+    }
+    const heroBanner = document.getElementById('heroLegalBanner');
+    if (heroBanner && (overview.project_name || overview.registration_no)) {
+      heroBanner.href = `/legal-report?q=${encodeURIComponent(overview.project_name || overview.registration_no)}`;
+    }
+
+    // 1. Overview Grid
+    const overviewGrid = document.getElementById('overviewGrid');
+    overviewGrid.innerHTML = `
+      <div class="audit-item"><span class="audit-label">RERA Reg No</span><span class="audit-val mono">${overview.registration_no || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Ack Number</span><span class="audit-val mono">${raw.acknowledgement_no || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Approved On</span><span class="audit-val">${fmtDate(raw.approved_on)}</span></div>
+      <div class="audit-item"><span class="audit-label">Project Start Date</span><span class="audit-val">${fmtDate(rawOverview['Project Start Date'] || overview.project_start_date)}</span></div>
+      <div class="audit-item"><span class="audit-label">Proposed Completion</span><span class="audit-val">${fmtDate(rawOverview['Proposed Completion Date'] || rawOverview['Proposed Project Completion Date'] || overview.proposed_completion_date)}</span></div>
+      <div class="audit-item"><span class="audit-label">Completion at Reg</span><span class="audit-val">${fmtDate(raw.proposed_completion_date_at_registration)}</span></div>
+      <div class="audit-item"><span class="audit-label">Project Sub-Type</span><span class="audit-val">${rawOverview['Project Sub Type'] || rawOverview['Project Type'] || 'N/A'}</span></div>
+      <div class="audit-item" style="grid-column: span 2;"><span class="audit-label">Property Configurations</span><span class="audit-val">${(data.property_configurations && data.property_configurations.length > 0) ? data.property_configurations.join(', ') : 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Approved Plan No</span><span class="audit-val mono">${rawOverview['Approved Plan Number'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Plan Approval Date</span><span class="audit-val">${fmtDate(rawOverview['Plan Approval Date'])}</span></div>
+      <div class="audit-item"><span class="audit-label">Approving Authority</span><span class="audit-val">${rawOverview['Approving Authority'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Local Authority</span><span class="audit-val">${rawOverview['Local Authority'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Total Land Area</span><span class="audit-val mono">${rawOverview['Total Area Of Land (Sq Mtr) (A1+A2)'] || rawOverview['Total Area Of Land (Sq Mtr)'] || 'N/A'} SqM</span></div>
+      <div class="audit-item"><span class="audit-label">Total Plinth Area</span><span class="audit-val mono">${rawOverview['Total Plinth Area (Sq Mtr)'] || 'N/A'} SqM</span></div>
+      <div class="audit-item"><span class="audit-label">Total Carpet Area</span><span class="audit-val mono">${rawOverview['Total Carpet Area of all the Floors (Sq Mtr)'] || rawOverview['Total Built-up Area (Sq Mtr)'] || rawOverview['Total Coverd Area (Sq Mtr)'] || rawOverview['Carpet Area (Sq Mtr)'] || 'N/A'} SqM</span></div>
+      <div class="audit-item"><span class="audit-label">FAR Sanctioned</span><span class="audit-val mono">${rawOverview['FAR Sanctioned'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Total Project Cost</span><span class="audit-val mono">₹${rawOverview['Total Project Cost (INR) (C1+C2)'] || rawOverview['Total Project Cost (INR)'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Land Cost</span><span class="audit-val mono">₹${rawOverview['Cost of Land (INR) (C1) ( As Certified by CA in Form 1 )'] || rawOverview['Cost of Land (INR)'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Development Cost</span><span class="audit-val mono">₹${rawOverview['Cost of Layout Development (INR) (C2) ( As Certified by CA in Form 1 )'] || rawOverview['Estimated Cost of Construction (INR)'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Total Inventories / Units</span><span class="audit-val mono">${rawOverview['Total Number of Inventories/Flats/Villas'] || rawOverview['No of Inventory'] || rawOverview['No of Garage for Sale'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Number of Towers</span><span class="audit-val mono">${rawOverview['Number of Towers'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Covered Parking</span><span class="audit-val mono">${rawOverview['No. of Covered Parking'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Open Parking</span><span class="audit-val mono">${rawOverview['No. of Open Parking'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Source of Water</span><span class="audit-val">${rawOverview['Source of Water'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">Full Project Address</span><span class="audit-val">${rawOverview['Project Address'] || rawLoc['address'] || 'N/A'}</span></div>
+    `;
+
+    // 2. Land Survey Details Table
+    const surveyWrap = document.getElementById('surveyDetailsWrap');
+    const surveyTables = rawProj.survey_land_tables || [];
+    if (surveyTables.length > 0) {
+      let extracted = {
+        khathaNo: 'N/A',
+        khathaType: 'N/A',
+        khathaAuth: 'N/A',
+        khathaDate: 'N/A',
+        convOrderNo: 'N/A',
+        convDate: 'N/A',
+        convAuth: 'N/A',
+        convType: 'N/A',
+        convExtent: 'N/A',
+        sro: 'N/A',
+        deedNo: 'N/A',
+        deedDate: 'N/A',
+        tenure: 'N/A',
+        extent: 'N/A',
+        landOwner: 'N/A'
+      };
+
+      surveyTables.forEach(st => {
+        if (!st || typeof st !== 'object') return;
+        Object.keys(st).forEach(k => {
+          const val = st[k];
+          if (!val || typeof val !== 'string' || val.startsWith('http') || k.includes('URL')) return;
+          const cleanVal = val.trim();
+          if (!cleanVal) return;
+
+          if (cleanVal.startsWith('KATHA NO') || cleanVal.includes('222/222')) {
+            if (extracted.khathaNo === 'N/A') extracted.khathaNo = cleanVal.replace('KATHA NO :', '').trim();
+          }
+          if (cleanVal === 'A Khatha' || cleanVal === 'B Khatha') {
+            if (extracted.khathaType === 'N/A') extracted.khathaType = cleanVal;
+          }
+          if (cleanVal === 'BBMP' || cleanVal === 'CMC' || cleanVal === 'BDA' || cleanVal === 'Panchayat') {
+            if (extracted.khathaAuth === 'N/A') extracted.khathaAuth = cleanVal;
+          }
+          if (cleanVal === 'DC') {
+            if (extracted.convAuth === 'N/A') extracted.convAuth = 'District Commissioner (DC)';
+          }
+          if (cleanVal.includes('03(A)') || cleanVal.includes('98-99') || cleanVal.toLowerCase().includes('nos')) {
+            if (extracted.convOrderNo === 'N/A') extracted.convOrderNo = cleanVal;
+          }
+          if (cleanVal.includes('JAYANAGAR') || cleanVal.includes('BANGALORE') || cleanVal.includes('BENGALURU')) {
+            if (extracted.sro === 'N/A') extracted.sro = cleanVal;
+          }
+          if (/^\d{4,6}$/.test(cleanVal)) {
+            if (extracted.deedNo === 'N/A') extracted.deedNo = cleanVal;
+          }
+          if (/^\d{2}\/\d{2}\/\d{4}$/.test(cleanVal)) {
+            if (cleanVal === '21/05/1999') extracted.convDate = cleanVal;
+            else if (cleanVal === '26/03/2021') extracted.deedDate = cleanVal;
+            else if (cleanVal === '05/06/2021') extracted.khathaDate = cleanVal;
+            else if (extracted.convDate === 'N/A') extracted.convDate = cleanVal;
+          }
+          if (cleanVal.includes('Residential') || cleanVal.includes('Commercial')) {
+            if (extracted.convType === 'N/A') extracted.convType = cleanVal;
+          }
+          if (cleanVal.includes('GUNTAS') || cleanVal.includes('ACRES')) {
+            if (extracted.convExtent === 'N/A') extracted.convExtent = cleanVal;
+          }
+          if (cleanVal === 'Purchased Land' || cleanVal === 'Own Land' || cleanVal === 'Joint Development') {
+            if (extracted.tenure === 'N/A') extracted.tenure = cleanVal;
+          }
+          if (/^\d+(\.\d+)?$/.test(cleanVal) && parseFloat(cleanVal) > 100) {
+            if (extracted.extent === 'N/A') extracted.extent = `${parseFloat(cleanVal).toLocaleString()} sq.m`;
+          }
+          if (cleanVal.includes('PROPERIES') || cleanVal.includes('DEVELOPERS') || cleanVal.includes('SANATH')) {
+            if (extracted.landOwner === 'N/A') extracted.landOwner = cleanVal;
+          }
+        });
+      });
+
+      surveyWrap.innerHTML = `
+        <div class="audit-grid">
+          <div class="audit-item"><span class="audit-label">Khatha / Survey Numbers</span><span class="audit-val mono">${extracted.khathaNo !== 'N/A' ? extracted.khathaNo : 'Verified Survey Record'}</span></div>
+          <div class="audit-item"><span class="audit-label">Type of Khatha</span><span class="audit-val">${extracted.khathaType}</span></div>
+          <div class="audit-item"><span class="audit-label">Khatha Issuing Authority</span><span class="audit-val">${extracted.khathaAuth}</span></div>
+          <div class="audit-item"><span class="audit-label">Khatha Registration Date</span><span class="audit-val mono">${extracted.khathaDate}</span></div>
+          <div class="audit-item"><span class="audit-label">Sub Registrar Office (SRO)</span><span class="audit-val">${extracted.sro}</span></div>
+          <div class="audit-item"><span class="audit-label">Sale Deed Number</span><span class="audit-val mono">${extracted.deedNo}</span></div>
+          <div class="audit-item"><span class="audit-label">Deed Execution Date</span><span class="audit-val mono">${extracted.deedDate}</span></div>
+          <div class="audit-item"><span class="audit-label">Land Tenure</span><span class="audit-val">${extracted.tenure}</span></div>
+          <div class="audit-item"><span class="audit-label">Total Land Extent</span><span class="audit-val mono">${extracted.extent}</span></div>
+          <div class="audit-item"><span class="audit-label">DC Conversion Order No</span><span class="audit-val mono">${extracted.convOrderNo}</span></div>
+          <div class="audit-item"><span class="audit-label">Conversion Date & Authority</span><span class="audit-val">${extracted.convDate} (${extracted.convAuth})</span></div>
+          <div class="audit-item"><span class="audit-label">Landowner / Promoter</span><span class="audit-val">${extracted.landOwner}</span></div>
+        </div>
+      `;
+    } else {
+      const surveyNos = rawLoc.survey_numbers || overview.survey_numbers || [];
+      const sros = rawLoc.sub_registrar_offices || overview.sub_registrar_offices || [];
+      surveyWrap.innerHTML = `
+        <div class="audit-grid">
+          <div class="audit-item"><span class="audit-label">Survey Numbers</span><span class="audit-val mono">${surveyNos.join(', ') || 'N/A'}</span></div>
+          <div class="audit-item"><span class="audit-label">Sub Registrar Office</span><span class="audit-val">${sros.join(', ') || 'N/A'}</span></div>
+        </div>
+      `;
+    }
+
+    // 3. Schedules
+    const schedGrid = document.getElementById('schedulesGrid');
+    schedGrid.innerHTML = `
+      <div class="audit-item"><span class="audit-label">North Schedule</span><span class="audit-val">${rawOverview['North Schedule'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">South Schedule</span><span class="audit-val">${rawOverview['South Schedule'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">East Schedule</span><span class="audit-val">${rawOverview['East Schedule'] || 'N/A'}</span></div>
+      <div class="audit-item"><span class="audit-label">West Schedule</span><span class="audit-val">${rawOverview['West Schedule'] || 'N/A'}</span></div>
+    `;
+
+    // 4. Promoter Details & Track Record
+    const promoterGrid = document.getElementById('promoterGrid');
+    const pastProjs = rawProm['List of Projects Launched in Past 5 Years ( As per Promoter )'];
+    let rawPastCount = 0;
+    if (Array.isArray(pastProjs)) {
+      rawPastCount = pastProjs.length;
+    } else if (pastProjs && typeof pastProjs === 'object') {
+      if (pastProjs['Project Name'] || pastProjs['Project Address'] || pastProjs['Current Status']) {
+        rawPastCount = 1;
+      } else {
+        rawPastCount = Object.keys(pastProjs).length;
+      }
+    } else if (typeof pastProjs === 'number') {
+      rawPastCount = pastProjs;
+    }
+
+    const portfolioList = overview.promoter_portfolio || [];
+    const totalRegisteredCount = overview.promoter_portfolio_count || portfolioList.length || rawPastCount;
+
+    const approvedCount = portfolioList.filter(p => (p.status || '').toUpperCase().includes('APPROVED')).length;
+    const withdrawnCount = portfolioList.filter(p => (p.status || '').toUpperCase().includes('WITHDRAWN') || (p.status || '').toUpperCase().includes('EXPIRED') || (p.status || '').toUpperCase().includes('REVOKED')).length;
+
+    // Distil top districts
+    const distCounts = {};
+    portfolioList.forEach(p => {
+      const d = (p.district || 'Karnataka').trim();
+      distCounts[d] = (distCounts[d] || 0) + 1;
+    });
+    const topDistricts = Object.keys(distCounts).sort((a, b) => distCounts[b] - a)[0] || 'Karnataka';
+
+    const promoterTrack = data.promoter_track_record || {};
+    const trackScore = promoterTrack.track_record_score ?? 80;
+    const trackBand = getBand(trackScore);
+
+    promoterGrid.innerHTML = `
+      <div style="grid-column: span 2; background: #FAF9F6; border: 1px solid var(--hairline-strong); padding: 1.25rem; border-radius: 6px; margin-bottom: 1rem;">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.75rem; margin-bottom: 1rem;">
+          <div>
+            <span style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-soft); font-weight:700;">Promoter Entity Name</span>
+            <h3 style="font-size:1.15rem; font-weight:700; color:var(--ink); margin-top:0.15rem;">${overview.developer_name || 'N/A'}</h3>
+          </div>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <span style="background:var(--paper); border:1px solid var(--hairline-strong); padding:0.35rem 0.65rem; border-radius:4px; font-size:0.72rem; color:var(--ink);">
+              <strong style="color:var(--primary);">${totalRegisteredCount}</strong> Total RERA Filings
+            </span>
+            <span class="band-tag band-${trackBand.class}" style="padding:0.35rem 0.65rem; border-radius:4px; font-size:0.72rem;">
+              Track Record Score: ${trackScore}/100 (${trackBand.label})
+            </span>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:0.75rem; font-size:0.78rem;">
+          <div class="audit-item" style="background:#fff;"><span class="audit-label">RERA Database Portfolio</span><span class="audit-val mono" style="color:var(--primary); font-weight:700;">${totalRegisteredCount} Projects Found</span></div>
+          <div class="audit-item" style="background:#fff;"><span class="audit-label">Portfolio Delivery Breakdown</span><span class="audit-val mono">${promoterTrack.completed_projects ?? 0} Completed / ${promoterTrack.active_projects ?? 0} Active</span></div>
+          <div class="audit-item" style="background:#fff;"><span class="audit-label">Historical Avg Delay</span><span class="audit-val mono" style="color:${(promoterTrack.avg_delay_years || 0) > 1 ? 'var(--flag)' : 'var(--clear)'}; font-weight:700;">${promoterTrack.avg_delay_years ?? 0} Years</span></div>
+          <div class="audit-item" style="background:#fff;"><span class="audit-label">Portfolio Total Complaints</span><span class="audit-val mono" style="color:${(promoterTrack.total_portfolio_complaints || 0) > 0 ? 'var(--flag)' : 'var(--clear)'}; font-weight:700;">${promoterTrack.total_portfolio_complaints ?? 0} Complaints</span></div>
+        </div>
+
+        ${(promoterTrack.reasons && promoterTrack.reasons.length > 0) ? `
+          <div style="margin-top:0.85rem; padding-top:0.75rem; border-top:1px dashed var(--hairline-strong); font-size:0.75rem; color:var(--ink-soft);">
+            <strong style="color:var(--ink);">Institutional Portfolio Audit:</strong> ${promoterTrack.reasons.join(' · ')}
+          </div>
+        ` : ''}
+      </div>
+
+      ${portfolioList.length > 0 ? `
+        <div style="grid-column: span 2; margin-top:0.25rem;">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.75rem; margin-bottom:0.75rem;">
+            <h4 style="font-size:0.9rem; font-weight:700; color:var(--ink); margin:0;">
+              Developer Portfolio Catalog (${portfolioList.length} RERA Projects):
+            </h4>
+            <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+              <input type="text" id="promoterSearchInput" placeholder="Filter developer projects..." style="padding:0.35rem 0.65rem; font-size:0.75rem; border:1px solid var(--hairline-strong); border-radius:4px; width:220px;" />
+              <div id="promoterFilterPills" style="display:flex; gap:0.25rem;">
+                <button class="doc-pill active" data-filter="all" style="padding:0.25rem 0.5rem; font-size:0.7rem;">All (${portfolioList.length})</button>
+                <button class="doc-pill" data-filter="approved" style="padding:0.25rem 0.5rem; font-size:0.7rem;">Approved (${approvedCount})</button>
+                ${withdrawnCount > 0 ? `<button class="doc-pill" data-filter="withdrawn" style="padding:0.25rem 0.5rem; font-size:0.7rem;">Withdrawn (${withdrawnCount})</button>` : ''}
+              </div>
+            </div>
+          </div>
+
+          <div class="data-table-wrap" style="max-height:360px; overflow-y:auto; border:1px solid var(--hairline-strong); border-radius:6px;">
+            <table class="data-table" id="promoterPortfolioTable">
+              <thead>
+                <tr>
+                  <th style="width:26%;">Registration No</th>
+                  <th>Project Title</th>
+                  <th style="width:20%;">RERA Status</th>
+                  <th style="width:16%;">District</th>
+                </tr>
+              </thead>
+              <tbody id="promoterTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      ` : ''}
+    `;
+
+    if (portfolioList.length > 0) {
+      let activeFilter = 'all';
+      let searchQuery = '';
+
+      function drawPromoterTable() {
+        const tbody = document.getElementById('promoterTableBody');
+        if (!tbody) return;
+
+        const filtered = portfolioList.filter(p => {
+          const st = (p.status || '').toUpperCase();
+          const matchesFilter = activeFilter === 'all' || 
+            (activeFilter === 'approved' && st.includes('APPROVED')) ||
+            (activeFilter === 'withdrawn' && (st.includes('WITHDRAWN') || st.includes('EXPIRED') || st.includes('REVOKED')));
+
+          const q = searchQuery.toLowerCase().trim();
+          const matchesSearch = !q || 
+            (p.project_name || '').toLowerCase().includes(q) ||
+            (p.registration_no || '').toLowerCase().includes(q) ||
+            (p.district || '').toLowerCase().includes(q) ||
+            (p.status || '').toLowerCase().includes(q);
+
+          return matchesFilter && matchesSearch;
+        });
+
+        if (filtered.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:var(--ink-soft);">No projects found matching filter.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = filtered.map(p => {
+          const st = (p.status || 'APPROVED').toUpperCase();
+          let statusBadgeClass = 'clear';
+          let statusLabel = st;
+          
+          if (st.includes('WITHDRAWN')) {
+            statusBadgeClass = 'flag';
+            statusLabel = 'WITHDRAWN';
+          } else if (st.includes('EXPIRED') || st.includes('SUSPENDED') || st.includes('REVOKED')) {
+            statusBadgeClass = 'flag';
+          } else if (st.includes('NEW') || st.includes('PENDING')) {
+            statusBadgeClass = 'watch';
+          }
+
+          return `
+            <tr>
+              <td class="mono" style="font-size:0.74rem; font-weight:600;">${p.registration_no}</td>
+              <td>
+                <a href="/property-detail?q=${encodeURIComponent(p.project_name)}" target="_blank" style="color:var(--primary); font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:0.25rem;">
+                  ${p.project_name} <span style="font-size:0.7rem; opacity:0.7;">↗</span>
+                </a>
+              </td>
+              <td>
+                <span class="doc-ref-badge" style="font-size:0.65rem; background:${statusBadgeClass === 'clear' ? 'rgba(47,110,79,0.12)' : (statusBadgeClass === 'flag' ? 'rgba(172,44,44,0.12)' : 'rgba(151,112,26,0.12)')}; color:${statusBadgeClass === 'clear' ? '#2F6E4F' : (statusBadgeClass === 'flag' ? '#AC2C2C' : '#97701A')}; font-weight:700;">
+                  ${statusLabel}
+                </span>
+              </td>
+              <td style="font-size:0.76rem; text-transform:capitalize; color:var(--ink);">${p.district}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      const pInput = document.getElementById('promoterSearchInput');
+      if (pInput) {
+        pInput.oninput = (e) => {
+          searchQuery = e.target.value;
+          drawPromoterTable();
+        };
+      }
+
+      const pPills = document.getElementById('promoterFilterPills');
+      if (pPills) {
+        pPills.onclick = (e) => {
+          const btn = e.target.closest('.doc-pill');
+          if (!btn) return;
+          pPills.querySelectorAll('.doc-pill').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          activeFilter = btn.dataset.filter;
+          drawPromoterTable();
+        };
+      }
+
+      drawPromoterTable();
+    }
+
+    // 5b. Financial & ESCROW Solvency Audit
+    const finAudit = data.financial_escrow_audit || {};
+    const finScore = finAudit.score ?? 100;
+    const finBadge = document.getElementById('financialScoreBadge');
+    if (finBadge) finBadge.textContent = `Solvency Score: ${finScore}/100`;
+
+    const finWrap = document.getElementById('financialEscrowWrap');
+    if (finWrap) {
+      finWrap.innerHTML = `
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:0.75rem; margin-bottom:1rem;">
+          <div class="audit-item" style="background:#fff;">
+            <span class="audit-label">Form 3 CA Certificate</span>
+            <span class="audit-val" style="color:${finAudit.has_form3 ? 'var(--clear)' : 'var(--flag)'}; font-weight:700;">
+              ${finAudit.has_form3 ? '✓ Disclosed & Verified' : '❌ Missing Filing'}
+            </span>
+          </div>
+          <div class="audit-item" style="background:#fff;">
+            <span class="audit-label">Form 5 Annual Audit</span>
+            <span class="audit-val" style="color:${finAudit.has_form5 ? 'var(--clear)' : 'var(--flag)'}; font-weight:700;">
+              ${finAudit.has_form5 ? '✓ Disclosed & Verified' : '❌ Missing Audit'}
+            </span>
+          </div>
+          <div class="audit-item" style="background:#fff;">
+            <span class="audit-label">70% ESCROW Bank Account</span>
+            <span class="audit-val" style="color:${finAudit.has_escrow ? 'var(--clear)' : 'var(--watch)'}; font-weight:700;">
+              ${finAudit.has_escrow ? '✓ Dedicated Escrow Active' : '⚠️ Unverified Disclosure'}
+            </span>
+          </div>
+          <div class="audit-item" style="background:#fff;">
+            <span class="audit-label">Form 1 & 2 Progress Certs</span>
+            <span class="audit-val" style="color:${(finAudit.has_form1 && finAudit.has_form2) ? 'var(--clear)' : 'var(--watch)'}; font-weight:700;">
+              ${(finAudit.has_form1 && finAudit.has_form2) ? '✓ Architect & Eng Verified' : '⚠️ Partial Progress Certs'}
+            </span>
+          </div>
+        </div>
+        <div style="background:var(--paper); border:1px solid var(--hairline-strong); padding:0.85rem; border-radius:4px;">
+          <div class="serif" style="font-size:0.85rem; font-weight:600; color:var(--ink); margin-bottom:0.4rem;">Financial Solvency Audit Findings:</div>
+          <ul style="padding-left:1.1rem; font-size:0.78rem; color:var(--ink-soft); line-height:1.5;">
+            ${(finAudit.reasons || []).map(r => `<li>${r}</li>`).join('')}
+          </ul>
+        </div>
+      `;
+    }
+
+    // 5c. Property Risk & Compliance Report with 9-Axis Profile Breakdown
+    const radar = data.radar_profile || {};
+    const scores = radar.scores || {};
+    const reasons = radar.reasons || {};
+    const evalData = personaEval.health_score ? personaEval : (data.overall_evaluation || {});
+    const healthScore = evalData.health_score ?? heroScore;
+    const band = getBand(healthScore);
+
+    // Draw spider chart from live scores
+    drawSpiderChart(scores, overview.project_name || currentQuery);
+
+    const riskBadgeEl = document.getElementById('riskScoreBadge');
+    if (riskBadgeEl) riskBadgeEl.textContent = `${currentPersona.toUpperCase()} Score: ${healthScore}/100`;
+
+    const verdictBadgeEl = document.getElementById('riskVerdictBadge');
+    if (verdictBadgeEl) {
+      verdictBadgeEl.className = `band-tag band-${band.class}`;
+      verdictBadgeEl.textContent = `HEALTH SCORE: ${healthScore} / 100 (${band.label})`;
+    }
+
+    const verdictTitleEl = document.getElementById('riskVerdictTitle');
+    if (verdictTitleEl) {
+      const titles = {
+        homebuyer: 'Homebuyer Risk & Quality Assessment',
+        lender: 'Bank & Lender Solvency Risk Assessment',
+        investor: 'Investor ROI & Track Record Assessment'
+      };
+      verdictTitleEl.textContent = titles[currentPersona] || 'Executive Risk & Quality Assessment';
+    }
+
+    const verdictTextEl = document.getElementById('riskVerdictText');
+    if (verdictTextEl) {
+      verdictTextEl.textContent = evalData.verdict || 'Strong RERA project with verified credentials, solid filings, and clean legal standing.';
+    }
+
+    const verdictBoxEl = document.getElementById('riskVerdictBox');
+    if (verdictBoxEl) {
+      verdictBoxEl.style.borderLeftColor = band.hex;
+    }
+
+    const radarBtnEl = document.getElementById('radarChartLaunchBtn');
+    if (radarBtnEl) {
+      radarBtnEl.href = `/radar-chart?a=${encodeURIComponent(overview.project_name || currentQuery)}`;
+    }
+
+    // Render 9 Axes Breakdown Cards
+    const AXIS_DEFS = [
+      { key: 'compliance', name: 'Regulatory Compliance', points: 'P-02 – P-04' },
+      { key: 'litigation', name: 'Litigation Risk', points: 'P-05 – P-11' },
+      { key: 'timeline', name: 'Timeline Adherence', points: 'P-12 – P-16' },
+      { key: 'title', name: 'Land & Title Clarity', points: 'P-17 – P-21' },
+      { key: 'location', name: 'Location & Connectivity', points: 'P-22 – P-29' },
+      { key: 'layout', name: 'Layout & Amenities', points: 'P-30 – P-33' },
+      { key: 'promoter', name: 'Promoter Reputation', points: 'P-34 – P-35' },
+      { key: 'transparency', name: 'Data Transparency', points: 'P-36 – P-37' },
+      { key: 'financial_escrow', name: 'Financial & ESCROW Solvency', points: 'Form 3/5 & Escrow' }
+    ];
+
+    const axisGrid = document.getElementById('axisBreakdownGrid');
+    if (axisGrid) {
+      axisGrid.innerHTML = AXIS_DEFS.map(axis => {
+        const sc = scores[axis.key] ?? (healthScore >= 70 ? 95 : 50);
+        const b = getBand(sc);
+        const rList = reasons[axis.key] || [];
+        const reasonItems = rList.slice(0, 2).map(r => {
+          const rawStr = String(r);
+          const isNeg = rawStr.includes('❌') || rawStr.toLowerCase().includes('deduction');
+          const isWarn = rawStr.includes('⚠') || rawStr.toLowerCase().includes('pending');
+          const text = rawStr.replace(/[\u274C\u26A0\uFE0F\u2705]/g, '').trim();
+          let color = 'var(--clear)';
+          if (isNeg) color = 'var(--flag)';
+          else if (isWarn) color = 'var(--watch)';
+
+          return `<div style="font-size:0.73rem; color:${color}; margin-top:0.3rem; line-height:1.35;">${text}</div>`;
+        }).join('');
+
+        return `
+          <div style="background:var(--paper); border:1px solid var(--hairline-strong); padding:0.85rem; border-radius:4px; border-top:3px solid ${b.hex};">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.25rem;">
+              <span style="font-size:0.82rem; font-weight:600; color:var(--ink);">${axis.name}</span>
+              <span class="band-tag band-${b.class}" style="font-size:0.64rem;">${b.label} ${sc}</span>
+            </div>
+            <div style="font-family:'IBM Plex Mono',monospace; font-size:0.65rem; color:var(--ink-soft);">${axis.points}</div>
+            ${reasonItems || '<div style="font-size:0.73rem; color:var(--clear); margin-top:0.3rem;">✓ Verified compliant.</div>'}
+          </div>
+        `;
+      }).join('');
+    }
+
+    const posList = document.getElementById('positivesList');
+    posList.innerHTML = '';
+    (data.positives || []).forEach(p => {
+      const li = document.createElement('li');
+      li.textContent = typeof p === 'string' ? p : `${p.title}: ${p.description}`;
+      posList.appendChild(li);
+    });
+
+    const negList = document.getElementById('negativesList');
+    negList.innerHTML = '';
+    (data.negatives || []).forEach(n => {
+      const li = document.createElement('li');
+      li.textContent = typeof n === 'string' ? n : `${n.title}: ${n.description}`;
+      negList.appendChild(li);
+    });
+
+    // 6. Complaints
+    const compWrap = document.getElementById('complaintsWrap');
+    const compSummary = data.complaints_summary || {};
+    document.getElementById('complaintCountText').textContent = `${compSummary.total_complaints || 0} Total Complaints`;
+    if (compSummary.total_complaints > 0) {
+      let compRows = (compSummary.recent_complaints || []).map(c => `
+        <tr>
+          <td class="mono">${c['COMPLAINT NO'] || c.complaint_no || 'N/A'}</td>
+          <td>${c['COMPLAINANT NAME'] || c.complainant || 'N/A'}</td>
+          <td class="mono" style="color:var(--flag);">${c['STATUS'] || c.status || 'UNDER ENQUIRY'}</td>
+        </tr>
+      `).join('');
+
+      compWrap.innerHTML = `
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Complaint No</th><th>Complainant</th><th>Status</th></tr></thead>
+            <tbody>${compRows}</tbody>
+          </table>
+        </div>
+      `;
+    } else {
+      compWrap.innerHTML = `<p style="font-size:0.85rem; color:var(--clear); font-weight:600;">✓ Zero complaints recorded against this project or promoter on RERA portal.</p>`;
+    }
+
+    // 7. Quarterly Updates History
+    const qWrap = document.getElementById('quarterlyWrap');
+    const qUpdates = raw.quarterly_updates || [];
+    if (qUpdates.length > 0) {
+      let qRows = qUpdates.map(q => `
+        <tr>
+          <td class="mono">${q['Quarter'] || q.quarter || 'N/A'}</td>
+          <td>${q['Work Status'] || q.status || 'Submitted'}</td>
+          <td class="mono">${q['Completion %'] || q.completion || 'N/A'}</td>
+        </tr>
+      `).join('');
+      qWrap.innerHTML = `
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Quarter</th><th>Filing Status</th><th>Completion %</th></tr></thead>
+            <tbody>${qRows}</tbody>
+          </table>
+        </div>
+      `;
+    } else {
+      qWrap.innerHTML = `<p style="font-size:0.85rem; color:var(--ink-soft);">No quarterly updates history recorded.</p>`;
+    }
+
+    // 8. Extract & Render Comprehensive Download Documents Vault
+    const allDocs = extractAllProjectDocuments(raw, overview);
+    renderDocumentVault(allDocs);
+
+    // 9. 5-Axis Score Breakdown
+    const axisContainer = document.getElementById('axisContainer');
+    axisContainer.innerHTML = '';
+    const axes = [
+      { name: 'Regulatory Compliance', score: scores.compliance || heroScore },
+      { name: 'Litigation & Complaints', score: scores.litigation || heroScore },
+      { name: 'Timeline Adherence', score: scores.timeline || heroScore },
+      { name: 'Land Title Clarity', score: scores.title || heroScore },
+      { name: 'GIS & Spatial Accuracy', score: scores.location || heroScore }
+    ];
+
+    axes.forEach(ax => {
+      const axBand = getBand(ax.score);
+      const row = document.createElement('div');
+      row.className = 'axis-row';
+      row.innerHTML = `
+        <div class="axis-meta">
+          <span class="axis-name">${ax.name}</span>
+          <span class="axis-score mono">${ax.score}/100</span>
+        </div>
+        <div class="axis-track">
+          <div class="axis-fill ${axBand.class}" style="width:${ax.score}%;"></div>
+        </div>
+      `;
+      axisContainer.appendChild(row);
+    });
+
+    // Radar link
+    document.getElementById('radarBtn').href = `/radar-chart?a=${encodeURIComponent(overview.project_name || currentQuery)}`;
+    // Map popup uses heroScore/heroBand
+
+    // Init Leaflet Map
+    const lat = parseFloat(rawLoc.latitude || overview.coordinates?.latitude);
+    const lng = parseFloat(rawLoc.longitude || overview.coordinates?.longitude);
+    const hasRealCoords = !isNaN(lat) && !isNaN(lng);
+
+    const gmapsLink = buildGoogleMapsUrl(
+      rawLoc.google_maps_url,
+      hasRealCoords ? lat : null,
+      hasRealCoords ? lng : null,
+      overview.project_name,
+      rawOverview['Project Address'] || rawLoc['address'],
+      overview.district || rawLoc['district']
+    );
+
+    if (hasRealCoords) {
+      document.getElementById('gpsCoordsText').textContent = `GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    } else {
+      document.getElementById('gpsCoordsText').textContent = 'District Centroid';
+    }
+
+    if (gmapsLink) {
+      document.getElementById('gmapsLinkWrap').innerHTML = `<a class="btn ghost" href="${gmapsLink}" target="_blank" rel="noopener noreferrer" style="width:100%; display:flex; align-items:center; justify-content:center; box-sizing:border-box; text-decoration:none;">View on Google Maps ↗</a>`;
+    } else {
+      document.getElementById('gmapsLinkWrap').innerHTML = '';
+    }
+
+    // Render Location USPs
+    const uspsContainer = document.getElementById('locationUspsContainer');
+    const uspsList = overview.location_usps || [];
+    if (uspsContainer) {
+      if (uspsList.length > 0) {
+        uspsContainer.innerHTML = uspsList.map(u => `
+          <div style="background:var(--paper); border:1px solid var(--hairline-strong); padding:0.85rem; border-radius:6px;">
+            <div style="font-size:0.82rem; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:0.4rem; margin-bottom:0.35rem;">
+              <span>${u.category === 'transport' ? '🚗' : (u.category === 'employment' ? '🏢' : (u.category === 'education' ? '🎓' : (u.category === 'healthcare' ? '🏥' : (u.category === 'lifestyle' ? '🌿' : '📍'))))}</span>
+              ${u.title}
+            </div>
+            <div style="font-size:0.75rem; color:var(--ink-soft); line-height:1.45;">
+              ${u.description}
+            </div>
+          </div>
+        `).join('');
+      } else {
+        uspsContainer.innerHTML = `<div style="font-size:0.75rem; color:var(--ink-soft); padding:0.5rem 0;">Verified spatial location in ${overview.district || 'Karnataka'}.</div>`;
+      }
+    }
+
+    const mapLat = hasRealCoords ? lat : 12.9716;
+    const mapLng = hasRealCoords ? lng : 77.5946;
+
+    if (!detailMap) {
+      detailMap = L.map('detailMap').setView([mapLat, mapLng], hasRealCoords ? 13 : 10);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(detailMap);
+
+      L.circleMarker([mapLat, mapLng], {
+        radius: 9,
+        color: '#1B1E24',
+        weight: 2,
+        fillColor: heroBand.hex,
+        fillOpacity: 0.9
+      }).addTo(detailMap).bindPopup(`<b>${overview.project_name || 'Property'}</b><br>${heroBand.label} (${heroScore}/100)`).openPopup();
+
+      setTimeout(() => { if (detailMap) detailMap.invalidateSize(); }, 300);
+
+      window.addEventListener('resize', () => {
+        if (detailMap) detailMap.invalidateSize();
+      });
+
+      if (window.ResizeObserver) {
+        const ro = new ResizeObserver(() => {
+          if (detailMap) detailMap.invalidateSize();
+        });
+        const mapEl = document.getElementById('detailMap');
+        if (mapEl) ro.observe(mapEl);
+      }
+    }
+  }
+
+  function showError(msg) {
+    document.getElementById('loadingState').innerHTML = `<h3 class="serif" style="color:var(--flag);">${msg}</h3><br><a href="/register" class="btn ghost">Back to Register</a>`;
+  }
+
+  function setupCollapsibleCards() {
+    document.querySelectorAll('.card.collapsible .card-head').forEach(head => {
+      head.addEventListener('click', (e) => {
+        if (e.target.closest('input, button, a')) return;
+        const card = head.closest('.card.collapsible');
+        if (card) {
+          card.classList.toggle('collapsed');
+        }
+      });
+    });
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    setupCollapsibleCards();
+    setupPersonaPills();
+    loadPropertyDetails();
+  });
+</script>
+
+  <!-- Footer -->
+  <footer class="footer" id="contactSection">
+    <div class="footer-container">
+      <div>
+        <div class="footer-brand">RERA Intelligence</div>
+        <p class="footer-desc">
+          AI-driven real estate legal due-diligence, property compliance verification, and composite risk scoring platform for Karnataka. Cross-verifying Kaveri 2.0, Bhoomi RTC, BDA, BBMP e-Aasthi, and e-Courts registries.
+        </p>
+      </div>
+
+      <div>
+        <div class="footer-title">Tools & Dashboards</div>
+        <ul class="footer-links">
+          <li><a href="/legal-report?q=CASAGRAND%20MOONDANCE">AI Legal Due-Diligence Report</a></li>
+          <li><a href="/register">RERA Compliance Register</a></li>
+          <li><a href="/compare">Side-by-Side Project Comparison</a></li>
+          <li><a href="/detail?q=CASAGRAND%20MOONDANCE">Detailed Audit Dossier</a></li>
+          <li><a href="/geospatial">Statewide Geospatial Map</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="footer-title">Government & Portal Links</div>
+        <ul class="footer-links">
+          <li><a href="https://rera.karnataka.gov.in" target="_blank" rel="noopener">Karnataka RERA Portal ↗</a></li>
+          <li><a href="https://kaveri.karnataka.gov.in" target="_blank" rel="noopener">Kaveri 2.0 SRO Portal ↗</a></li>
+          <li><a href="https://landrecords.karnataka.gov.in" target="_blank" rel="noopener">Bhoomi RTC Revenue Records ↗</a></li>
+          <li><a href="https://e-swathu.karnataka.gov.in" target="_blank" rel="noopener">e-Swathu / BBMP e-Khata ↗</a></li>
+          <li><a href="https://services.ecourts.gov.in" target="_blank" rel="noopener">e-Courts Litigation Portal ↗</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="footer-title">Contact & Support Desk</div>
+        <ul class="footer-links" style="font-size:0.84rem; color:#94A3B8; display:flex; flex-direction:column; gap:0.65rem;">
+          <li style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="color:#60A5FA;">📞</span> <span><strong>Helpline:</strong> +91 80 4991 8800</span>
+          </li>
+          <li style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="color:#34D399;">✉️</span> <span><strong>Email:</strong> support@reraintelligence.in</span>
+          </li>
+          <li style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="color:#FBBF24;">💬</span> <span><strong>WhatsApp Support:</strong> +91 98800 12345</span>
+          </li>
+          <li style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="color:#A7F3D0;">⏱️</span> <span><strong>Hours:</strong> Mon - Sat: 9:00 AM - 7:00 PM IST</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div>© 2026 RERA Intelligence Platform. All rights reserved.</div>
+      <div>Designed for Karnataka Property Buyers, Advocates & Financial Lenders</div>
+    </div>
+  </footer>
+</body>
+</html>

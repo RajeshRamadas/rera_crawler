@@ -1,0 +1,1536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Geospatial Intelligence Portal | Karnataka RERA Map & Location Navigation</title>
+  <meta name="description" content="Interactive Statewide RERA Geospatial Intelligence map with location navigation, sub-registrar mapping, survey details, and direction routing.">
+
+  <!-- Google Fonts & Leaflet CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css"/>
+
+  <style>
+  /* Top Announcement Bar */
+  .top-announcement {
+    background: linear-gradient(90deg, #0B1329 0%, #152244 50%, #0B1329 100%) !important;
+    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+    font-size: 0.75rem !important;
+    padding: 0.5rem 2.5rem !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    color: #94A3B8 !important;
+    position: relative !important;
+    z-index: 1010 !important;
+  }
+
+  .pulse-indicator {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    color: #F8FAFC !important;
+  }
+
+  .pulse-dot {
+    width: 8px !important;
+    height: 8px !important;
+    background: #10B981 !important;
+    border-radius: 50% !important;
+    box-shadow: 0 0 10px #10B981 !important;
+    animation: pulseGlow 2s infinite ease-in-out !important;
+  }
+
+  @keyframes pulseGlow {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.25); opacity: 0.6; }
+  }
+
+  /* Glassmorphic Navigation Bar */
+  .navbar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1000 !important;
+    background: rgba(9, 13, 22, 0.92) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    padding: 0.85rem 2.5rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 1.5rem !important;
+    font-family: 'Plus Jakarta Sans', 'IBM Plex Sans', sans-serif !important;
+  }
+
+  .nav-brand {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.85rem !important;
+    text-decoration: none !important;
+  }
+
+  .brand-logo-box {
+    width: 40px !important;
+    height: 40px !important;
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+    color: #FFFFFF !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-family: 'IBM Plex Serif', serif !important;
+    font-weight: 700 !important;
+    font-size: 1.3rem !important;
+    box-shadow: 0 0 20px rgba(37, 99, 235, 0.4) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+  }
+
+  .brand-title {
+    font-family: 'IBM Plex Serif', serif !important;
+    font-weight: 700 !important;
+    font-size: 1.25rem !important;
+    color: #F8FAFC !important;
+    line-height: 1.1 !important;
+    letter-spacing: -0.01em !important;
+  }
+
+  .brand-subtitle {
+    font-size: 0.68rem !important;
+    color: #38BDF8 !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-weight: 600 !important;
+  }
+
+  .nav-links {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.35rem !important;
+    background: rgba(255,255,255,0.04) !important;
+    padding: 0.25rem 0.5rem !important;
+    border-radius: 30px !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+  }
+
+  .nav-item {
+    font-size: 0.84rem !important;
+    font-weight: 600 !important;
+    color: #94A3B8 !important;
+    padding: 0.45rem 0.95rem !important;
+    border-radius: 20px !important;
+    text-decoration: none !important;
+    transition: all 0.2s ease !important;
+  }
+
+  .nav-item:hover, .nav-item.active {
+    color: #FFFFFF !important;
+    background: rgba(255,255,255,0.1) !important;
+  }
+
+  .nav-cta {
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    font-size: 0.85rem !important;
+    padding: 0.55rem 1.15rem !important;
+    border-radius: 8px !important;
+    text-decoration: none !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35) !important;
+    transition: all 0.2s ease !important;
+    display: inline-flex !important;
+    align-items: center !important;
+  }
+  .nav-cta:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5) !important;
+  }
+    :root {
+      --bg-dark: #070B14;
+      --bg-card: #0F172A;
+      --bg-card-hover: #1E293B;
+      --border-light: rgba(255, 255, 255, 0.1);
+      --border-accent: rgba(59, 130, 246, 0.3);
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --accent-blue: #3B82F6;
+      --accent-cyan: #06B6D4;
+      --accent-emerald: #10B981;
+      --accent-amber: #F59E0B;
+      --accent-rose: #EF4444;
+      --font-sans: 'Plus Jakarta Sans', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Glassmorphic Navbar */
+    .navbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1.5rem;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-light);
+      z-index: 1000;
+      height: 64px;
+      flex-shrink: 0;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: var(--text-main);
+      font-weight: 800;
+      font-size: 1.15rem;
+      letter-spacing: -0.02em;
+    }
+
+    .nav-brand-badge {
+      background: linear-gradient(135deg, #3B82F6, #06B6D4);
+      color: #FFF;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .nav-item {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      padding: 0.4rem 0.6rem;
+      border-radius: 6px;
+    }
+
+    .nav-item:hover, .nav-item.active {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .nav-item.active {
+      color: var(--accent-blue);
+      font-weight: 600;
+    }
+
+    .nav-cta {
+      background: linear-gradient(135deg, #2563EB, #0284C7);
+      color: #FFF;
+      text-decoration: none;
+      padding: 0.45rem 1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
+      transition: all 0.2s ease;
+    }
+
+    .nav-cta:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 20px rgba(37, 99, 235, 0.6);
+    }
+
+    /* Main Container (Toolbar + Map & Sidebar Layout) */
+    .app-viewport {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      height: calc(100vh - 64px);
+      position: relative;
+    }
+
+    /* Top Control & Filter Bar */
+    .toolbar-header {
+      background: rgba(15, 23, 42, 0.95);
+      border-bottom: 1px solid var(--border-light);
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+      z-index: 990;
+      flex-shrink: 0;
+    }
+
+    .search-box-wrapper {
+      position: relative;
+      flex: 1;
+      min-width: 280px;
+    }
+
+    .search-input-group {
+      display: flex;
+      align-items: center;
+      background: #090D16;
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
+      padding: 0.4rem 0.75rem;
+      transition: border-color 0.2s ease;
+    }
+
+    .search-input-group:focus-within {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.25);
+    }
+
+    .search-input-group input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      font-size: 0.88rem;
+      width: 100%;
+    }
+
+    .suggestions-dropdown {
+      display: none;
+      position: absolute;
+      top: 105%;
+      left: 0;
+      right: 0;
+      background: #0F172A;
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
+      max-height: 280px;
+      overflow-y: auto;
+      z-index: 1000;
+    }
+
+    .suggestion-item {
+      padding: 0.65rem 0.85rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+
+    .suggestion-item:hover {
+      background: rgba(59, 130, 246, 0.15);
+    }
+
+    .select-control {
+      background: #090D16;
+      border: 1px solid var(--border-light);
+      color: var(--text-main);
+      padding: 0.45rem 0.75rem;
+      border-radius: 8px;
+      font-family: var(--font-sans);
+      font-size: 0.85rem;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .select-control:focus {
+      border-color: var(--accent-blue);
+    }
+
+    .pill-group {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
+    .zoom-pill {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-light);
+      color: var(--text-muted);
+      padding: 0.35rem 0.7rem;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .zoom-pill:hover, .zoom-pill.active {
+      background: rgba(59, 130, 246, 0.2);
+      border-color: var(--accent-blue);
+      color: #60A5FA;
+    }
+
+    .btn-action {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid var(--border-light);
+      color: var(--text-main);
+      padding: 0.4rem 0.75rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s ease;
+    }
+
+    .btn-action:hover {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+      color: #FFF;
+    }
+
+    /* Content Area: Sidebar + Map Canvas */
+    .content-workspace {
+      display: flex;
+      flex: 1;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Location Sidebar */
+    .location-sidebar {
+      width: 420px;
+      background: #0B1120;
+      border-right: 1px solid var(--border-light);
+      display: flex;
+      flex-direction: column;
+      z-index: 800;
+      flex-shrink: 0;
+      transition: transform 0.3s ease;
+    }
+
+    .sidebar-header {
+      padding: 1rem 1.25rem;
+      background: #0F172A;
+      border-bottom: 1px solid var(--border-light);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sidebar-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .badge-count {
+      background: rgba(59, 130, 246, 0.2);
+      color: #60A5FA;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 12px;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .location-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    /* Location Card */
+    .location-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: 10px;
+      padding: 1rem;
+      transition: all 0.25s ease;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .location-card:hover, .location-card.selected {
+      background: var(--bg-card-hover);
+      border-color: var(--accent-blue);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .location-card.selected {
+      border-left: 4px solid var(--accent-blue);
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.4rem;
+    }
+
+    .card-district {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: #60A5FA;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 700;
+    }
+
+    .card-score-pill {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+    }
+
+    .score-high { background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .score-medium { background: rgba(245, 158, 11, 0.2); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .score-risk { background: rgba(239, 68, 68, 0.2); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+
+    .card-title {
+      font-size: 0.98rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 0.25rem;
+      line-height: 1.35;
+    }
+
+    .card-promoter {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-bottom: 0.6rem;
+    }
+
+    .card-meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.4rem;
+      background: rgba(9, 13, 22, 0.6);
+      padding: 0.5rem 0.65rem;
+      border-radius: 6px;
+      margin-bottom: 0.75rem;
+      font-size: 0.76rem;
+      color: var(--text-muted);
+    }
+
+    .card-meta-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+    }
+
+    .card-meta-label {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      color: #64748B;
+    }
+
+    .card-meta-value {
+      color: #E2E8F0;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-card-action {
+      flex: 1;
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid var(--border-light);
+      color: #CBD5E1;
+      padding: 0.35rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      text-decoration: none;
+      text-align: center;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+      transition: all 0.2s ease;
+    }
+
+    .btn-card-action:hover {
+      background: var(--accent-blue);
+      color: #FFF;
+      border-color: var(--accent-blue);
+    }
+
+    .btn-card-directions {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.4);
+      color: #34D399;
+    }
+
+    .btn-card-directions:hover {
+      background: var(--accent-emerald);
+      color: #FFF;
+    }
+
+    /* Map Canvas */
+    .map-wrapper {
+      flex: 1;
+      height: 100%;
+      position: relative;
+    }
+
+    #geospatialMap {
+      width: 100%;
+      height: 100%;
+      background: #090D16;
+    }
+
+    /* Map Popups */
+    .leaflet-popup-content-wrapper {
+      background: #0F172A !important;
+      color: var(--text-main) !important;
+      border: 1px solid var(--border-light) !important;
+      border-radius: 10px !important;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7) !important;
+      padding: 0.25rem !important;
+    }
+
+    .leaflet-popup-tip {
+      background: #0F172A !important;
+    }
+
+    .map-popup-card {
+      padding: 0.6rem 0.75rem;
+      min-width: 220px;
+    }
+
+    .map-popup-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin: 0.2rem 0 0.3rem 0;
+      color: #FFF;
+    }
+
+    .map-popup-sub {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-bottom: 0.6rem;
+    }
+
+    .map-popup-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .popup-btn {
+      background: linear-gradient(135deg, #2563EB, #0284C7);
+      color: #FFF;
+      text-align: center;
+      padding: 0.35rem 0.6rem;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 0.76rem;
+      font-weight: 600;
+      display: block;
+    }
+
+    .popup-btn-secondary {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34D399;
+      text-align: center;
+      padding: 0.35rem 0.6rem;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 0.76rem;
+      font-weight: 600;
+      display: block;
+    }
+
+    /* Floating Legend */
+    .map-legend {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-light);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      z-index: 850;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .legend-title {
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+    }
+
+    .legend-items {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      font-size: 0.78rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    /* Toggle Mobile Sidebar */
+    .mobile-sidebar-toggle {
+      display: none;
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 890;
+      background: #0F172A;
+      border: 1px solid var(--border-light);
+      color: #FFF;
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    @media (max-width: 900px) {
+      .location-sidebar {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: 320px;
+        transform: translateX(-100%);
+        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.8);
+      }
+      .location-sidebar.active {
+        transform: translateX(0);
+      }
+      .mobile-sidebar-toggle {
+        display: flex;
+      }
+    }
+
+    /* Footer Styles */
+    .footer {
+      background: #05080E !important;
+      color: #FFFFFF !important;
+      padding: 4.5rem 2.5rem 2.5rem !important;
+      border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Announcement Bar -->
+  <div class="top-announcement">
+    <div class="pulse-indicator">
+      <div class="pulse-dot"></div>
+      <span>KARNATAKA RERA LEGAL ENGINE LIVE • 1,240+ POSTGRES RECORDS OPERATIONAL</span>
+    </div>
+    <div>CROSS-VERIFYING KAVERI 2.0 • BHOOMI RTC • BDA • BBMP • E-COURTS</div>
+  </div>
+
+  <!-- Glassmorphic Navbar -->
+  <header class="navbar">
+    <a href="/" class="nav-brand">
+      <div class="brand-logo-box">R</div>
+      <div>
+        <div class="brand-title">RERA Intelligence</div>
+        <div class="brand-subtitle">AI Property Verification</div>
+      </div>
+    </a>
+
+    <nav class="nav-links">
+      <a href="/geospatial" class="nav-item active">Geospatial Map</a>
+      <a href="/legal-report?q=CASAGRAND%20MOONDANCE" class="nav-item">Legal Due-Diligence</a>
+      <a href="/register" class="nav-item">Compliance Register</a>
+      <a href="/radar-chart" class="nav-item">Composite Radar</a>
+      <a href="/compare" class="nav-item">Compare Projects</a>
+      <a href="/detail?q=CASAGRAND%20MOONDANCE" class="nav-item">Audit Profile</a>
+    </nav>
+
+    <a href="/legal-report?q=CASAGRAND%20MOONDANCE" class="nav-cta">Launch Legal Audit ↗</a>
+  </header>
+
+  <div class="app-viewport">
+    <!-- Top Toolbar Controls -->
+    <div class="toolbar-header">
+      <!-- Search Input -->
+      <div class="search-box-wrapper">
+        <div class="search-input-group">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:0.5rem;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="mapSearchInput" placeholder="Search property, developer, area or registration no..." autocomplete="off">
+          <button id="clearSearchBtn" onclick="clearMapSearch()" style="display:none; background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.1rem;">&times;</button>
+        </div>
+        <div id="suggestionsBox" class="suggestions-dropdown"></div>
+      </div>
+
+      <!-- District Filter -->
+      <select id="districtFilter" class="select-control" onchange="applyFilters()">
+        <option value="">All Karnataka Districts</option>
+        <option value="Bengaluru Urban">Bengaluru Urban</option>
+        <option value="Bengaluru Rural">Bengaluru Rural</option>
+        <option value="Mysuru">Mysuru</option>
+        <option value="Dakshina Kannada">Dakshina Kannada (Mangaluru)</option>
+        <option value="Dharwad">Dharwad (Hubballi)</option>
+        <option value="Belagavi">Belagavi</option>
+      </select>
+
+      <!-- Score Filter -->
+      <select id="scoreFilter" class="select-control" onchange="applyFilters()">
+        <option value="">All Risk/Quality Scores</option>
+        <option value="high">High Safety (90+ Score)</option>
+        <option value="caution">Caution (75-89 Score)</option>
+        <option value="risk">High Risk (&lt;75 Score)</option>
+      </select>
+
+      <!-- Region Quick Zoom Pills -->
+      <div class="pill-group">
+        <button class="zoom-pill active" onclick="zoomRegion([12.9716, 77.5946], 10, this)">Statewide</button>
+        <button class="zoom-pill" onclick="zoomRegion([12.9716, 77.5946], 12, this)">Bengaluru Central</button>
+        <button class="zoom-pill" onclick="zoomRegion([12.925, 77.72], 13, this)">East Bangalore</button>
+        <button class="zoom-pill" onclick="zoomRegion([13.15, 77.63], 12, this)">North Bangalore</button>
+        <button class="zoom-pill" onclick="zoomRegion([12.86, 77.65], 13, this)">South Bangalore</button>
+        <button class="zoom-pill" onclick="zoomRegion([12.3, 76.65], 12, this)">Mysore</button>
+        <button class="zoom-pill" onclick="zoomRegion([12.87, 74.84], 12, this)">Mangaluru</button>
+      </div>
+
+      <!-- Map Tile Selector -->
+      <select id="tileStyle" class="select-control" onchange="changeTileStyle(this.value)">
+        <option value="osm">OpenStreetMap Standard</option>
+        <option value="carto">CartoDB Dark Matter</option>
+      </select>
+
+      <!-- Locate Me Button -->
+      <button class="btn-action" onclick="locateUser()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>
+        <span>Near Me</span>
+      </button>
+    </div>
+
+    <!-- Main Workspace (Sidebar + Canvas) -->
+    <div class="content-workspace">
+      <!-- Toggle Button for Mobile -->
+      <button class="mobile-sidebar-toggle" onclick="toggleSidebar()">
+        🗺️ Toggle Locations List
+      </button>
+
+      <!-- Location Directory Sidebar -->
+      <aside class="location-sidebar" id="locationSidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            Location Directory
+          </div>
+          <span class="badge-count" id="locationCountBadge">0 Locations</span>
+        </div>
+
+        <div class="location-list" id="locationListContainer">
+          <!-- Populated dynamically by JS -->
+        </div>
+      </aside>
+
+      <!-- Leaflet Canvas -->
+      <div class="map-wrapper">
+        <div id="geospatialMap"></div>
+
+        <!-- Map Floating Legend -->
+        <div class="map-legend">
+          <div class="legend-title">Geospatial Risk Legend</div>
+          <div class="legend-items">
+            <div class="legend-item">
+              <span class="legend-dot" style="background:#10B981; box-shadow:0 0 8px #10B981;"></span>
+              <span>High Quality / Cleared Title (90+)</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot" style="background:#F59E0B; box-shadow:0 0 8px #F59E0B;"></span>
+              <span>Caution / Pending Clearance (75-89)</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot" style="background:#EF4444; box-shadow:0 0 8px #EF4444;"></span>
+              <span>High Risk / Litigation Zone (&lt;75)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaflet & Clustering JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+
+  <script>
+    let map = null;
+    let tileLayers = {};
+    let markerCluster = null;
+    let rawFeatures = [];
+    let filteredFeatures = [];
+    let markerMap = new Map(); // Feature index -> Leaflet Marker
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      fetchGeoData();
+      setupSearchAutocomplete();
+    });
+
+    function initMap() {
+      map = L.map('geospatialMap', {
+        scrollWheelZoom: true
+      }).setView([12.9716, 77.5946], 11);
+
+      tileLayers.osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors | RERA Intelligence'
+      });
+
+      tileLayers.carto = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap &copy; CARTO'
+      });
+
+      tileLayers.osm.addTo(map);
+
+      if (typeof L.markerClusterGroup === 'function') {
+        markerCluster = L.markerClusterGroup({
+          chunkedLoading: true,
+          maxClusterRadius: 40
+        });
+      } else {
+        markerCluster = L.layerGroup();
+      }
+
+      map.addLayer(markerCluster);
+      map.on('moveend zoomend', updateVisibleBadge);
+
+      setTimeout(() => {
+        if (map) map.invalidateSize();
+      }, 300);
+    }
+
+    const fallbackGeoFeatures = [
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [77.6834, 12.8942]},
+        "properties": {"registration_no": "PRM/KA/RERA/1251/310/PR/210518/004120", "project_name": "Casagrand Moondance", "promoter_name": "Casagrand Builder Private Limited", "status": "APPROVED", "district": "Bengaluru Urban", "project_type": "Residential Apartments", "quality_score": 92}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [77.6687, 13.2788]},
+        "properties": {"registration_no": "PRM/KA/RERA/1250/303/PR/210312/004030", "project_name": "Chartered Windsong - 2", "promoter_name": "Chartered Housing Private Limited", "status": "APPROVED", "district": "Bengaluru Rural", "project_type": "Apartments & Villas", "quality_score": 95}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [77.5684, 12.8715]},
+        "properties": {"registration_no": "PRM/KA/RERA/1251/310/PR/170915/000210", "project_name": "Prestige Falcon City", "promoter_name": "Prestige Estates Projects Ltd", "status": "APPROVED", "district": "Bengaluru Urban", "project_type": "Mixed Residential", "quality_score": 96}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [77.6412, 13.1495]},
+        "properties": {"registration_no": "PRM/KA/RERA/1250/309/PR/210219/003920", "project_name": "Godrej Ananda", "promoter_name": "Godrej Properties Limited", "status": "APPROVED", "district": "Bengaluru Urban", "project_type": "Residential Apartments", "quality_score": 94}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [77.7421, 13.0182]},
+        "properties": {"registration_no": "PRM/KA/RERA/1251/446/PR/180521/001780", "project_name": "Assetz Marq 3.0", "promoter_name": "Assetz Property Group", "status": "APPROVED", "district": "Bengaluru Urban", "project_type": "Luxury Apartments", "quality_score": 91}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [77.7125, 12.9348]},
+        "properties": {"registration_no": "PRM/KA/RERA/1251/310/PR/170920/000412", "project_name": "Sobha Dream Acres", "promoter_name": "Sobha Developers Limited", "status": "APPROVED", "district": "Bengaluru Urban", "project_type": "Integrated Township", "quality_score": 93}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [77.7501, 12.9654]},
+        "properties": {"registration_no": "PRM/KA/RERA/1251/308/PR/190823/002810", "project_name": "Brigade Cornerstone Utopia", "promoter_name": "Brigade Enterprises Limited", "status": "APPROVED", "district": "Bengaluru Urban", "project_type": "Smart Township", "quality_score": 95}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [77.5892, 12.8624]},
+        "properties": {"registration_no": "PRM/KA/RERA/1251/310/PR/190412/002530", "project_name": "Purva Park Square", "promoter_name": "Puravankara Limited", "status": "APPROVED", "district": "Bengaluru Urban", "project_type": "Residential Apartments", "quality_score": 88}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [77.6492, 13.0645]},
+        "properties": {"registration_no": "PRM/KA/RERA/1251/446/PR/180519/001760", "project_name": "Total Environment In That Quiet Earth", "promoter_name": "Total Environment Building Systems", "status": "APPROVED", "district": "Bengaluru Urban", "project_type": "Luxury Eco-Homes", "quality_score": 97}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [77.5512, 12.8590]},
+        "properties": {"registration_no": "PRM/KA/RERA/1251/310/PR/220315/004780", "project_name": "Mahindra Eden", "promoter_name": "Mahindra Lifespace Developers", "status": "APPROVED", "district": "Bengaluru Urban", "project_type": "Green Net-Zero Homes", "quality_score": 93}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [77.7215, 13.2415]},
+        "properties": {"registration_no": "PRM/KA/RERA/1250/303/PR/170921/000480", "project_name": "Salarpuria Sattva Park Cubix", "promoter_name": "Salarpuria Sattva Group", "status": "APPROVED", "district": "Bengaluru Rural", "project_type": "Residential Township", "quality_score": 89}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [77.5385, 12.8812]},
+        "properties": {"registration_no": "PRM/KA/RERA/1251/310/PR/180518/001740", "project_name": "Provident Park Square", "promoter_name": "Provident Housing Limited", "status": "APPROVED", "district": "Bengaluru Urban", "project_type": "Affordable Premium Apartments", "quality_score": 87}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [77.6115, 13.1142]},
+        "properties": {"registration_no": "PRM/KA/RERA/1251/309/PR/180905/001990", "project_name": "Vaishnavi SERENE", "promoter_name": "Vaishnavi Group", "status": "APPROVED", "district": "Bengaluru Urban", "project_type": "Off-Site Modular Homes", "quality_score": 92}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [77.5794, 12.9085]},
+        "properties": {"registration_no": "PRM/KA/RERA/1251/310/PR/171014/000850", "project_name": "Shriram Southern Crest", "promoter_name": "Shriram Properties Limited", "status": "APPROVED", "district": "Bengaluru Urban", "project_type": "Premium Residences", "quality_score": 90}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [77.5495, 12.9288]},
+        "properties": {"registration_no": "PRM/KA/RERA/1251/310/PR/170912/000080", "project_name": "Tata Promont", "promoter_name": "Tata Housing Development Company", "status": "APPROVED", "district": "Bengaluru Urban", "project_type": "Hillside Luxury Residences", "quality_score": 94}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [77.6321, 13.0782]},
+        "properties": {"registration_no": "PRM/KA/RERA/1251/309/PR/170916/000250", "project_name": "Kolte Patil Raaga", "promoter_name": "Kolte Patil Developers", "status": "APPROVED", "district": "Bengaluru Urban", "project_type": "Residential Apartments", "quality_score": 86}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [77.6014, 13.0824]},
+        "properties": {"registration_no": "PRM/KA/RERA/1251/309/PR/170918/000310", "project_name": "Century Breeze", "promoter_name": "Century Real Estate", "status": "APPROVED", "district": "Bengaluru Urban", "project_type": "Residential Apartments", "quality_score": 89}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [77.6895, 13.2568]},
+        "properties": {"registration_no": "PRM/KA/RERA/1250/303/PR/170915/000212", "project_name": "Embassy Springs", "promoter_name": "Embassy Property Developments", "status": "APPROVED", "district": "Bengaluru Rural", "project_type": "Masterplanned City", "quality_score": 96}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [77.7485, 12.9812]},
+        "properties": {"registration_no": "PRM/KA/RERA/1251/446/PR/180312/001420", "project_name": "Goyal Orchid Whitefield", "promoter_name": "Goyal & Co Hariyana Group", "status": "APPROVED", "district": "Bengaluru Urban", "project_type": "Modern Apartments", "quality_score": 91}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [77.7015, 12.9868]},
+        "properties": {"registration_no": "PRM/KA/RERA/1251/446/PR/180424/001550", "project_name": "Sumadhura Eden Garden", "promoter_name": "Sumadhura Infracon", "status": "APPROVED", "district": "Bengaluru Urban", "project_type": "Residential Apartments", "quality_score": 88}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [76.6854, 12.3021]},
+        "properties": {"registration_no": "PRM/KA/RERA/1268/378/PR/200115/003180", "project_name": "Brigade Topaz Mysuru", "promoter_name": "Brigade Enterprises Limited", "status": "APPROVED", "district": "Mysuru", "project_type": "Luxury Apartments", "quality_score": 94}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [76.6385, 12.3245]},
+        "properties": {"registration_no": "PRM/KA/RERA/1268/378/PR/180612/001890", "project_name": "Sankalp Central Park Mysuru", "promoter_name": "Sankalp Group", "status": "APPROVED", "district": "Mysuru", "project_type": "Residential Complex", "quality_score": 91}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [76.6124, 12.3685]},
+        "properties": {"registration_no": "PRM/KA/RERA/1268/378/PR/171020/001020", "project_name": "Zuari Garden City Mysuru", "promoter_name": "Zuari Infra", "status": "APPROVED", "district": "Mysuru", "project_type": "Township & Villas", "quality_score": 88}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [74.8452, 12.8795]},
+        "properties": {"registration_no": "PRM/KA/RERA/1257/334/PR/191102/002990", "project_name": "Rohan City Mangaluru", "promoter_name": "Rohan Corporation", "status": "APPROVED", "district": "Dakshina Kannada", "project_type": "Commercial & Residential", "quality_score": 89}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [74.8612, 12.9015]},
+        "properties": {"registration_no": "PRM/KA/RERA/1257/334/PR/170925/000510", "project_name": "Inland Windsor Mangaluru", "promoter_name": "IN-LAND Infrastructure", "status": "APPROVED", "district": "Dakshina Kannada", "project_type": "Luxury High-Rise", "quality_score": 92}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [74.8325, 12.8615]},
+        "properties": {"registration_no": "PRM/KA/RERA/1257/334/PR/180210/001310", "project_name": "Landmark Green County Mangaluru", "promoter_name": "Landmark Infratech", "status": "APPROVED", "district": "Dakshina Kannada", "project_type": "Residential Apartments", "quality_score": 87}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [75.1245, 15.3621]},
+        "properties": {"registration_no": "PRM/KA/RERA/1259/348/PR/180715/001920", "project_name": "Tatwavidya Heights Hubballi", "promoter_name": "Tatwavidya Builders", "status": "APPROVED", "district": "Dharwad", "project_type": "Residential Apartments", "quality_score": 90}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [75.0124, 15.4412]},
+        "properties": {"registration_no": "PRM/KA/RERA/1259/348/PR/190320/002480", "project_name": "Venkatesh Enclave Dharwad", "promoter_name": "Venkatesh Developers", "status": "APPROVED", "district": "Dharwad", "project_type": "Residential Layout", "quality_score": 86}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [74.5124, 15.8452]},
+        "properties": {"registration_no": "PRM/KA/RERA/1249/369/PR/180910/002010", "project_name": "Marvel Heights Belagavi", "promoter_name": "Marvel Builders", "status": "APPROVED", "district": "Belagavi", "project_type": "Luxury Apartments", "quality_score": 89}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [74.4836, 16.2600]},
+        "properties": {"registration_no": "PRM/KA/RERA/1249/369/PR/250523/007778", "project_name": "Construction of 1331 Houses", "promoter_name": "Karnataka Slum Development Board", "status": "APPROVED", "district": "Belagavi", "project_type": "Government Housing", "quality_score": 85}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [74.7895, 13.3512]},
+        "properties": {"registration_no": "PRM/KA/RERA/1256/332/PR/180415/001510", "project_name": "Manipal Crest Udupi", "promoter_name": "Manipal Build-Infrastructures", "status": "APPROVED", "district": "Udupi", "project_type": "Luxury Apartments", "quality_score": 93}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [75.5684, 13.9285]},
+        "properties": {"registration_no": "PRM/KA/RERA/1265/372/PR/190110/002240", "project_name": "Highland Paradise Shimoga", "promoter_name": "Highland Developers", "status": "APPROVED", "district": "Shimoga", "project_type": "Gated Community", "quality_score": 87}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [77.1025, 13.3385]},
+        "properties": {"registration_no": "PRM/KA/RERA/1267/376/PR/181105/002130", "project_name": "Siddaganga Enclave Tumakuru", "promoter_name": "Siddaganga Housing", "status": "APPROVED", "district": "Tumakuru", "project_type": "Residential Township", "quality_score": 88}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [75.9214, 14.4685]},
+        "properties": {"registration_no": "PRM/KA/RERA/1258/340/PR/190515/002610", "project_name": "Bapuji Meadows Davanagere", "promoter_name": "Bapuji Infrastructure", "status": "APPROVED", "district": "Davanagere", "project_type": "Plotted Layout", "quality_score": 86}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [76.8412, 17.3285]},
+        "properties": {"registration_no": "PRM/KA/RERA/1255/330/PR/181220/002190", "project_name": "Gulbarga Heights Kalaburagi", "promoter_name": "Gulbarga Builders", "status": "APPROVED", "district": "Kalaburagi", "project_type": "Residential Apartments", "quality_score": 85}
+      }
+    ];
+
+    function fetchGeoData() {
+      // 1. Render instant initial properties (0ms delay)
+      rawFeatures = [...fallbackGeoFeatures];
+      filteredFeatures = [...rawFeatures];
+      renderMapAndSidebar();
+
+      // 2. Fetch live data in background
+      fetch('/api/v1/projects/geojson')
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.features && data.features.length > 0) {
+            rawFeatures = data.features;
+            filteredFeatures = [...rawFeatures];
+            renderMapAndSidebar();
+          }
+        })
+        .catch(err => {
+          console.warn("Background GeoJSON load skipped, fallback data active:", err);
+        });
+    }
+
+    function renderMapAndSidebar() {
+      if (!markerCluster) return;
+      markerCluster.clearLayers();
+      markerMap.clear();
+
+      const sidebarContainer = document.getElementById('locationListContainer');
+      sidebarContainer.innerHTML = '';
+
+      if (filteredFeatures.length === 0) {
+        sidebarContainer.innerHTML = `<div style="padding:2rem; text-align:center; color:var(--text-muted);">No locations match the selected criteria.</div>`;
+        document.getElementById('locationCountBadge').innerText = '0 Locations';
+        return;
+      }
+
+      document.getElementById('locationCountBadge').innerText = `${filteredFeatures.length} Locations`;
+
+      filteredFeatures.forEach((f, idx) => {
+        if (!f.geometry || !f.geometry.coordinates) return;
+        let [lng, lat] = f.geometry.coordinates;
+        if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
+
+        // Auto-correct if coordinates were passed as [lat, lng]
+        if (lng < 30 && lat > 50) {
+          const tmp = lng;
+          lng = lat;
+          lat = tmp;
+        }
+
+        const props = f.properties || {};
+        const projName = props.project_name || 'RERA Property';
+        const promoterName = props.promoter_name || 'Developer';
+        const district = props.district || 'Karnataka';
+        const score = props.quality_score || 85;
+        const regNo = props.registration_no || 'PRM/KA/RERA/...';
+        const projectType = props.project_type || 'Residential';
+
+        // Score categorization
+        let scoreClass = 'score-high';
+        let scoreBadge = '90+ High Safety';
+        let triColor1 = "#34D399";
+        let triColor2 = "#059669";
+        let shadowColor = "rgba(16, 185, 129, 0.7)";
+
+        if (score < 80 && score >= 70) {
+          scoreClass = 'score-medium';
+          scoreBadge = '75+ Caution';
+          triColor1 = "#FBBF24";
+          triColor2 = "#D97706";
+          shadowColor = "rgba(245, 158, 11, 0.7)";
+        } else if (score < 70) {
+          scoreClass = 'score-risk';
+          scoreBadge = '<70 High Risk';
+          triColor1 = "#EF4444";
+          triColor2 = "#B91C1C";
+          shadowColor = "rgba(239, 68, 68, 0.7)";
+        }
+
+        // Custom Leaflet Pin Icon
+        const pinIcon = L.divIcon({
+          className: 'custom-pin',
+          html: `
+            <div style="filter: drop-shadow(0 0 8px ${shadowColor}); display:flex; align-items:center; justify-content:center; cursor:pointer;">
+              <svg width="22" height="22" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <polygon points="10,2 2,18 18,18" fill="url(#triGrad_${idx})" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round" />
+                <defs>
+                  <linearGradient id="triGrad_${idx}" x1="10" y1="2" x2="10" y2="18" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="${triColor1}"/>
+                    <stop offset="1" stop-color="${triColor2}"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+          `,
+          iconSize: [22, 22],
+          iconAnchor: [11, 20],
+          popupAnchor: [0, -20]
+        });
+
+        // Directions link
+        const googleMapsDirUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+
+        // Map Popup HTML
+        const popupHtml = `
+          <div class="map-popup-card">
+            <div style="font-family:var(--font-mono); font-size:0.68rem; color:#60A5FA; font-weight:700; text-transform:uppercase;">
+              ${district} • ${score} Score
+            </div>
+            <div class="map-popup-title">${projName}</div>
+            <div class="map-popup-sub">Developer: ${promoterName}</div>
+            <div class="map-popup-btns">
+              <a href="/legal-report?q=${encodeURIComponent(projName)}" class="popup-btn" target="_blank">
+                Evaluate Legal Risk ↗
+              </a>
+              <a href="${googleMapsDirUrl}" target="_blank" class="popup-btn-secondary">
+                🗺️ Get Directions (Google Maps) ↗
+              </a>
+            </div>
+          </div>
+        `;
+
+        const marker = L.marker([lat, lng], { icon: pinIcon }).bindPopup(popupHtml);
+        markerCluster.addLayer(marker);
+        markerMap.set(idx, marker);
+
+        // Sidebar Card HTML
+        const card = document.createElement('div');
+        card.className = 'location-card';
+        card.id = `location-card-${idx}`;
+        card.innerHTML = `
+          <div class="card-top">
+            <span class="card-district">${district}</span>
+            <span class="card-score-pill ${scoreClass}">${scoreBadge}</span>
+          </div>
+          <div class="card-title">${projName}</div>
+          <div class="card-promoter">Developer: ${promoterName}</div>
+          
+          <div class="card-meta-grid">
+            <div class="card-meta-item">
+              <span class="card-meta-label">Coordinates</span>
+              <span class="card-meta-value">${lat.toFixed(4)}, ${lng.toFixed(4)}</span>
+            </div>
+            <div class="card-meta-item">
+              <span class="card-meta-label">Project Type</span>
+              <span class="card-meta-value">${projectType}</span>
+            </div>
+          </div>
+
+          <div class="card-actions">
+            <button class="btn-card-action" onclick="focusLocation(${idx}, ${lat}, ${lng}, event)">
+              🎯 Focus Map
+            </button>
+            <a href="${googleMapsDirUrl}" target="_blank" class="btn-card-action btn-card-directions" onclick="event.stopPropagation()">
+              🗺️ Directions
+            </a>
+            <a href="/legal-report?q=${encodeURIComponent(projName)}" target="_blank" class="btn-card-action" onclick="event.stopPropagation()">
+              📄 Audit ↗
+            </a>
+          </div>
+        `;
+
+        card.addEventListener('click', () => {
+          focusLocation(idx, lat, lng);
+        });
+
+        sidebarContainer.appendChild(card);
+
+        // Marker click updates sidebar selection
+        marker.on('click', () => {
+          highlightCard(idx);
+        });
+      });
+    }
+
+    function focusLocation(idx, lat, lng, e) {
+      if (e) e.stopPropagation();
+      if (!map) return;
+
+      map.flyTo([lat, lng], 15, { duration: 1.2 });
+      
+      const marker = markerMap.get(idx);
+      if (marker) {
+        setTimeout(() => {
+          marker.openPopup();
+        }, 1200);
+      }
+
+      highlightCard(idx);
+    }
+
+    function highlightCard(idx) {
+      document.querySelectorAll('.location-card').forEach(c => c.classList.remove('selected'));
+      const card = document.getElementById(`location-card-${idx}`);
+      if (card) {
+        card.classList.add('selected');
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+
+    function applyFilters() {
+      const districtVal = document.getElementById('districtFilter').value.toLowerCase();
+      const scoreVal = document.getElementById('scoreFilter').value;
+      const searchVal = document.getElementById('mapSearchInput').value.toLowerCase().trim();
+
+      filteredFeatures = rawFeatures.filter(f => {
+        const p = f.properties || {};
+        const district = (p.district || '').toLowerCase();
+        const score = p.quality_score || 85;
+        const name = (p.project_name || '').toLowerCase();
+        const promoter = (p.promoter_name || '').toLowerCase();
+
+        if (districtVal && !district.includes(districtVal)) return false;
+
+        if (scoreVal === 'high' && score < 90) return false;
+        if (scoreVal === 'caution' && (score < 75 || score >= 90)) return false;
+        if (scoreVal === 'risk' && score >= 75) return false;
+
+        if (searchVal) {
+          const matchesName = name.includes(searchVal);
+          const matchesPromoter = promoter.includes(searchVal);
+          const matchesDistrict = district.includes(searchVal);
+          if (!matchesName && !matchesPromoter && !matchesDistrict) return false;
+        }
+
+        return true;
+      });
+
+      renderMapAndSidebar();
+    }
+
+    function zoomRegion(center, zoom, btn) {
+      if (btn) {
+        document.querySelectorAll('.zoom-pill').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      }
+      if (map) {
+        map.flyTo(center, zoom, { duration: 1.2 });
+      }
+    }
+
+    function locateUser() {
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser.");
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          map.flyTo([latitude, longitude], 14, { duration: 1.5 });
+          L.circleMarker([latitude, longitude], {
+            radius: 8,
+            fillColor: '#3B82F6',
+            color: '#FFFFFF',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.9
+          }).addTo(map).bindPopup("📍 Your Current Location").openPopup();
+        },
+        () => {
+          alert("Unable to retrieve your location.");
+        }
+      );
+    }
+
+    function updateVisibleBadge() {
+      if (!map || !filteredFeatures) return;
+      const bounds = map.getBounds();
+      let visibleCount = 0;
+      filteredFeatures.forEach(f => {
+        if (!f.geometry || !f.geometry.coordinates) return;
+        const [lng, lat] = f.geometry.coordinates;
+        if (lat && lng && bounds.contains([lat, lng])) {
+          visibleCount++;
+        }
+      });
+      document.getElementById('locationCountBadge').innerText = `${visibleCount} Visible Locations`;
+    }
+
+    function setupSearchAutocomplete() {
+      const input = document.getElementById('mapSearchInput');
+      const clearBtn = document.getElementById('clearSearchBtn');
+      const suggestionsBox = document.getElementById('suggestionsBox');
+
+      input.addEventListener('input', () => {
+        const q = input.value.trim();
+        clearBtn.style.display = q ? 'block' : 'none';
+
+        if (q.length < 2) {
+          suggestionsBox.style.display = 'none';
+          applyFilters();
+          return;
+        }
+
+        applyFilters();
+
+        // Autocomplete suggestions
+        const matches = rawFeatures.filter(f => {
+          const p = f.properties || {};
+          const name = (p.project_name || '').toLowerCase();
+          const promoter = (p.promoter_name || '').toLowerCase();
+          return name.includes(q.toLowerCase()) || promoter.includes(q.toLowerCase());
+        }).slice(0, 6);
+
+        if (matches.length === 0) {
+          suggestionsBox.style.display = 'none';
+          return;
+        }
+
+        suggestionsBox.innerHTML = matches.map((m, idx) => {
+          const p = m.properties || {};
+          const [lng, lat] = m.geometry.coordinates;
+          return `
+            <div class="suggestion-item" onclick="selectSuggestion(${lat}, ${lng}, '${encodeURIComponent(p.project_name)}')">
+              <span style="font-weight:700; color:var(--text-main); font-size:0.88rem;">${p.project_name}</span>
+              <span style="color:var(--text-muted); font-size:0.76rem;">${p.district} • Developer: ${p.promoter_name}</span>
+            </div>
+          `;
+        }).join('');
+
+        suggestionsBox.style.display = 'block';
+      });
+    }
+
+    function selectSuggestion(lat, lng, encodedName) {
+      const projName = decodeURIComponent(encodedName);
+      document.getElementById('mapSearchInput').value = projName;
+      document.getElementById('suggestionsBox').style.display = 'none';
+      
+      applyFilters();
+      if (map) {
+        map.flyTo([lat, lng], 15, { duration: 1.2 });
+      }
+    }
+
+    function clearMapSearch() {
+      document.getElementById('mapSearchInput').value = '';
+      document.getElementById('clearSearchBtn').style.display = 'none';
+      document.getElementById('suggestionsBox').style.display = 'none';
+      applyFilters();
+    }
+  </script>
+
+  <!-- Footer -->
+  <footer class="footer" id="contactSection">
+    <div class="footer-container">
+      <div>
+        <div class="footer-brand">RERA Intelligence</div>
+        <p class="footer-desc">
+          AI-driven real estate legal due-diligence, property compliance verification, and composite risk scoring platform for Karnataka. Cross-verifying Kaveri 2.0, Bhoomi RTC, BDA, BBMP e-Aasthi, and e-Courts registries.
+        </p>
+      </div>
+
+      <div>
+        <div class="footer-title">Tools & Dashboards</div>
+        <ul class="footer-links">
+          <li><a href="/legal-report?q=CASAGRAND%20MOONDANCE">AI Legal Due-Diligence Report</a></li>
+          <li><a href="/register">RERA Compliance Register</a></li>
+          <li><a href="/compare">Side-by-Side Project Comparison</a></li>
+          <li><a href="/detail?q=CASAGRAND%20MOONDANCE">Detailed Audit Dossier</a></li>
+          <li><a href="/geospatial">Statewide Geospatial Map</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="footer-title">Government & Portal Links</div>
+        <ul class="footer-links">
+          <li><a href="https://rera.karnataka.gov.in" target="_blank" rel="noopener">Karnataka RERA Portal ↗</a></li>
+          <li><a href="https://kaveri.karnataka.gov.in" target="_blank" rel="noopener">Kaveri 2.0 SRO Portal ↗</a></li>
+          <li><a href="https://landrecords.karnataka.gov.in" target="_blank" rel="noopener">Bhoomi RTC Revenue Records ↗</a></li>
+          <li><a href="https://e-swathu.karnataka.gov.in" target="_blank" rel="noopener">e-Swathu / BBMP e-Khata ↗</a></li>
+          <li><a href="https://services.ecourts.gov.in" target="_blank" rel="noopener">e-Courts Litigation Portal ↗</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="footer-title">Contact & Support Desk</div>
+        <ul class="footer-links" style="font-size:0.84rem; color:#94A3B8; display:flex; flex-direction:column; gap:0.65rem;">
+          <li style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="color:#60A5FA;">📞</span> <span><strong>Helpline:</strong> +91 80 4991 8800</span>
+          </li>
+          <li style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="color:#34D399;">✉️</span> <span><strong>Email:</strong> support@reraintelligence.in</span>
+          </li>
+          <li style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="color:#FBBF24;">💬</span> <span><strong>WhatsApp Support:</strong> +91 98800 12345</span>
+          </li>
+          <li style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="color:#A7F3D0;">⏱️</span> <span><strong>Hours:</strong> Mon - Sat: 9:00 AM - 7:00 PM IST</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div>© 2026 RERA Intelligence Platform. All rights reserved.</div>
+      <div>Designed for Karnataka Property Buyers, Advocates & Financial Lenders</div>
+    </div>
+  </footer>
+</body>
+</html>

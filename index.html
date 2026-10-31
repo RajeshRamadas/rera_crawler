@@ -1,0 +1,2728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RERA Intelligence — AI Real Estate Verification & Legal Due-Diligence Engine</title>
+  <meta name="description" content="Karnataka's premier AI-powered property legal due-diligence and RERA compliance audit platform cross-verifying Kaveri 2.0, Bhoomi RTC, BDA, BBMP e-Aasthi, and e-Courts registries.">
+
+  <!-- Google Fonts: Plus Jakarta Sans, IBM Plex Serif & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:ital,wght@0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Leaflet & MarkerCluster CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css" />
+
+  <!-- Leaflet & MarkerCluster JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #090D16;
+      --bg-surface: #0F172A;
+      --bg-card: #151F32;
+      --bg-card-hover: #1E293B;
+      --paper-warm: #F6F5F1;
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --text-dim: #64748B;
+      --brand-blue: #2563EB;
+      --brand-cyan: #0EA5E9;
+      --brand-glow: rgba(37, 99, 235, 0.35);
+      --border-dark: rgba(255, 255, 255, 0.08);
+      --border-light: rgba(255, 255, 255, 0.14);
+      --pass: #10B981;
+      --pass-bg: rgba(16, 185, 129, 0.12);
+      --pass-border: rgba(16, 185, 129, 0.3);
+      --warn: #F59E0B;
+      --warn-bg: rgba(245, 158, 11, 0.12);
+      --warn-border: rgba(245, 158, 11, 0.3);
+      --fail: #EF4444;
+      --fail-bg: rgba(239, 68, 68, 0.12);
+      --fail-border: rgba(239, 68, 68, 0.3);
+      --radius-lg: 16px;
+      --radius-md: 10px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Ambient Background Glow */
+    body::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 1000px;
+      height: 600px;
+      background: radial-gradient(circle at 50% 20%, rgba(37, 99, 235, 0.18), rgba(14, 165, 233, 0.08) 50%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .serif {
+      font-family: 'IBM Plex Serif', Georgia, serif;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    /* SVG Icon Container */
+    .svg-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Top Announcement Bar */
+    .top-announcement {
+      background: linear-gradient(90deg, #0B1329 0%, #152244 50%, #0B1329 100%);
+      border-bottom: 1px solid var(--border-dark);
+      font-size: 0.75rem;
+      padding: 0.5rem 2.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+      position: relative;
+      z-index: 10;
+    }
+
+    .pulse-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-main);
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--pass);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--pass);
+      animation: pulseGlow 2s infinite ease-in-out;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.25); opacity: 0.6; }
+    }
+
+    /* Navigation Bar */
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: rgba(9, 13, 22, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-dark);
+      padding: 0.9rem 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .brand-logo-box {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+      color: #FFFFFF;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'IBM Plex Serif', serif;
+      font-weight: 700;
+      font-size: 1.3rem;
+      box-shadow: 0 0 20px rgba(37, 99, 235, 0.4);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .brand-title {
+      font-family: 'IBM Plex Serif', serif;
+      font-weight: 700;
+      font-size: 1.25rem;
+      color: var(--text-main);
+      line-height: 1.1;
+      letter-spacing: -0.01em;
+    }
+
+    .brand-subtitle {
+      font-size: 0.68rem;
+      color: var(--brand-cyan);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: rgba(255,255,255,0.03);
+      padding: 0.25rem 0.5rem;
+      border-radius: 30px;
+      border: 1px solid var(--border-dark);
+    }
+
+    .nav-item {
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      padding: 0.45rem 0.95rem;
+      border-radius: 20px;
+      transition: all 0.2s ease;
+    }
+
+    .nav-item:hover, .nav-item.active {
+      color: var(--text-main);
+      background: rgba(255,255,255,0.08);
+    }
+
+    .nav-cta {
+      background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+      color: #FFFFFF !important;
+      font-weight: 700;
+      font-size: 0.85rem;
+      padding: 0.6rem 1.3rem;
+      border-radius: 8px;
+      box-shadow: 0 0 20px rgba(37, 99, 235, 0.35);
+      border: 1px solid rgba(255,255,255,0.15);
+      transition: all 0.2s ease;
+    }
+
+    .nav-cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 30px rgba(37, 99, 235, 0.55);
+    }
+
+    /* Hero Section Dual Panel */
+    .hero-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 4rem 2.5rem 3.5rem;
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 3.5rem;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      background: rgba(37, 99, 235, 0.1);
+      border: 1px solid rgba(37, 99, 235, 0.3);
+      padding: 0.4rem 1rem;
+      border-radius: 20px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: #60A5FA;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 1.35rem;
+    }
+
+    .hero-title {
+      font-family: 'IBM Plex Serif', serif;
+      font-size: 3.1rem;
+      font-weight: 700;
+      color: var(--text-main);
+      letter-spacing: -0.025em;
+      line-height: 1.15;
+      margin-bottom: 1.25rem;
+    }
+
+    .hero-title span {
+      background: linear-gradient(135deg, #60A5FA 0%, #3B82F6 50%, #93C5FD 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+      font-size: 1.08rem;
+      color: var(--text-muted);
+      line-height: 1.65;
+      margin-bottom: 2.25rem;
+      font-weight: 400;
+    }
+
+    /* Spotlight Command Search Bar */
+    .search-wrapper {
+      position: relative;
+      margin-bottom: 1.35rem;
+    }
+
+    .search-bar {
+      display: flex;
+      align-items: center;
+      background: rgba(21, 31, 50, 0.85);
+      border: 1px solid var(--border-light);
+      border-radius: 12px;
+      padding: 0.45rem 0.55rem 0.45rem 1.25rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      transition: all 0.2s ease;
+    }
+
+    .search-bar:focus-within {
+      border-color: var(--brand-blue);
+      box-shadow: 0 0 25px rgba(37, 99, 235, 0.35);
+      background: #151F32;
+    }
+
+    .search-icon {
+      margin-right: 0.85rem;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 1.05rem;
+      color: var(--text-main);
+      outline: none;
+      padding: 0.65rem 0;
+    }
+
+    .search-input::placeholder {
+      color: var(--text-dim);
+    }
+
+    .cmd-badge {
+      background: rgba(255,255,255,0.08);
+      color: var(--text-muted);
+      border: 1px solid var(--border-dark);
+      padding: 0.2rem 0.5rem;
+      border-radius: 5px;
+      font-size: 0.72rem;
+      font-family: 'JetBrains Mono', monospace;
+      margin-right: 0.75rem;
+    }
+
+    .search-btn {
+      background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+      color: #fff;
+      border: none;
+      font-weight: 700;
+      font-size: 0.9rem;
+      padding: 0.8rem 1.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+      transition: all 0.2s ease;
+    }
+
+    .search-btn:hover {
+      background: #1D4ED8;
+      transform: translateY(-1px);
+    }
+
+    .autocomplete-box {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #111827;
+      border: 1px solid var(--border-light);
+      border-radius: 10px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+      margin-top: 0.5rem;
+      max-height: 340px;
+      overflow-y: auto;
+      z-index: 999;
+      display: none;
+      text-align: left;
+    }
+
+    .suggestion-item {
+      padding: 0.85rem 1.25rem;
+      border-bottom: 1px solid var(--border-dark);
+      cursor: pointer;
+      transition: background 0.15s ease;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .suggestion-item:last-child {
+      border-bottom: none;
+    }
+
+    .suggestion-item:hover {
+      background: rgba(37, 99, 235, 0.15);
+    }
+
+    .sug-title {
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: var(--text-main);
+    }
+
+    .sug-firm {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .sug-reg {
+      font-size: 0.72rem;
+      color: #60A5FA;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .presets-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .preset-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .preset-chip {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border-dark);
+      padding: 0.35rem 0.85rem;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .preset-chip:hover {
+      border-color: var(--brand-blue);
+      color: var(--text-main);
+      background: rgba(37, 99, 235, 0.12);
+    }
+
+    /* Live Terminal Console Mockup (Right Column) */
+    .terminal-card {
+      background: linear-gradient(145deg, #0F172A 0%, #152035 100%);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+      position: relative;
+    }
+
+    .terminal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-dark);
+      padding-bottom: 1rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .terminal-dots {
+      display: flex;
+      gap: 7px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .terminal-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--brand-cyan);
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    .gauge-box {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid var(--pass-border);
+      padding: 0.85rem 1.15rem;
+      border-radius: 10px;
+      margin-bottom: 1.25rem;
+    }
+
+    .gauge-score {
+      font-family: 'IBM Plex Serif', serif;
+      font-size: 2.1rem;
+      font-weight: 700;
+      color: var(--pass);
+      line-height: 1;
+    }
+
+    .gauge-badge {
+      background: var(--pass);
+      color: #000000;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 800;
+      font-size: 0.72rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+    }
+
+    .check-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .check-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border-dark);
+      padding: 0.65rem 0.95rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+    }
+
+    .check-name {
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    .check-ref {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .badge-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    .b-pass { background: var(--pass-bg); color: var(--pass); border: 1px solid var(--pass-border); }
+    .b-warn { background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-border); }
+
+    /* Metrics Strip */
+    .metrics-section {
+      max-width: 1280px;
+      margin: 0 auto 5rem;
+      padding: 0 2.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .metrics-grid {
+      background: rgba(21, 31, 50, 0.7);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 2rem;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+
+    .metric-card {
+      text-align: center;
+      padding: 0.5rem;
+      border-right: 1px solid var(--border-dark);
+    }
+
+    .metric-card:last-child {
+      border-right: none;
+    }
+
+    .metric-val {
+      font-family: 'IBM Plex Serif', serif;
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1;
+      margin-bottom: 0.4rem;
+    }
+
+    .metric-val span {
+      color: #60A5FA;
+    }
+
+    .metric-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Section Layout */
+    .section-container {
+      max-width: 1280px;
+      margin: 0 auto 5.5rem;
+      padding: 0 2.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .section-header {
+      margin-bottom: 2.75rem;
+      text-align: center;
+    }
+
+    .section-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #60A5FA;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.5rem;
+    }
+
+    .section-title {
+      font-family: 'IBM Plex Serif', serif;
+      font-size: 2.3rem;
+      font-weight: 700;
+      color: var(--text-main);
+      letter-spacing: -0.02em;
+    }
+
+    .section-subtitle {
+      font-size: 0.98rem;
+      color: var(--text-muted);
+      max-width: 680px;
+      margin: 0.5rem auto 0;
+      line-height: 1.6;
+    }
+
+    /* Map Search Section Container Box */
+    .map-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .map-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border-dark);
+      padding-bottom: 1rem;
+    }
+
+    .map-title {
+      font-family: 'IBM Plex Serif', serif;
+      font-size: 1.65rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+    }
+
+    .map-counter-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 0.45rem 0.95rem;
+      border-radius: 20px;
+      background: rgba(37, 99, 235, 0.15);
+      color: #60A5FA;
+      border: 1px solid rgba(37, 99, 235, 0.3);
+    }
+
+    .map-pills-row {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.1rem;
+    }
+
+    .map-zoom-pill {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border-dark);
+      padding: 0.4rem 0.9rem;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .map-zoom-pill:hover, .map-zoom-pill.active {
+      background: var(--brand-blue);
+      color: #FFFFFF;
+      border-color: var(--brand-blue);
+      box-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
+    }
+
+    #mapContainer {
+      height: 520px;
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--border-dark);
+      position: relative;
+      z-index: 1;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    .leaflet-popup-content-wrapper {
+      background: #0F172A;
+      color: #F8FAFC;
+      border-radius: 10px;
+      padding: 0;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+      border: 1px solid var(--border-light);
+    }
+
+    .leaflet-popup-tip {
+      background: #0F172A;
+    }
+
+    .map-popup-card {
+      padding: 1rem 1.15rem;
+      min-width: 240px;
+    }
+
+    .map-popup-title {
+      font-family: 'IBM Plex Serif', serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #FFFFFF;
+      margin-bottom: 0.25rem;
+    }
+
+    .map-popup-sub {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .map-popup-btn {
+      display: inline-block;
+      width: 100%;
+      text-align: center;
+      background: var(--brand-blue);
+      color: #ffffff !important;
+      font-weight: 700;
+      font-size: 0.78rem;
+      padding: 0.5rem 0.85rem;
+      border-radius: 6px;
+      text-decoration: none;
+      transition: background 0.15s ease;
+    }
+
+    .map-popup-btn:hover {
+      background: #1D4ED8;
+    }
+
+    /* Product Suite Grid (5 Tool Launchers) */
+    .tools-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 1.75rem;
+    }
+
+    .tool-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dark);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .tool-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      border-color: var(--brand-blue);
+      background: var(--bg-card-hover);
+    }
+
+    .tool-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--border-dark), transparent);
+      transition: background 0.2s ease;
+    }
+
+    .tool-card:hover::before {
+      background: linear-gradient(90deg, #2563EB, #60A5FA);
+    }
+
+    .tool-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.1rem;
+    }
+
+    .tool-icon-wrapper {
+      width: 44px;
+      height: 44px;
+      background: rgba(37, 99, 235, 0.12);
+      border: 1px solid rgba(37, 99, 235, 0.25);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tool-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.3rem 0.75rem;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.05);
+      color: var(--brand-cyan);
+      border: 1px solid var(--border-dark);
+    }
+
+    .tool-title {
+      font-family: 'IBM Plex Serif', serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 0.6rem;
+    }
+
+    .tool-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+      margin-bottom: 1.35rem;
+    }
+
+    .tool-features {
+      list-style: none;
+      margin-bottom: 1.75rem;
+    }
+
+    .tool-features li {
+      font-size: 0.84rem;
+      color: var(--text-main);
+      padding: 0.35rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .tool-features li::before {
+      content: '✓';
+      color: var(--pass);
+      font-weight: bold;
+    }
+
+    .tool-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.88rem;
+      padding: 0.8rem 1.35rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-dark);
+      transition: all 0.2s ease;
+    }
+
+    .tool-btn:hover {
+      background: var(--brand-blue);
+      border-color: var(--brand-blue);
+      box-shadow: 0 0 20px rgba(37, 99, 235, 0.4);
+    }
+
+    /* 9-Pillar Grid */
+    .pillar-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 1.35rem;
+    }
+
+    .pillar-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dark);
+      border-radius: 12px;
+      padding: 1.35rem;
+      transition: all 0.2s ease;
+    }
+
+    .pillar-card:hover {
+      border-color: var(--brand-blue);
+      transform: translateY(-2px);
+      background: var(--bg-card-hover);
+    }
+
+    .pillar-card-head {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.65rem;
+    }
+
+    .pillar-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #60A5FA;
+      background: rgba(37, 99, 235, 0.15);
+      border: 1px solid rgba(37, 99, 235, 0.3);
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+    }
+
+    .pillar-name {
+      font-family: 'IBM Plex Serif', serif;
+      font-weight: 700;
+      font-size: 1.08rem;
+      color: var(--text-main);
+    }
+
+    .pillar-desc {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 0.95rem;
+    }
+
+    .pillar-statute {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: #60A5FA;
+      background: rgba(37, 99, 235, 0.12);
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      display: inline-block;
+      font-weight: 600;
+      border: 1px solid rgba(37, 99, 235, 0.25);
+    }
+
+    /* Live Interactive Scenario Sandbox */
+    .sim-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 2.25rem;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+    }
+
+    .sim-tabs {
+      display: flex;
+      gap: 0.6rem;
+      margin-bottom: 1.75rem;
+      border-bottom: 1px solid var(--border-dark);
+      padding-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .sim-tab {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border-dark);
+      padding: 0.6rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .sim-tab.active {
+      background: var(--brand-blue);
+      color: #FFFFFF;
+      border-color: var(--brand-blue);
+      box-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
+    }
+
+    .sim-result-box {
+      background: #090D16;
+      border: 1px solid var(--border-dark);
+      border-radius: 12px;
+      padding: 1.75rem;
+    }
+
+    /* Registry Master Table */
+    .registry-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-card);
+      border: 1px solid var(--border-dark);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    .registry-table th {
+      background: rgba(255,255,255,0.04);
+      font-family: 'IBM Plex Serif', serif;
+      font-weight: 700;
+      font-size: 0.88rem;
+      color: var(--text-main);
+      text-align: left;
+      padding: 1rem 1.35rem;
+      border-bottom: 1px solid var(--border-dark);
+    }
+
+    .registry-table td {
+      padding: 1rem 1.35rem;
+      font-size: 0.88rem;
+      border-bottom: 1px solid var(--border-dark);
+      color: var(--text-main);
+    }
+
+    .registry-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .portal-link {
+      font-weight: 700;
+      color: #60A5FA;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .portal-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Footer */
+    .footer {
+      background: #05080E;
+      color: #FFFFFF;
+      padding: 4.5rem 2.5rem 2.5rem;
+      border-top: 1px solid var(--border-dark);
+    }
+
+    .footer-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 2.5rem;
+      margin-bottom: 3.5rem;
+    }
+
+    .footer-brand {
+      font-family: 'IBM Plex Serif', serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+
+    .footer-desc {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      line-height: 1.65;
+    }
+
+    .footer-title {
+      font-family: 'IBM Plex Serif', serif;
+      font-weight: 700;
+      font-size: 0.98rem;
+      margin-bottom: 1.1rem;
+      color: var(--text-main);
+    }
+
+    .footer-links {
+      list-style: none;
+    }
+
+    .footer-links li {
+      margin-bottom: 0.65rem;
+    }
+
+    .footer-links a {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      transition: color 0.15s ease;
+    }
+
+    .footer-links a:hover {
+      color: #FFFFFF;
+    }
+
+    .footer-bottom {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border-dark);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    @media (max-width: 992px) {
+      .hero-container {
+        grid-template-columns: 1fr;
+        gap: 2.5rem;
+        padding-top: 2rem;
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+      }
+      .section-container, .metrics-section {
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+      }
+      .metric-card {
+        border-right: none;
+        border-bottom: 1px solid var(--border-dark);
+        padding-bottom: 1rem;
+      }
+      .metric-card:last-child {
+        border-bottom: none;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .top-announcement {
+        flex-direction: column;
+        gap: 0.3rem;
+        text-align: center;
+        padding: 0.4rem 1rem;
+      }
+      .hero-title {
+        font-size: 2.1rem;
+      }
+      .navbar {
+        padding: 0.75rem 1rem;
+        flex-wrap: wrap;
+      }
+      .nav-links {
+        display: flex;
+        overflow-x: auto;
+        white-space: nowrap;
+        max-width: 100%;
+        -webkit-overflow-scrolling: touch;
+        padding: 0.35rem 0.5rem;
+        order: 3;
+        width: 100%;
+        margin-top: 0.5rem;
+      }
+      .nav-item {
+        font-size: 0.78rem;
+        padding: 0.35rem 0.75rem;
+      }
+      .metrics-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        padding: 1.25rem;
+      }
+      .metric-val {
+        font-size: 1.8rem;
+      }
+      .tools-grid, .pillar-grid {
+        grid-template-columns: 1fr;
+      }
+      .search-bar {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        padding: 0.5rem;
+      }
+      .search-btn {
+        width: 100%;
+      }
+      .cmd-badge {
+        display: none;
+      }
+      #mapContainer {
+        height: 380px;
+      }
+      .registry-table th, .registry-table td {
+        padding: 0.75rem 0.85rem;
+        font-size: 0.78rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .hero-title {
+        font-size: 1.75rem;
+      }
+      .metrics-grid {
+        grid-template-columns: 1fr;
+      }
+      .sim-card {
+        padding: 1.25rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Announcement Bar -->
+  <div class="top-announcement">
+    <div class="pulse-indicator">
+      <div class="pulse-dot"></div>
+      <span>KARNATAKA RERA LEGAL ENGINE LIVE • 1,240+ POSTGRES RECORDS OPERATIONAL</span>
+    </div>
+    <div>CROSS-VERIFYING KAVERI 2.0 • BHOOMI RTC • BDA • BBMP • E-COURTS</div>
+  </div>
+
+  <!-- Glassmorphic Navbar -->
+  <header class="navbar">
+    <a href="/" class="nav-brand">
+      <div class="brand-logo-box">R</div>
+      <div>
+        <div class="brand-title">RERA Intelligence</div>
+        <div class="brand-subtitle">AI Property Verification</div>
+      </div>
+    </a>
+
+    <nav class="nav-links">
+      <a href="/geospatial" class="nav-item">Geospatial Map</a>
+      <a href="/legal-report?q=CASAGRAND%20MOONDANCE" class="nav-item">Legal Due-Diligence</a>
+      <a href="/user-dashboard" class="nav-item" style="color:#6366F1; font-weight:700;">👤 User Portal & Uploads</a>
+      <a href="#docProcurementSection" class="nav-item" style="color:#FBBF24;">🏛️ Document Procurement</a>
+      <a href="/register" class="nav-item">Compliance Register</a>
+      <a href="/radar-chart" class="nav-item">Composite Radar</a>
+      <a href="/compare" class="nav-item">Compare Projects</a>
+      <a href="/detail?q=CASAGRAND%20MOONDANCE" class="nav-item">Audit Profile</a>
+    </nav>
+
+
+    <a href="/legal-report?q=CASAGRAND%20MOONDANCE" class="nav-cta">Launch Legal Audit ↗</a>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero-container">
+    <div>
+      <div class="hero-badge">
+        <span>STATEWIDE REGISTRY INTEGRATION ENGINE</span>
+      </div>
+
+      <h1 class="hero-title">
+        Karnataka's Premier <span>Legal Verification & Audit</span> Platform
+      </h1>
+
+      <p class="hero-subtitle">
+        Cross-verify exact Survey Numbers, 30+ year title deeds, Bhoomi RTC Pahani extracts, DC land conversion orders, BDA layout sanctions, and e-Courts litigation before you sign.
+      </p>
+
+      <!-- Spotlight Search Bar -->
+      <div class="search-wrapper">
+        <form action="/legal-report" method="GET" class="search-bar" id="searchForm">
+          <span class="search-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          </span>
+          <input type="text" name="q" id="heroSearchInput" class="search-input" placeholder="Search project name or RERA registration number..." autocomplete="off">
+          <span class="cmd-badge">⌘K</span>
+          <button type="submit" class="search-btn">Evaluate Legal Risk ↗</button>
+        </form>
+
+        <div id="autocompleteBox" class="autocomplete-box">
+          <!-- Live suggestions populated by JS -->
+        </div>
+      </div>
+
+      <!-- Presets Launcher -->
+      <div class="presets-row">
+        <span class="preset-label">Sample Scenarios:</span>
+        <span class="preset-chip" onclick="searchPreset('CASAGRAND MOONDANCE')">Casagrand Moondance</span>
+        <span class="preset-chip" onclick="searchPreset('Chartered Windsong - 2')">Chartered Windsong - 2</span>
+        <span class="preset-chip" onclick="searchPreset('Prestige Falcon City')">Prestige Falcon City</span>
+        <span class="preset-chip" onclick="searchPreset('Godrej Ananda')">Godrej Ananda</span>
+      </div>
+    </div>
+
+    <!-- Live Terminal Console Mockup -->
+    <div class="terminal-card">
+      <div class="terminal-header">
+        <div class="terminal-dots">
+          <div class="dot" style="background:#EF4444;"></div>
+          <div class="dot" style="background:#F59E0B;"></div>
+          <div class="dot" style="background:#10B981;"></div>
+        </div>
+        <div class="terminal-tag">LIVE AUDIT ENGINE CONSOLE</div>
+      </div>
+
+      <div class="gauge-box">
+        <div>
+          <div style="font-size:0.75rem; color:var(--text-muted);" class="mono">LEGAL RISK SCORE</div>
+          <div class="gauge-score">92/100</div>
+        </div>
+        <span class="gauge-badge">PASSED BUY GATE</span>
+      </div>
+
+      <div style="font-family:'IBM Plex Serif', serif; font-size:1.15rem; font-weight:700; color:#FFFFFF; margin-bottom:0.25rem;">
+        Casagrand Moondance
+      </div>
+      <div style="font-size:0.76rem; color:var(--text-muted); margin-bottom:1rem;" class="mono">
+        Survey No: 44/2 & 45/1 • District: Bengaluru Urban
+      </div>
+
+      <div class="check-list">
+        <div class="check-item">
+          <div>
+            <div class="check-name">1. Title Verification</div>
+            <div class="check-ref">Kaveri 2.0 SRO Deed & 30-Yr Encumbrance Search</div>
+          </div>
+          <span class="badge-pill b-pass">PASS</span>
+        </div>
+
+        <div class="check-item">
+          <div>
+            <div class="check-name">2. Revenue Verification</div>
+            <div class="check-ref">Bhoomi RTC Pahani Col 9/11 & Mutation Extract</div>
+          </div>
+          <span class="badge-pill b-pass">PASS</span>
+        </div>
+
+        <div class="check-item">
+          <div>
+            <div class="check-name">3. Land Conversion</div>
+            <div class="check-ref">DC Conversion Order Sec 95 KLR Act</div>
+          </div>
+          <span class="badge-pill b-pass">PASS</span>
+        </div>
+
+        <div class="check-item">
+          <div>
+            <div class="check-name">4. Layout Approval</div>
+            <div class="check-ref">BDA Master Plan 2031 Zoning & NOPA Release</div>
+          </div>
+          <span class="badge-pill b-warn">CAUTION</span>
+        </div>
+
+        <div class="check-item">
+          <div>
+            <div class="check-name">5. Municipal Audit</div>
+            <div class="check-ref">BBMP e-Aasthi e-Khata & PID Property Tax Audit</div>
+          </div>
+          <span class="badge-pill b-pass">PASS</span>
+        </div>
+      </div>
+
+
+      <a href="/legal-report?q=CASAGRAND%20MOONDANCE" style="display:block; text-align:center; background:linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%); color:#FFFFFF; padding:0.7rem; border-radius:8px; font-weight:700; font-size:0.82rem; box-shadow:0 0 20px rgba(37,99,235,0.4);">
+        View Full 38-Point Legal Verification Matrix ↗
+      </a>
+    </div>
+  </section>
+
+  <!-- Metrics Bar -->
+  <section class="metrics-section">
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-val" id="statProjects">1,240<span>+</span></div>
+        <div class="metric-label">Scraped RERA Projects</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val">38<span>/38</span></div>
+        <div class="metric-label">Legal Audit Checklist Scope</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val">5<span> Regs</span></div>
+        <div class="metric-label">State Government Integrations</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val">100<span>%</span></div>
+        <div class="metric-label">Offline Proof Guarantee</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Statewide Map Search Section (Area-Wise Zoom & Verification) -->
+  <section class="section-container">
+    <div class="map-section">
+      <div class="map-header">
+        <div>
+          <div class="section-tag">Geospatial Intelligence</div>
+          <h2 class="map-title">
+            <span class="svg-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            </span>
+            Statewide RERA Property Map Search
+          </h2>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+          <a href="/geospatial" target="_blank" style="background:linear-gradient(135deg, #2563EB, #0284C7); color:#FFF; text-decoration:none; padding:0.45rem 0.9rem; border-radius:8px; font-size:0.85rem; font-weight:700; box-shadow:0 0 15px rgba(37,99,235,0.4); display:flex; align-items:center; gap:0.4rem; transition:all 0.2s ease;">
+            🗺️ Open Full Page Map ↗
+          </a>
+          <div class="map-counter-badge" id="mapVisibleBadge">
+            Loading Map Properties...
+          </div>
+        </div>
+      </div>
+
+      <!-- Map Live Property Search & Autocomplete Bar -->
+      <div style="position:relative; margin-bottom:1rem;">
+        <div style="display:flex; align-items:center; background:rgba(15, 23, 42, 0.9); border:1px solid var(--border-light); border-radius:10px; padding:0.35rem 0.85rem; box-shadow:0 4px 15px rgba(0,0,0,0.3);">
+          <span style="color:var(--text-muted); margin-right:0.65rem; display:flex;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          </span>
+          <input type="text" id="mapSearchInput" style="flex:1; background:transparent; border:none; color:var(--text-main); font-family:'Plus Jakarta Sans', sans-serif; font-size:0.92rem; outline:none; padding:0.45rem 0;" placeholder="Search any property or developer on map (e.g. Casagrand, Prestige, Assetz, Godrej)..." autocomplete="off" />
+          <button id="clearMapSearchBtn" onclick="clearMapSearch()" style="display:none; background:none; border:none; color:var(--text-muted); font-size:1.1rem; cursor:pointer; padding:0 0.4rem;">&times;</button>
+        </div>
+
+        <!-- Live Map Search Suggestions Dropdown -->
+        <div id="mapSuggestionsBox" style="display:none; position:absolute; top:100%; left:0; right:0; background:#0F172A; border:1px solid var(--border-light); border-radius:10px; box-shadow:0 20px 40px rgba(0,0,0,0.6); margin-top:0.4rem; max-height:280px; overflow-y:auto; z-index:999;">
+          <!-- Autocomplete results populated by JS -->
+        </div>
+      </div>
+
+      <!-- Area-Wise Zoom Presets -->
+      <div class="map-pills-row">
+        <span class="preset-label">Zoom Area:</span>
+        <button class="map-zoom-pill active" onclick="zoomToRegion([12.9716, 77.5946], 10, this)">All Karnataka</button>
+        <button class="map-zoom-pill" onclick="zoomToRegion([12.9716, 77.5946], 12, this)">Bangalore Central</button>
+        <button class="map-zoom-pill" onclick="zoomToRegion([12.925, 77.72], 13, this)">East Bangalore (Sarjapur / Whitefield)</button>
+        <button class="map-zoom-pill" onclick="zoomToRegion([13.15, 77.63], 12, this)">North Bangalore (Yelahanka)</button>
+        <button class="map-zoom-pill" onclick="zoomToRegion([12.86, 77.65], 13, this)">South Bangalore (Electronic City)</button>
+        <button class="map-zoom-pill" onclick="zoomToRegion([12.3, 76.65], 12, this)">Mysore</button>
+        <button class="map-zoom-pill" onclick="zoomToRegion([12.87, 74.84], 12, this)">Mangaluru</button>
+        <button class="map-zoom-pill" onclick="zoomToRegion([15.36, 75.12], 12, this)">Hubballi-Dharwad</button>
+      </div>
+
+      <!-- Leaflet Map Canvas -->
+      <div id="mapContainer"></div>
+    </div>
+  </section>
+
+  <!-- Core 5 Product Launchers -->
+  <section class="section-container">
+    <div class="section-header">
+      <div class="section-tag">AI Intelligence Suite</div>
+      <h2 class="section-title">5 Purpose-Built Due-Diligence Dashboards</h2>
+      <p class="section-subtitle">Complete end-to-end legal, financial, and structural due-diligence for home buyers, legal auditors, and institutional lenders.</p>
+    </div>
+
+    <div class="tools-grid">
+      <!-- Tool 1: Legal Report -->
+      <div class="tool-card">
+        <div>
+          <div class="tool-header">
+            <div class="tool-icon-wrapper">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+            </div>
+            <span class="tool-badge">38-POINT AUDIT GATE</span>
+          </div>
+          <h3 class="tool-title">Legal Due-Diligence Audit</h3>
+          <p class="tool-desc">Full legal risk matrix cross-checking registered title deeds, Bhoomi RTC columns 9/11, DC conversion orders, NGT lake buffer zones, and e-Courts suit filings.</p>
+          <ul class="tool-features">
+            <li>38-Point BUY / PAUSE / REJECT Gate</li>
+            <li>9-Pillar Legal Verification Matrix</li>
+            <li>Document Inspection & Proof Inspector</li>
+            <li>Cross-source discrepancy detector</li>
+          </ul>
+        </div>
+        <a href="/legal-report?q=CASAGRAND%20MOONDANCE" class="tool-btn">Launch Legal Audit ↗</a>
+      </div>
+
+      <!-- Tool 2: Risk Register -->
+      <div class="tool-card">
+        <div>
+          <div class="tool-header">
+            <div class="tool-icon-wrapper">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
+            </div>
+            <span class="tool-badge">STATEWIDE SEARCH</span>
+          </div>
+          <h3 class="tool-title">RERA Compliance Register</h3>
+          <p class="tool-desc">Searchable statewide directory of all Karnataka RERA registered projects with filter pills by district, configurations, developer ratings, and approval flags.</p>
+          <ul class="tool-features">
+            <li>Search across Bangalore, Mysuru, Mangaluru</li>
+            <li>Filter by 1BHK, 2BHK, 3BHK, Plots & Villas</li>
+            <li>Promoter track record & delay index</li>
+            <li>Fast tabular data export</li>
+          </ul>
+        </div>
+        <a href="/register" class="tool-btn">Open Compliance Register ↗</a>
+      </div>
+
+      <!-- Tool 3: Composite Radar -->
+      <div class="tool-card">
+        <div>
+          <div class="tool-header">
+            <div class="tool-icon-wrapper">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><path d="M12 2v20"/><path d="M2 12h20"/></svg>
+            </div>
+            <span class="tool-badge">5-AXIS SPIDER RADAR</span>
+          </div>
+          <h3 class="tool-title">Composite Risk & Quality Radar</h3>
+          <p class="tool-desc">Visual multi-dimensional radar chart mapping Legal Title, Bank Escrow Health, Builder Track Record, Layout Sanctions, and Location Intelligence.</p>
+          <ul class="tool-features">
+            <li>Interactive 5-Axis Spider Diagram</li>
+            <li>Weighted scoring algorithm</li>
+            <li>Benchmark comparison with region average</li>
+            <li>Instant financial escrow health grade</li>
+          </ul>
+        </div>
+        <a href="/radar-chart" class="tool-btn">View Composite Radar ↗</a>
+      </div>
+
+      <!-- Tool 4: Property Comparison -->
+      <div class="tool-card">
+        <div>
+          <div class="tool-header">
+            <div class="tool-icon-wrapper">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="6" height="18" rx="1"/><rect x="14" y="3" width="6" height="18" rx="1"/></svg>
+            </div>
+            <span class="tool-badge">SIDE-BY-SIDE AUDIT</span>
+          </div>
+          <h3 class="tool-title">Project Comparison Matrix</h3>
+          <p class="tool-desc">Compare up to 3 projects side-by-side on legal compliance score, price per sqft, completion timelines, escrow status, and structural approvals.</p>
+          <ul class="tool-features">
+            <li>Multi-project side-by-side grid</li>
+            <li>Legal Risk Score comparison</li>
+            <li>Form 3 CA Bank Escrow audit comparison</li>
+            <li>Highlight key advantages & defects</li>
+          </ul>
+        </div>
+        <a href="/compare" class="tool-btn">Compare Projects ↗</a>
+      </div>
+
+      <!-- Tool 5: Detailed Audit Profile -->
+      <div class="tool-card">
+        <div>
+          <div class="tool-header">
+            <div class="tool-icon-wrapper">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><circle cx="11.5" cy="14.5" r="2.5"/><path d="M13.25 16.25 16.5 19.5"/></svg>
+            </div>
+            <span class="tool-badge">DEEP FILE AUDIT</span>
+          </div>
+          <h3 class="tool-title">In-Depth Audit Profile</h3>
+          <p class="tool-desc">Deep-dive property dossier containing full RERA filings, quarterly progress reports, scanned PDF document attachments, and promoter history.</p>
+          <ul class="tool-features">
+            <li>Complete document attachment vault</li>
+            <li>Quarterly progress & construction photos</li>
+            <li>Promoter registration lineage</li>
+            <li>Direct PDF download links</li>
+          </ul>
+        </div>
+        <a href="/detail?q=CASAGRAND%20MOONDANCE" class="tool-btn">View Audit Dossier ↗</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Legal Verification Packages Section -->
+  <section class="section-container" id="legalPackagesSection" style="padding-top: 1.5rem;">
+    <div class="section-header">
+      <div class="section-tag" style="background: rgba(37, 99, 235, 0.15); color: #60A5FA; border-color: rgba(37, 99, 235, 0.35);">⚖️ Tailored Audit Plans</div>
+      <h2 class="section-title">Property Legal Verification Packages</h2>
+      <p class="section-subtitle">Select a comprehensive due-diligence package tailored for property buyers, bank loan approvals, NRI investors, or commercial promoters across Karnataka.</p>
+    </div>
+
+    <!-- Package Cards Grid -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem;">
+      
+      <!-- Package 1: Essential Title Search -->
+      <div style="background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 16px; padding: 1.75rem; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <span class="mono" style="font-size: 0.68rem; background: rgba(255,255,255,0.06); color: var(--text-muted); padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 700;">ESSENTIAL AUDIT</span>
+            <span class="mono" style="font-size: 0.7rem; color: #34D399;">⏱️ 24 Hours</span>
+          </div>
+          <h3 style="font-family: 'IBM Plex Serif', serif; font-size: 1.25rem; font-weight: 700; color: #FFF; margin-bottom: 0.4rem;">Basic Title Search Package</h3>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1.25rem;">Ideal for initial property screening, plot title checks & preliminary seller verification.</p>
+          
+          <div style="margin-bottom: 1.5rem;">
+            <div style="display: flex; align-items: baseline; gap: 0.4rem;">
+              <span class="mono" style="font-size: 1.85rem; font-weight: 800; color: #FFF;">₹2,999</span>
+              <span style="font-size: 0.8rem; color: var(--text-dim); text-decoration: line-through;">₹4,500</span>
+            </div>
+            <div class="mono" style="font-size: 0.68rem; color: #34D399; margin-top: 0.15rem;">One-time fee per property</div>
+          </div>
+
+          <ul style="list-style: none; padding: 0; margin: 0 0 1.5rem 0; font-size: 0.83rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.55rem;">
+            <li style="display: flex; align-items: flex-start; gap: 0.5rem;"><span style="color: #34D399;">✓</span> 15-Year Kaveri 2.0 SRO Encumbrance Search (EC)</li>
+            <li style="display: flex; align-items: flex-start; gap: 0.5rem;"><span style="color: #34D399;">✓</span> Bhoomi RTC Pahani (Col 9/11) & Mutation Check</li>
+            <li style="display: flex; align-items: flex-start; gap: 0.5rem;"><span style="color: #34D399;">✓</span> AI 26-Check Legal Risk Score Report (PDF)</li>
+            <li style="display: flex; align-items: flex-start; gap: 0.5rem;"><span style="color: #34D399;">✓</span> Basic Rajakaluve & NGT Lake Buffer Check</li>
+          </ul>
+        </div>
+
+        <button onclick="openPackageOrderModal('pkg_basic', 'Basic Title Search Package', 2999)" style="width: 100%; background: rgba(255,255,255,0.08); color: #FFF; border: 1px solid var(--border-light); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.85rem; font-weight: 700; padding: 0.75rem; border-radius: 10px; cursor: pointer; transition: all 0.2s ease;">Order Basic Package ↗</button>
+      </div>
+
+      <!-- Package 2: Full Legal Scrutiny & Statutory Audit (POPULAR) -->
+      <div style="background: linear-gradient(180deg, #152238 0%, #0F172A 100%); border: 2px solid #2563EB; border-radius: 16px; padding: 1.75rem; display: flex; flex-direction: column; justify-content: space-between; position: relative; box-shadow: 0 0 30px rgba(37, 99, 235, 0.25);">
+        <div style="position: absolute; top: -13px; right: 20px; background: linear-gradient(135deg, #2563EB, #1D4ED8); color: #FFF; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; font-weight: 800; padding: 0.25rem 0.85rem; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 4px 12px rgba(37,99,235,0.4);">
+          MOST POPULAR • FULL LEGAL SCRUTINY
+        </div>
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <span class="mono" style="font-size: 0.68rem; background: rgba(37,99,235,0.25); color: #60A5FA; border: 1px solid rgba(37,99,235,0.5); padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 700;">BANK LOAN & HOMEBUYER READY</span>
+            <span class="mono" style="font-size: 0.7rem; color: #34D399;">⏱️ 48 Hours</span>
+          </div>
+          <h3 style="font-family: 'IBM Plex Serif', serif; font-size: 1.25rem; font-weight: 700; color: #FFF; margin-bottom: 0.4rem;">Full 30-Year Legal Scrutiny & Audit</h3>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1.25rem;">Complete 30-year legal due-diligence report certified across all 26 statutory verification vectors.</p>
+
+          <div style="margin-bottom: 1.5rem;">
+            <div style="display: flex; align-items: baseline; gap: 0.4rem;">
+              <span class="mono" style="font-size: 1.85rem; font-weight: 800; color: #60A5FA;">₹6,499</span>
+              <span style="font-size: 0.8rem; color: var(--text-dim); text-decoration: line-through;">₹9,999</span>
+            </div>
+            <div class="mono" style="font-size: 0.68rem; color: #34D399; margin-top: 0.15rem;">Complete 30-Year Scrutiny</div>
+          </div>
+
+          <ul style="list-style: none; padding: 0; margin: 0 0 1.5rem 0; font-size: 0.83rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.55rem;">
+            <li style="display: flex; align-items: flex-start; gap: 0.5rem;"><span style="color: #60A5FA;">✓</span> <strong>30-Year Title Search & Parent Deed Lineage</strong></li>
+            <li style="display: flex; align-items: flex-start; gap: 0.5rem;"><span style="color: #60A5FA;">✓</span> <strong>Certified 30-Year Statutory Legal Audit Certificate</strong></li>
+            <li style="display: flex; align-items: flex-start; gap: 0.5rem;"><span style="color: #60A5FA;">✓</span> Kaveri 2 EC, Bhoomi RTC & DC Conversion Order</li>
+            <li style="display: flex; align-items: flex-start; gap: 0.5rem;"><span style="color: #60A5FA;">✓</span> BDA / BMRDA Layout Approval & Sanction Check</li>
+            <li style="display: flex; align-items: flex-start; gap: 0.5rem;"><span style="color: #60A5FA;">✓</span> BBMP e-Aasthi e-Khata & PID Tax Verification</li>
+            <li style="display: flex; align-items: flex-start; gap: 0.5rem;"><span style="color: #60A5FA;">✓</span> e-Courts Karnataka Litigation Search (High Court/Civil)</li>
+            <li style="display: flex; align-items: flex-start; gap: 0.5rem;"><span style="color: #60A5FA;">✓</span> Bank Mortgage & Escrow NOC Verification</li>
+          </ul>
+        </div>
+
+        <button onclick="openPackageOrderModal('pkg_advocate', 'Full 30-Year Legal Scrutiny Package', 6499)" style="width: 100%; background: linear-gradient(135deg, #2563EB, #1D4ED8); color: #FFF; border: none; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.85rem; font-weight: 700; padding: 0.75rem; border-radius: 10px; cursor: pointer; box-shadow: 0 0 20px rgba(37,99,235,0.4); transition: all 0.2s ease;">Order Full Legal Scrutiny Package ↗</button>
+      </div>
+
+      <!-- Package 3: NRI & Comprehensive Due Diligence -->
+      <div style="background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 16px; padding: 1.75rem; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <span class="mono" style="font-size: 0.68rem; background: rgba(245, 158, 11, 0.2); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.4); padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 700;">NRI & HIGH VALUE DESK</span>
+            <span class="mono" style="font-size: 0.7rem; color: #34D399;">⏱️ 3-5 Days</span>
+          </div>
+          <h3 style="font-family: 'IBM Plex Serif', serif; font-size: 1.25rem; font-weight: 700; color: #FFF; margin-bottom: 0.4rem;">NRI Comprehensive Due-Diligence</h3>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1.25rem;">End-to-end legal clearance for NRIs, luxury villas, commercial land plots & high-value property purchases.</p>
+
+          <div style="margin-bottom: 1.5rem;">
+            <div style="display: flex; align-items: baseline; gap: 0.4rem;">
+              <span class="mono" style="font-size: 1.85rem; font-weight: 800; color: #FBBF24;">₹12,999</span>
+              <span style="font-size: 0.8rem; color: var(--text-dim); text-decoration: line-through;">₹18,000</span>
+            </div>
+            <div class="mono" style="font-size: 0.68rem; color: #34D399; margin-top: 0.15rem;">Includes 1-on-1 Legal Counsel</div>
+          </div>
+
+          <ul style="list-style: none; padding: 0; margin: 0 0 1.5rem 0; font-size: 0.83rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.55rem;">
+            <li style="display: flex; align-items: flex-start; gap: 0.5rem;"><span style="color: #FBBF24;">✓</span> <strong>30+ Year Unbroken Title Lineage & Original Deed Audit</strong></li>
+            <li style="display: flex; align-items: flex-start; gap: 0.5rem;"><span style="color: #FBBF24;">✓</span> <strong>1-on-1 Consultation with Senior Property Legal Counsel (30 Mins)</strong></li>
+            <li style="display: flex; align-items: flex-start; gap: 0.5rem;"><span style="color: #FBBF24;">✓</span> <strong>Certified Hard-Copy Delivery to Doorstep (Worldwide)</strong></li>
+            <li style="display: flex; align-items: flex-start; gap: 0.5rem;"><span style="color: #FBBF24;">✓</span> SSLR Podi 11E Survey Sketch & Akarband Physical Map</li>
+            <li style="display: flex; align-items: flex-start; gap: 0.5rem;"><span style="color: #FBBF24;">✓</span> PTCL SC/ST Land Grant & B-Kharab Public Land Check</li>
+            <li style="display: flex; align-items: flex-start; gap: 0.5rem;"><span style="color: #FBBF24;">✓</span> High-Resolution Satellite GIS Lake/Drain Buffer Survey</li>
+          </ul>
+        </div>
+
+        <button onclick="openPackageOrderModal('pkg_nri', 'NRI Comprehensive Due-Diligence Package', 12999)" style="width: 100%; background: rgba(245, 158, 11, 0.15); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.4); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.85rem; font-weight: 700; padding: 0.75rem; border-radius: 10px; cursor: pointer; transition: all 0.2s ease;">Order NRI Package ↗</button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Package Order Modal -->
+  <div id="packageOrderModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(9,13,22,0.85); backdrop-filter:blur(10px); z-index:99999; align-items:center; justify-content:center; padding:1rem;">
+    <div style="background:#0F172A; border:1px solid var(--border-light); border-radius:16px; max-width:580px; width:100%; padding:2rem; box-shadow:0 25px 50px rgba(0,0,0,0.6); position:relative;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-dark); padding-bottom:1rem; margin-bottom:1.25rem;">
+        <div>
+          <div class="mono" style="font-size:0.7rem; color:#60A5FA; font-weight:700; text-transform:uppercase;">Legal Verification Package Order</div>
+          <h3 style="font-family:'IBM Plex Serif', serif; font-size:1.2rem; font-weight:700; color:#FFF; margin-top:0.2rem;" id="modalPackageTitle">Select Legal Package</h3>
+        </div>
+        <button onclick="closePackageOrderModal()" style="background:none; border:none; font-size:1.5rem; color:var(--text-muted); cursor:pointer;">&times;</button>
+      </div>
+
+      <form id="packageForm" onsubmit="submitPackageOrder(event)">
+        <input type="hidden" id="pkgCode" value="" />
+        <input type="hidden" id="pkgName" value="" />
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--text-muted); margin-bottom:0.35rem;" class="mono">PROPERTY NAME *</label>
+            <input type="text" id="pkgPropName" required placeholder="e.g. Chartered Windsong - 2" style="width:100%; background:#1E293B; border:1px solid var(--border-dark); border-radius:8px; padding:0.6rem 0.85rem; color:#FFF; font-size:0.85rem; outline:none;" />
+          </div>
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--text-muted); margin-bottom:0.35rem;" class="mono">SURVEY / SY NO *</label>
+            <input type="text" id="pkgSurveyNo" required placeholder="e.g. Sy No 112/2 & 114/1" style="width:100%; background:#1E293B; border:1px solid var(--border-dark); border-radius:8px; padding:0.6rem 0.85rem; color:#FFF; font-size:0.85rem; outline:none;" />
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--text-muted); margin-bottom:0.35rem;" class="mono">BUYER / APPLICANT NAME *</label>
+            <input type="text" id="pkgApplicantName" required placeholder="Full Legal Name" style="width:100%; background:#1E293B; border:1px solid var(--border-dark); border-radius:8px; padding:0.6rem 0.85rem; color:#FFF; font-size:0.85rem; outline:none;" />
+          </div>
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--text-muted); margin-bottom:0.35rem;" class="mono">PHONE NUMBER *</label>
+            <input type="tel" id="pkgApplicantPhone" required placeholder="+91 98765 43210" style="width:100%; background:#1E293B; border:1px solid var(--border-dark); border-radius:8px; padding:0.6rem 0.85rem; color:#FFF; font-size:0.85rem; outline:none;" />
+          </div>
+        </div>
+
+        <div style="margin-bottom:1rem;">
+          <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--text-muted); margin-bottom:0.35rem;" class="mono">EMAIL ADDRESS *</label>
+          <input type="email" id="pkgApplicantEmail" required placeholder="buyer@example.com" style="width:100%; background:#1E293B; border:1px solid var(--border-dark); border-radius:8px; padding:0.6rem 0.85rem; color:#FFF; font-size:0.85rem; outline:none;" />
+        </div>
+
+        <div style="margin-bottom:1.25rem;">
+          <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--text-muted); margin-bottom:0.35rem;" class="mono">LOCATION / DISTRICT *</label>
+          <input type="text" id="pkgDistrict" required placeholder="e.g. Devanahalli, Bengaluru Rural" style="width:100%; background:#1E293B; border:1px solid var(--border-dark); border-radius:8px; padding:0.6rem 0.85rem; color:#FFF; font-size:0.85rem; outline:none;" />
+        </div>
+
+        <div id="pkgStatusBox" style="display:none; margin-bottom:1rem; padding:0.85rem; border-radius:8px; font-size:0.83rem;" class="mono"></div>
+
+        <div style="display:flex; align-items:center; justify-content:space-between; border-top:1px solid var(--border-dark); padding-top:1.25rem;">
+          <div>
+            <div class="mono" style="font-size:0.68rem; color:var(--text-muted);">TOTAL PACKAGE PRICE</div>
+            <div class="mono" style="font-size:1.3rem; font-weight:800; color:#60A5FA;" id="modalPackagePrice">₹6,499</div>
+          </div>
+          <div style="display:flex; gap:0.5rem;">
+            <button type="button" onclick="closePackageOrderModal()" style="background:transparent; color:var(--text-muted); border:1px solid var(--border-dark); font-size:0.82rem; padding:0.6rem 1rem; border-radius:8px; cursor:pointer;">Cancel</button>
+            <button type="submit" id="pkgSubmitBtn" style="background:linear-gradient(135deg, #2563EB, #1D4ED8); color:#FFF; border:none; font-family:'Plus Jakarta Sans', sans-serif; font-size:0.85rem; font-weight:700; padding:0.6rem 1.25rem; border-radius:8px; cursor:pointer; box-shadow:0 0 15px rgba(37,99,235,0.4);">Confirm Booking ↗</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Individual Government Office Document Procurement Service Section -->
+  <section class="section-container" id="docProcurementSection" style="padding-top: 1.5rem;">
+
+    <div class="section-header">
+      <div class="section-tag" style="background: rgba(245, 158, 11, 0.15); color: #FBBF24; border-color: rgba(245, 158, 11, 0.35);">🏛️ Individual Document Concierge Desk</div>
+      <h2 class="section-title">Government Office Document Procurement Service</h2>
+      <p class="section-subtitle">Need specific physical or certified digital title documents? Order certified copies of Encumbrance Certificates, Bhoomi RTCs, SSLR Podi Sketches, DC Conversion orders, and e-Khatas directly from Karnataka State Government offices.</p>
+    </div>
+
+    <!-- Procurement Service Catalog Grid -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem;">
+      <!-- Service 1: Kaveri EC -->
+      <div style="background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 14px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s ease, border-color 0.2s ease;" onmouseover="this.style.borderColor='#60A5FA'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='var(--border-light)'; this.style.transform='none';">
+        <div>
+          <div style="display: flex; align-items: center; justify-content: flex-start; margin-bottom: 0.85rem;">
+            <span class="mono" style="font-size: 0.68rem; background: rgba(37, 99, 235, 0.2); color: #60A5FA; border: 1px solid rgba(37, 99, 235, 0.4); padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 700;">SUB-REGISTRAR OFFICE (SRO)</span>
+          </div>
+          <h3 style="font-family: 'IBM Plex Serif', serif; font-size: 1.1rem; font-weight: 700; color: #FFF; margin-bottom: 0.4rem;">30-Year Encumbrance Certificate (Form 15/16)</h3>
+          <p style="font-size: 0.83rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 1rem;">Official 30-year Encumbrance Certificate issued and stamped by SRO Sub-Registrar Officer covering Kaveri 2 Index II registers.</p>
+        </div>
+        <div style="border-top: 1px solid var(--border-dark); padding-top: 1rem; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <div class="mono" style="font-size: 1.15rem; font-weight: 800; color: #34D399;">₹750 <span style="font-size: 0.7rem; color: var(--text-dim); font-weight: 400;">/ Property</span></div>
+            <div class="mono" style="font-size: 0.68rem; color: var(--text-muted);">⏱️ 24-48 Hours Delivery</div>
+          </div>
+          <button onclick="openProcurementModal('kaveri_ec', '30-Year Encumbrance Certificate (Form 15/16)', 750)" style="background: linear-gradient(135deg, #2563EB, #1D4ED8); color: #FFF; border: none; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.8rem; font-weight: 700; padding: 0.55rem 1rem; border-radius: 8px; cursor: pointer; transition: all 0.2s ease;">Order Now ↗</button>
+        </div>
+      </div>
+
+      <!-- Service 2: Bhoomi RTC -->
+      <div style="background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 14px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s ease, border-color 0.2s ease;" onmouseover="this.style.borderColor='#60A5FA'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='var(--border-light)'; this.style.transform='none';">
+        <div>
+          <div style="display: flex; align-items: center; justify-content: flex-start; margin-bottom: 0.85rem;">
+            <span class="mono" style="font-size: 0.68rem; background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.4); padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 700;">REVENUE TAHSILDAR</span>
+          </div>
+          <h3 style="font-family: 'IBM Plex Serif', serif; font-size: 1.1rem; font-weight: 700; color: #FFF; margin-bottom: 0.4rem;">Bhoomi RTC Pahani & Mutation Extract (MR Form 12)</h3>
+          <p style="font-size: 0.83rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 1rem;">Certified Record of Rights, Tenancy & Crop Pahani (Col 9/11) with Tahsildar certified Mutation Register MR Order extract.</p>
+        </div>
+        <div style="border-top: 1px solid var(--border-dark); padding-top: 1rem; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <div class="mono" style="font-size: 1.15rem; font-weight: 800; color: #34D399;">₹450 <span style="font-size: 0.7rem; color: var(--text-dim); font-weight: 400;">/ Survey No</span></div>
+            <div class="mono" style="font-size: 0.68rem; color: var(--text-muted);">⏱️ 24 Hours Delivery</div>
+          </div>
+          <button onclick="openProcurementModal('bhoomi_rtc', 'Bhoomi RTC Pahani & Certified Mutation Extract', 450)" style="background: linear-gradient(135deg, #2563EB, #1D4ED8); color: #FFF; border: none; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.8rem; font-weight: 700; padding: 0.55rem 1rem; border-radius: 8px; cursor: pointer; transition: all 0.2s ease;">Order Now ↗</button>
+        </div>
+      </div>
+
+      <!-- Service 3: SSLR Podi Map -->
+      <div style="background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 14px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s ease, border-color 0.2s ease;" onmouseover="this.style.borderColor='#60A5FA'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='var(--border-light)'; this.style.transform='none';">
+        <div>
+          <div style="display: flex; align-items: center; justify-content: flex-start; margin-bottom: 0.85rem;">
+            <span class="mono" style="font-size: 0.68rem; background: rgba(245, 158, 11, 0.2); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.4); padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 700;">SSLR SURVEY DEPT</span>
+          </div>
+          <h3 style="font-family: 'IBM Plex Serif', serif; font-size: 1.1rem; font-weight: 700; color: #FFF; margin-bottom: 0.4rem;">Certified Podi 11E Survey Sketch & Tippani Map</h3>
+          <p style="font-size: 0.83rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 1rem;">Official land parcel boundary sketch, Hissa partition map, Podi 11E sketch & Akarband extract from SSLR Survey Department.</p>
+        </div>
+        <div style="border-top: 1px solid var(--border-dark); padding-top: 1rem; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <div class="mono" style="font-size: 1.15rem; font-weight: 800; color: #34D399;">₹1,200 <span style="font-size: 0.7rem; color: var(--text-dim); font-weight: 400;">/ Parcel</span></div>
+            <div class="mono" style="font-size: 0.68rem; color: var(--text-muted);">⏱️ 3-5 Business Days</div>
+          </div>
+          <button onclick="openProcurementModal('sslr_podi', 'SSLR Certified Podi 11E Survey Sketch & Tippani Map', 1200)" style="background: linear-gradient(135deg, #2563EB, #1D4ED8); color: #FFF; border: none; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.8rem; font-weight: 700; padding: 0.55rem 1rem; border-radius: 8px; cursor: pointer; transition: all 0.2s ease;">Order Now ↗</button>
+        </div>
+      </div>
+
+      <!-- Service 4: DC Conversion Order -->
+      <div style="background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 14px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s ease, border-color 0.2s ease;" onmouseover="this.style.borderColor='#60A5FA'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='var(--border-light)'; this.style.transform='none';">
+        <div>
+          <div style="display: flex; align-items: center; justify-content: flex-start; margin-bottom: 0.85rem;">
+            <span class="mono" style="font-size: 0.68rem; background: rgba(14, 165, 233, 0.2); color: #38BDF8; border: 1px solid rgba(14, 165, 233, 0.4); padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 700;">DISTRICT DC OFFICE</span>
+          </div>
+          <h3 style="font-family: 'IBM Plex Serif', serif; font-size: 1.1rem; font-weight: 700; color: #FFF; margin-bottom: 0.4rem;">DC Non-Agricultural Conversion Order (Sec 95)</h3>
+          <p style="font-size: 0.83rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 1rem;">Certified copy of District Deputy Commissioner Official Order approving Agricultural to Non-Agricultural Residential Conversion.</p>
+        </div>
+        <div style="border-top: 1px solid var(--border-dark); padding-top: 1rem; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <div class="mono" style="font-size: 1.15rem; font-weight: 800; color: #34D399;">₹950 <span style="font-size: 0.7rem; color: var(--text-dim); font-weight: 400;">/ Order</span></div>
+            <div class="mono" style="font-size: 0.68rem; color: var(--text-muted);">⏱️ 24-48 Hours Delivery</div>
+          </div>
+          <button onclick="openProcurementModal('dc_conversion', 'DC Non-Agricultural Land Conversion Order (Sec 95)', 950)" style="background: linear-gradient(135deg, #2563EB, #1D4ED8); color: #FFF; border: none; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.8rem; font-weight: 700; padding: 0.55rem 1rem; border-radius: 8px; cursor: pointer; transition: all 0.2s ease;">Order Now ↗</button>
+        </div>
+      </div>
+
+      <!-- Service 5: BBMP e-Khata -->
+      <div style="background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 14px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s ease, border-color 0.2s ease;" onmouseover="this.style.borderColor='#60A5FA'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='var(--border-light)'; this.style.transform='none';">
+        <div>
+          <div style="display: flex; align-items: center; justify-content: flex-start; margin-bottom: 0.85rem;">
+            <span class="mono" style="font-size: 0.68rem; background: rgba(168, 85, 247, 0.2); color: #C084FC; border: 1px solid rgba(168, 85, 247, 0.4); padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 700;">BBMP e-AASTHI / ULB</span>
+          </div>
+          <h3 style="font-family: 'IBM Plex Serif', serif; font-size: 1.1rem; font-weight: 700; color: #FFF; margin-bottom: 0.4rem;">BBMP e-Khata Certificate & Extract (Form 11B)</h3>
+          <p style="font-size: 0.83rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 1rem;">Certified BBMP e-Aasthi e-Khata Certificate, Khata Extract with active Property Identification (PID) Number & tax receipt.</p>
+        </div>
+        <div style="border-top: 1px solid var(--border-dark); padding-top: 1rem; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <div class="mono" style="font-size: 1.15rem; font-weight: 800; color: #34D399;">₹850 <span style="font-size: 0.7rem; color: var(--text-dim); font-weight: 400;">/ Unit</span></div>
+            <div class="mono" style="font-size: 0.68rem; color: var(--text-muted);">⏱️ 24-48 Hours Delivery</div>
+          </div>
+          <button onclick="openProcurementModal('bbmp_khata', 'BBMP e-Khata Certificate & Extract (Form 11B)', 850)" style="background: linear-gradient(135deg, #2563EB, #1D4ED8); color: #FFF; border: none; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.8rem; font-weight: 700; padding: 0.55rem 1rem; border-radius: 8px; cursor: pointer; transition: all 0.2s ease;">Order Now ↗</button>
+        </div>
+      </div>
+
+      <!-- Service 6: e-Courts Litigation -->
+      <div style="background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 14px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s ease, border-color 0.2s ease;" onmouseover="this.style.borderColor='#60A5FA'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='var(--border-light)'; this.style.transform='none';">
+        <div>
+          <div style="display: flex; align-items: center; justify-content: flex-start; margin-bottom: 0.85rem;">
+            <span class="mono" style="font-size: 0.68rem; background: rgba(239, 68, 68, 0.2); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.4); padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 700;">HIGH COURT & CIVIL COURTS</span>
+          </div>
+          <h3 style="font-family: 'IBM Plex Serif', serif; font-size: 1.1rem; font-weight: 700; color: #FFF; margin-bottom: 0.4rem;">e-Courts Certified Litigation Suit Search Clearance</h3>
+          <p style="font-size: 0.83rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 1rem;">Certified litigation suit search report across Karnataka City Civil Courts, District Courts & High Court registers.</p>
+        </div>
+        <div style="border-top: 1px solid var(--border-dark); padding-top: 1rem; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <div class="mono" style="font-size: 1.15rem; font-weight: 800; color: #34D399;">₹1,500 <span style="font-size: 0.7rem; color: var(--text-dim); font-weight: 400;">/ Entity</span></div>
+            <div class="mono" style="font-size: 0.68rem; color: var(--text-muted);">⏱️ 2-3 Business Days</div>
+          </div>
+          <button onclick="openProcurementModal('ecourt_litigation', 'e-Courts Certified Litigation Suit Search Clearance', 1500)" style="background: linear-gradient(135deg, #2563EB, #1D4ED8); color: #FFF; border: none; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.8rem; font-weight: 700; padding: 0.55rem 1rem; border-radius: 8px; cursor: pointer; transition: all 0.2s ease;">Order Now ↗</button>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- Document Procurement Order Modal -->
+  <div id="procurementModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(9,13,22,0.85); backdrop-filter:blur(10px); z-index:99999; align-items:center; justify-content:center; padding:1rem;">
+    <div style="background:#0F172A; border:1px solid var(--border-light); border-radius:16px; max-width:580px; width:100%; padding:2rem; box-shadow:0 25px 50px rgba(0,0,0,0.6); position:relative;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-dark); padding-bottom:1rem; margin-bottom:1.25rem;">
+        <div>
+          <div class="mono" style="font-size:0.7rem; color:#60A5FA; font-weight:700; text-transform:uppercase;">Government Office Document Desk</div>
+          <h3 style="font-family:'IBM Plex Serif', serif; font-size:1.2rem; font-weight:700; color:#FFF; margin-top:0.2rem;" id="modalOrderTitle">Order Certified Document</h3>
+        </div>
+        <button onclick="closeProcurementModal()" style="background:none; border:none; font-size:1.5rem; color:var(--text-muted); cursor:pointer;">&times;</button>
+      </div>
+
+      <form id="procurementForm" onsubmit="submitProcurementOrder(event)">
+        <input type="hidden" id="orderServiceId" value="" />
+        <input type="hidden" id="orderServiceName" value="" />
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--text-muted); margin-bottom:0.35rem;" class="mono">PROPERTY NAME *</label>
+            <input type="text" id="orderPropName" required placeholder="e.g. Casagrand Moondance" style="width:100%; background:#1E293B; border:1px solid var(--border-dark); border-radius:8px; padding:0.6rem 0.85rem; color:#FFF; font-size:0.85rem; outline:none;" />
+          </div>
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--text-muted); margin-bottom:0.35rem;" class="mono">SURVEY / SY NO *</label>
+            <input type="text" id="orderSurveyNo" required placeholder="e.g. Sy No 44/2 & 45/1" style="width:100%; background:#1E293B; border:1px solid var(--border-dark); border-radius:8px; padding:0.6rem 0.85rem; color:#FFF; font-size:0.85rem; outline:none;" />
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--text-muted); margin-bottom:0.35rem;" class="mono">APPLICANT NAME *</label>
+            <input type="text" id="orderApplicantName" required placeholder="Full Name" style="width:100%; background:#1E293B; border:1px solid var(--border-dark); border-radius:8px; padding:0.6rem 0.85rem; color:#FFF; font-size:0.85rem; outline:none;" />
+          </div>
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--text-muted); margin-bottom:0.35rem;" class="mono">PHONE NUMBER *</label>
+            <input type="tel" id="orderApplicantPhone" required placeholder="+91 98765 43210" style="width:100%; background:#1E293B; border:1px solid var(--border-dark); border-radius:8px; padding:0.6rem 0.85rem; color:#FFF; font-size:0.85rem; outline:none;" />
+          </div>
+        </div>
+
+        <div style="margin-bottom:1rem;">
+          <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--text-muted); margin-bottom:0.35rem;" class="mono">EMAIL ADDRESS *</label>
+          <input type="email" id="orderApplicantEmail" required placeholder="name@example.com" style="width:100%; background:#1E293B; border:1px solid var(--border-dark); border-radius:8px; padding:0.6rem 0.85rem; color:#FFF; font-size:0.85rem; outline:none;" />
+        </div>
+
+        <div style="margin-bottom:1.25rem;">
+          <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--text-muted); margin-bottom:0.35rem;" class="mono">SPECIAL INSTRUCTIONS / SRO NAME (OPTIONAL)</label>
+          <textarea id="orderNotes" rows="2" placeholder="e.g. SRO Anekal / Devanahalli office..." style="width:100%; background:#1E293B; border:1px solid var(--border-dark); border-radius:8px; padding:0.6rem 0.85rem; color:#FFF; font-size:0.83rem; outline:none; resize:none;"></textarea>
+        </div>
+
+        <div id="orderStatusBox" style="display:none; margin-bottom:1rem; padding:0.85rem; border-radius:8px; font-size:0.83rem;" class="mono"></div>
+
+        <div style="display:flex; align-items:center; justify-content:space-between; border-top:1px solid var(--border-dark); padding-top:1.25rem;">
+          <div>
+            <div class="mono" style="font-size:0.68rem; color:var(--text-muted);">TOTAL FEE (INC GOVT CHALLAN)</div>
+            <div class="mono" style="font-size:1.25rem; font-weight:800; color:#34D399;" id="modalOrderFee">₹750</div>
+          </div>
+          <div style="display:flex; gap:0.5rem;">
+            <button type="button" onclick="closeProcurementModal()" style="background:transparent; color:var(--text-muted); border:1px solid var(--border-dark); font-size:0.82rem; padding:0.6rem 1rem; border-radius:8px; cursor:pointer;">Cancel</button>
+            <button type="submit" id="orderSubmitBtn" style="background:linear-gradient(135deg, #10B981, #059669); color:#FFF; border:none; font-family:'Plus Jakarta Sans', sans-serif; font-size:0.85rem; font-weight:700; padding:0.6rem 1.25rem; border-radius:8px; cursor:pointer; box-shadow:0 0 15px rgba(16,185,129,0.4);">Confirm Order ↗</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Comprehensive 9-Domain Property Legal Verification Hierarchy -->
+  <section class="section-container">
+
+    <div class="section-header">
+      <div class="section-tag">Karnataka Legal Standard</div>
+      <h2 class="section-title">Property Due-Diligence Verification Hierarchy</h2>
+      <p class="section-subtitle">Complete 9-domain statutory verification framework evaluating real estate title, revenue records, layout sanctions, litigation, encumbrances, and restricted land categories.</p>
+    </div>
+
+    <!-- Master Baseline Identity Banner -->
+    <div style="background:linear-gradient(135deg, rgba(15,23,42,0.95), rgba(30,41,59,0.9)); border:1px solid var(--border-light); border-radius:14px; padding:1.5rem 1.75rem; margin-bottom:2.5rem; box-shadow:0 10px 30px rgba(0,0,0,0.4);">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1rem;">
+        <div style="display:flex; align-items:center; gap:0.6rem;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          <span style="font-family:'IBM Plex Serif', serif; font-size:1.1rem; font-weight:700; color:#FFF;">Canonical Property Master Identity Engine</span>
+        </div>
+        <span style="background:rgba(59,130,246,0.2); color:#60A5FA; border:1px solid rgba(59,130,246,0.4); font-family:'JetBrains Mono', monospace; font-size:0.72rem; font-weight:700; padding:0.25rem 0.65rem; border-radius:6px;">IDENTITY NORMALIZATION</span>
+      </div>
+      <p style="font-size:0.88rem; color:var(--text-muted); margin-bottom:1rem;">Before cross-checking records, a single canonical baseline identity is established for the property. Every title deed, revenue record, and layout approval is strictly mapped against these baseline identity attributes:</p>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:0.6rem; font-size:0.8rem; font-family:'JetBrains Mono', monospace;">
+        <div style="background:rgba(9,13,22,0.7); padding:0.45rem 0.75rem; border-radius:6px; border:1px solid rgba(255,255,255,0.06); color:#CBD5E1;"><strong style="color:#60A5FA;">1. District:</strong> Bengaluru Urban</div>
+        <div style="background:rgba(9,13,22,0.7); padding:0.45rem 0.75rem; border-radius:6px; border:1px solid rgba(255,255,255,0.06); color:#CBD5E1;"><strong style="color:#60A5FA;">2. Taluk:</strong> Anekal / East</div>
+        <div style="background:rgba(9,13,22,0.7); padding:0.45rem 0.75rem; border-radius:6px; border:1px solid rgba(255,255,255,0.06); color:#CBD5E1;"><strong style="color:#60A5FA;">3. Hobli & Village:</strong> Sarjapur / Chikkadasarahalli</div>
+        <div style="background:rgba(9,13,22,0.7); padding:0.45rem 0.75rem; border-radius:6px; border:1px solid rgba(255,255,255,0.06); color:#CBD5E1;"><strong style="color:#60A5FA;">4. Survey No:</strong> Sy No. 45</div>
+        <div style="background:rgba(9,13,22,0.7); padding:0.45rem 0.75rem; border-radius:6px; border:1px solid rgba(255,255,255,0.06); color:#CBD5E1;"><strong style="color:#60A5FA;">5. Hissa / Subdivision:</strong> Sy No. 45/2</div>
+        <div style="background:rgba(9,13,22,0.7); padding:0.45rem 0.75rem; border-radius:6px; border:1px solid rgba(255,255,255,0.06); color:#CBD5E1;"><strong style="color:#60A5FA;">6. Converted Extent:</strong> 2.00 Acres</div>
+        <div style="background:rgba(9,13,22,0.7); padding:0.45rem 0.75rem; border-radius:6px; border:1px solid rgba(255,255,255,0.06); color:#CBD5E1;"><strong style="color:#60A5FA;">7. Site / Flat No:</strong> Plot No. 125</div>
+        <div style="background:rgba(9,13,22,0.7); padding:0.45rem 0.75rem; border-radius:6px; border:1px solid rgba(255,255,255,0.06); color:#CBD5E1;"><strong style="color:#60A5FA;">8. Khata Number:</strong> e-Khata # 1502</div>
+        <div style="background:rgba(9,13,22,0.7); padding:0.45rem 0.75rem; border-radius:6px; border:1px solid rgba(255,255,255,0.06); color:#CBD5E1;"><strong style="color:#60A5FA;">9. PID Number:</strong> BBMP PID # 092-W0142</div>
+        <div style="background:rgba(9,13,22,0.7); padding:0.45rem 0.75rem; border-radius:6px; border:1px solid rgba(255,255,255,0.06); color:#CBD5E1;"><strong style="color:#60A5FA;">10. Current Owner:</strong> Executant Name</div>
+        <div style="background:rgba(9,13,22,0.7); padding:0.45rem 0.75rem; border-radius:6px; border:1px solid rgba(255,255,255,0.06); color:#CBD5E1;"><strong style="color:#60A5FA;">11. RERA Reg No:</strong> PRM/KA/RERA/...</div>
+        <div style="background:rgba(9,13,22,0.7); padding:0.45rem 0.75rem; border-radius:6px; border:1px solid rgba(255,255,255,0.06); color:#CBD5E1;"><strong style="color:#60A5FA;">12. Boundaries:</strong> East/West/North/South</div>
+      </div>
+    </div>
+
+    <!-- 9-Domain Verification Tree Grid -->
+    <div class="pillar-grid">
+      <!-- 1. TITLE -->
+      <div class="pillar-card">
+        <div class="pillar-card-head">
+          <span class="pillar-num">01</span>
+          <span class="pillar-name">1. Title Verification</span>
+        </div>
+        <ul style="list-style:none; padding:0; margin:0.5rem 0 0 0; font-size:0.84rem; color:var(--text-muted); display:flex; flex-direction:column; gap:0.35rem;">
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>Kaveri:</strong> Registration Records</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>Sale Deeds:</strong> Title Sequence</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>Gift / Partition / Release:</strong> Deeds</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">└──</span> <strong>EC:</strong> Encumbrance Certificate</li>
+        </ul>
+      </div>
+
+      <!-- 2. REVENUE -->
+      <div class="pillar-card">
+        <div class="pillar-card-head">
+          <span class="pillar-num">02</span>
+          <span class="pillar-name">2. Revenue Verification</span>
+        </div>
+        <ul style="list-style:none; padding:0; margin:0.5rem 0 0 0; font-size:0.84rem; color:var(--text-muted); display:flex; flex-direction:column; gap:0.35rem;">
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>Bhoomi:</strong> Land Records</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>RTC / Pahani:</strong> Owner & Cultivator</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>Mutation:</strong> Entry Verification</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>MR:</strong> Mutation Register Extract</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">└──</span> <strong>Survey / Podi:</strong> 11E Sketch</li>
+        </ul>
+      </div>
+
+      <!-- 3. LAND CONVERSION -->
+      <div class="pillar-card">
+        <div class="pillar-card-head">
+          <span class="pillar-num">03</span>
+          <span class="pillar-name">3. Land Conversion</span>
+        </div>
+        <ul style="list-style:none; padding:0; margin:0.5rem 0 0 0; font-size:0.84rem; color:var(--text-muted); display:flex; flex-direction:column; gap:0.35rem;">
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>DC Conversion:</strong> Order Approval</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>Conversion Order:</strong> Authority & Date</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">└──</span> <strong>Converted Extent:</strong> Acreage Match</li>
+        </ul>
+      </div>
+
+      <!-- 4. LAYOUT -->
+      <div class="pillar-card">
+        <div class="pillar-card-head">
+          <span class="pillar-num">04</span>
+          <span class="pillar-name">4. Layout Approval</span>
+        </div>
+        <ul style="list-style:none; padding:0; margin:0.5rem 0 0 0; font-size:0.84rem; color:var(--text-muted); display:flex; flex-direction:column; gap:0.35rem;">
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>BDA:</strong> Bangalore Development Authority</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>BMRDA:</strong> Regional Planning</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>BBMP / Local:</strong> Planning Authority</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">└──</span> <strong>Layout Approval:</strong> Sanctioned Plan</li>
+        </ul>
+      </div>
+
+      <!-- 5. RERA -->
+      <div class="pillar-card">
+        <div class="pillar-card-head">
+          <span class="pillar-num">05</span>
+          <span class="pillar-name">5. RERA Compliance</span>
+        </div>
+        <ul style="list-style:none; padding:0; margin:0.5rem 0 0 0; font-size:0.84rem; color:var(--text-muted); display:flex; flex-direction:column; gap:0.35rem;">
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>Project Registration:</strong> Certificate</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>Promoter:</strong> Developer Lineage</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>Survey Numbers:</strong> Boundary Match</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>Approved Plans:</strong> Sanctioned Floor</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">└──</span> <strong>Litigation / Complaints:</strong> RERA Orders</li>
+        </ul>
+      </div>
+
+      <!-- 6. MUNICIPAL -->
+      <div class="pillar-card">
+        <div class="pillar-card-head">
+          <span class="pillar-num">06</span>
+          <span class="pillar-name">6. Municipal Audit</span>
+        </div>
+        <ul style="list-style:none; padding:0; margin:0.5rem 0 0 0; font-size:0.84rem; color:var(--text-muted); display:flex; flex-direction:column; gap:0.35rem;">
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>PID:</strong> Property Identification Number</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>Khata:</strong> Certificate & Extract</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>Property Tax:</strong> Paid Receipts</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">└──</span> <strong>Building Approval:</strong> Plan Sanction</li>
+        </ul>
+      </div>
+
+      <!-- 7. COURTS -->
+      <div class="pillar-card">
+        <div class="pillar-card-head">
+          <span class="pillar-num">07</span>
+          <span class="pillar-name">7. Court Litigation</span>
+        </div>
+        <ul style="list-style:none; padding:0; margin:0.5rem 0 0 0; font-size:0.84rem; color:var(--text-muted); display:flex; flex-direction:column; gap:0.35rem;">
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>District Courts:</strong> Civil Suit Search</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>High Court:</strong> Writ & Appeal Search</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>Party-Name Search:</strong> Legal Entity</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">└──</span> <strong>Property Litigation:</strong> Dispute Check</li>
+        </ul>
+      </div>
+
+      <!-- 8. ENCUMBRANCES -->
+      <div class="pillar-card">
+        <div class="pillar-card-head">
+          <span class="pillar-num">08</span>
+          <span class="pillar-name">8. Encumbrances & Charges</span>
+        </div>
+        <ul style="list-style:none; padding:0; margin:0.5rem 0 0 0; font-size:0.84rem; color:var(--text-muted); display:flex; flex-direction:column; gap:0.35rem;">
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>Mortgage:</strong> Bank Charge Release</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>Charge:</strong> Financial Lien Search</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>Acquisition:</strong> Govt Acquisition Check</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>Government Land:</strong> Adjacency Check</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">└──</span> <strong>Restrictions:</strong> Statutory Caveats</li>
+        </ul>
+      </div>
+
+      <!-- 9. RESTRICTED / SPECIAL LAND -->
+      <div class="pillar-card">
+        <div class="pillar-card-head">
+          <span class="pillar-num">09</span>
+          <span class="pillar-name">9. Restricted / Special Land</span>
+        </div>
+        <ul style="list-style:none; padding:0; margin:0.5rem 0 0 0; font-size:0.84rem; color:var(--text-muted); display:flex; flex-direction:column; gap:0.35rem;">
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>Government Land:</strong> B-Kharab Public</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>Temple / Religious:</strong> Endowment Land</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>Inam:</strong> Inam Grant Verification</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>PTCL:</strong> SC/ST Land Grant Act Check</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>Forest:</strong> Reserve & Sanctuary Boundary</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>Lake / Rajakaluve:</strong> NGT Buffer Zone</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">├──</span> <strong>Acquisition:</strong> Preliminary & Final Notice</li>
+          <li style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#60A5FA;">└──</span> <strong>Ceiling / Grant Land:</strong> Surplus Land</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Verification Decision & Risk Gate Model -->
+    <div style="margin-top:2.5rem; background:rgba(15,23,42,0.85); border:1px solid var(--border-light); border-radius:14px; padding:1.75rem; box-shadow:0 10px 30px rgba(0,0,0,0.4);">
+      <div style="font-family:'IBM Plex Serif', serif; font-size:1.15rem; font-weight:700; color:#FFF; margin-bottom:1rem;">
+        4-Tier Statutory Decision & Risk Framework
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:1rem;">
+        <div style="background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3); border-radius:10px; padding:1rem;">
+          <span style="color:#34D399; font-family:'JetBrains Mono', monospace; font-size:0.78rem; font-weight:700; display:block; margin-bottom:0.3rem;">🟢 LOW RISK — BUY GATE PASSED</span>
+          <p style="font-size:0.82rem; color:var(--text-muted);">All 9 verification domains cleared with consistent cross-source evidence.</p>
+        </div>
+        <div style="background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); border-radius:10px; padding:1rem;">
+          <span style="color:#FBBF24; font-family:'JetBrains Mono', monospace; font-size:0.78rem; font-weight:700; display:block; margin-bottom:0.3rem;">🟠 MEDIUM RISK — LEGAL REVIEW</span>
+          <p style="font-size:0.82rem; color:var(--text-muted);">Potential discrepancy or missing historical document identified; in-depth statutory legal search required.</p>
+        </div>
+        <div style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:10px; padding:1rem;">
+          <span style="color:#F87171; font-family:'JetBrains Mono', monospace; font-size:0.78rem; font-weight:700; display:block; margin-bottom:0.3rem;">🔴 HIGH RISK — DO NOT PROCEED</span>
+          <p style="font-size:0.82rem; color:var(--text-muted);">Material title mismatch, unreleased mortgage, PTCL/lake buffer violation, or court litigation detected.</p>
+        </div>
+        <div style="background:rgba(148,163,184,0.1); border:1px solid rgba(148,163,184,0.3); border-radius:10px; padding:1rem;">
+          <span style="color:#94A3B8; font-family:'JetBrains Mono', monospace; font-size:0.78rem; font-weight:700; display:block; margin-bottom:0.3rem;">⚫ INCONCLUSIVE — INSUFFICIENT DATA</span>
+          <p style="font-size:0.82rem; color:var(--text-muted);">Authoritative records unavailable online; physical search and legal review required.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer" id="contactSection">
+    <div class="footer-container">
+      <div>
+        <div class="footer-brand">RERA Intelligence</div>
+        <p class="footer-desc">
+          AI-driven real estate legal due-diligence, property compliance verification, and composite risk scoring platform for Karnataka.
+        </p>
+      </div>
+
+      <div>
+        <div class="footer-title">Tools & Dashboards</div>
+        <ul class="footer-links">
+          <li><a href="/legal-report?q=CASAGRAND%20MOONDANCE">AI Legal Due-Diligence Report</a></li>
+          <li><a href="/register">RERA Compliance Register</a></li>
+          <li><a href="/compare">Side-by-Side Project Comparison</a></li>
+          <li><a href="/detail?q=CASAGRAND%20MOONDANCE">Detailed Audit Dossier</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="footer-title">Contact & Support Desk</div>
+        <ul class="footer-links" style="font-size:0.84rem; color:var(--text-muted); display:flex; flex-direction:column; gap:0.65rem;">
+          <li style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="color:#60A5FA;">📞</span> <span><strong>Helpline:</strong> +91 80 4991 8800</span>
+          </li>
+          <li style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="color:#34D399;">✉️</span> <span><strong>Email:</strong> support@reraintelligence.in</span>
+          </li>
+          <li style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="color:#FBBF24;">💬</span> <span><strong>WhatsApp Support:</strong> +91 98800 12345</span>
+          </li>
+          <li style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="color:#A7F3D0;">⏱️</span> <span><strong>Hours:</strong> Mon - Sat: 9:00 AM - 7:00 PM IST</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div>© 2026 RERA Intelligence Platform. All rights reserved.</div>
+      <div>Designed for Karnataka Property Buyers & Legal Auditors</div>
+    </div>
+  </footer>
+
+  <!-- JavaScript Logic -->
+  <script>
+    // Live Auto-complete
+    const heroInput = document.getElementById('heroSearchInput');
+    const autoBox = document.getElementById('autocompleteBox');
+    let timer = null;
+
+    if (heroInput) {
+      heroInput.addEventListener('input', function() {
+        clearTimeout(timer);
+        const val = this.value.trim();
+        if (val.length < 2) {
+          autoBox.style.display = 'none';
+          return;
+        }
+
+        timer = setTimeout(() => {
+          fetch(`/api/legal-due-diligence/suggest?q=${encodeURIComponent(val)}`)
+            .then(res => res.json())
+            .then(data => {
+              if (data.suggestions && data.suggestions.length > 0) {
+                autoBox.innerHTML = data.suggestions.map(s => `
+                  <div class="suggestion-item" onclick="selectSuggestion('${s.project_name}')">
+                    <div>
+                      <div class="sug-title">${s.project_name}</div>
+                      <div class="sug-firm">${s.firm_name || ''}</div>
+                    </div>
+                    <div class="sug-reg">${s.registration_no || ''}</div>
+                  </div>
+                `).join('');
+                autoBox.style.display = 'block';
+              } else {
+                autoBox.style.display = 'none';
+              }
+            })
+            .catch(() => autoBox.style.display = 'none');
+        }, 200);
+      });
+    }
+
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.search-wrapper')) {
+        autoBox.style.display = 'none';
+      }
+    });
+
+    function selectSuggestion(name) {
+      heroInput.value = name;
+      autoBox.style.display = 'none';
+      window.location.href = `/legal-report?q=${encodeURIComponent(name)}`;
+    }
+
+    function searchPreset(name) {
+      heroInput.value = name;
+      window.location.href = `/legal-report?q=${encodeURIComponent(name)}`;
+    }
+
+    // Live Stats Loader
+    fetch('/health')
+      .then(res => res.json())
+      .then(data => {
+        if (data.total_projects) {
+          document.getElementById('statProjects').innerHTML = `${data.total_projects.toLocaleString()}<span>+</span>`;
+        }
+      })
+      .catch(() => {});
+
+
+
+    // Leaflet Geospatial Map Logic
+    let reraMap = null;
+    let markersClusterGroup = null;
+    let allGeoJsonFeatures = [];
+
+    function initReraMap() {
+      if (reraMap) return;
+      const mapEl = document.getElementById('mapContainer');
+      if (!mapEl) return;
+
+      if (typeof L === 'undefined') {
+        console.warn("Leaflet library not loaded yet, retrying in 300ms...");
+        setTimeout(initReraMap, 300);
+        return;
+      }
+
+      try {
+        // Initialize Leaflet Map centered on Bangalore
+        reraMap = L.map('mapContainer', {
+          scrollWheelZoom: false
+        }).setView([12.9716, 77.5946], 10);
+
+        // Add tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; OpenStreetMap contributors | RERA Intelligence'
+        }).addTo(reraMap);
+
+        // Add MarkerCluster Group
+        if (typeof L.markerClusterGroup === 'function') {
+          markersClusterGroup = L.markerClusterGroup({
+            chunkedLoading: true,
+            maxClusterRadius: 45
+          });
+        } else {
+          markersClusterGroup = L.layerGroup();
+        }
+
+        const fallbackReraFeatures = [
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [77.6834, 12.8942]}, "properties": { "registration_no": "PRM/KA/RERA/1251/310/PR/210518/004120", "project_name": "Casagrand Moondance", "promoter_name": "Casagrand Builder Private Limited", "district": "Bengaluru Urban", "quality_score": 92 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [77.6687, 13.2788]}, "properties": { "registration_no": "PRM/KA/RERA/1250/303/PR/210312/004030", "project_name": "Chartered Windsong - 2", "promoter_name": "Chartered Housing Private Limited", "district": "Bengaluru Rural", "quality_score": 95 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [77.5684, 12.8715]}, "properties": { "registration_no": "PRM/KA/RERA/1251/310/PR/170915/000210", "project_name": "Prestige Falcon City", "promoter_name": "Prestige Estates Projects Ltd", "district": "Bengaluru Urban", "quality_score": 96 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [77.6412, 13.1495]}, "properties": { "registration_no": "PRM/KA/RERA/1250/309/PR/210219/003920", "project_name": "Godrej Ananda", "promoter_name": "Godrej Properties Limited", "district": "Bengaluru Urban", "quality_score": 94 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [77.7421, 13.0182]}, "properties": { "registration_no": "PRM/KA/RERA/1251/446/PR/180521/001780", "project_name": "Assetz Marq 3.0", "promoter_name": "Assetz Property Group", "district": "Bengaluru Urban", "quality_score": 91 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [77.7125, 12.9348]}, "properties": { "registration_no": "PRM/KA/RERA/1251/310/PR/170920/000412", "project_name": "Sobha Dream Acres", "promoter_name": "Sobha Developers Limited", "district": "Bengaluru Urban", "quality_score": 93 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [77.7501, 12.9654]}, "properties": { "registration_no": "PRM/KA/RERA/1251/308/PR/190823/002810", "project_name": "Brigade Cornerstone Utopia", "promoter_name": "Brigade Enterprises Limited", "district": "Bengaluru Urban", "quality_score": 95 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [77.5892, 12.8624]}, "properties": { "registration_no": "PRM/KA/RERA/1251/310/PR/190412/002530", "project_name": "Purva Park Square", "promoter_name": "Puravankara Limited", "district": "Bengaluru Urban", "quality_score": 88 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [77.6492, 13.0645]}, "properties": { "registration_no": "PRM/KA/RERA/1251/446/PR/180519/001760", "project_name": "Total Environment In That Quiet Earth", "promoter_name": "Total Environment Building Systems", "district": "Bengaluru Urban", "quality_score": 97 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [77.5512, 12.8590]}, "properties": { "registration_no": "PRM/KA/RERA/1251/310/PR/220315/004780", "project_name": "Mahindra Eden", "promoter_name": "Mahindra Lifespace Developers", "district": "Bengaluru Urban", "quality_score": 93 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [77.7215, 13.2415]}, "properties": { "registration_no": "PRM/KA/RERA/1250/303/PR/170921/000480", "project_name": "Salarpuria Sattva Park Cubix", "promoter_name": "Salarpuria Sattva Group", "district": "Bengaluru Rural", "quality_score": 89 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [77.5385, 12.8812]}, "properties": { "registration_no": "PRM/KA/RERA/1251/310/PR/180518/001740", "project_name": "Provident Park Square", "promoter_name": "Provident Housing Limited", "district": "Bengaluru Urban", "quality_score": 87 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [77.6115, 13.1142]}, "properties": { "registration_no": "PRM/KA/RERA/1251/309/PR/180905/001990", "project_name": "Vaishnavi SERENE", "promoter_name": "Vaishnavi Group", "district": "Bengaluru Urban", "quality_score": 92 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [77.5794, 12.9085]}, "properties": { "registration_no": "PRM/KA/RERA/1251/310/PR/171014/000850", "project_name": "Shriram Southern Crest", "promoter_name": "Shriram Properties Limited", "district": "Bengaluru Urban", "quality_score": 90 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [77.5495, 12.9288]}, "properties": { "registration_no": "PRM/KA/RERA/1251/310/PR/170912/000080", "project_name": "Tata Promont", "promoter_name": "Tata Housing Development Company", "district": "Bengaluru Urban", "quality_score": 94 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [77.6321, 13.0782]}, "properties": { "registration_no": "PRM/KA/RERA/1251/309/PR/170916/000250", "project_name": "Kolte Patil Raaga", "promoter_name": "Kolte Patil Developers", "district": "Bengaluru Urban", "quality_score": 86 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [77.6014, 13.0824]}, "properties": { "registration_no": "PRM/KA/RERA/1251/309/PR/170918/000310", "project_name": "Century Breeze", "promoter_name": "Century Real Estate", "district": "Bengaluru Urban", "quality_score": 89 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [77.6895, 13.2568]}, "properties": { "registration_no": "PRM/KA/RERA/1250/303/PR/170915/000212", "project_name": "Embassy Springs", "promoter_name": "Embassy Property Developments", "district": "Bengaluru Rural", "quality_score": 96 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [77.7485, 12.9812]}, "properties": { "registration_no": "PRM/KA/RERA/1251/446/PR/180312/001420", "project_name": "Goyal Orchid Whitefield", "promoter_name": "Goyal & Co Hariyana Group", "district": "Bengaluru Urban", "quality_score": 91 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [77.7015, 12.9868]}, "properties": { "registration_no": "PRM/KA/RERA/1251/446/PR/180424/001550", "project_name": "Sumadhura Eden Garden", "promoter_name": "Sumadhura Infracon", "district": "Bengaluru Urban", "quality_score": 88 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [76.6854, 12.3021]}, "properties": { "registration_no": "PRM/KA/RERA/1268/378/PR/200115/003180", "project_name": "Brigade Topaz Mysuru", "promoter_name": "Brigade Enterprises Limited", "district": "Mysuru", "quality_score": 94 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [76.6385, 12.3245]}, "properties": { "registration_no": "PRM/KA/RERA/1268/378/PR/180612/001890", "project_name": "Sankalp Central Park Mysuru", "promoter_name": "Sankalp Group", "district": "Mysuru", "quality_score": 91 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [76.6124, 12.3685]}, "properties": { "registration_no": "PRM/KA/RERA/1268/378/PR/171020/001020", "project_name": "Zuari Garden City Mysuru", "promoter_name": "Zuari Infra", "district": "Mysuru", "quality_score": 88 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [74.8452, 12.8795]}, "properties": { "registration_no": "PRM/KA/RERA/1257/334/PR/191102/002990", "project_name": "Rohan City Mangaluru", "promoter_name": "Rohan Corporation", "district": "Dakshina Kannada", "quality_score": 89 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [74.8612, 12.9015]}, "properties": { "registration_no": "PRM/KA/RERA/1257/334/PR/170925/000510", "project_name": "Inland Windsor Mangaluru", "promoter_name": "IN-LAND Infrastructure", "district": "Dakshina Kannada", "quality_score": 92 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [74.8325, 12.8615]}, "properties": { "registration_no": "PRM/KA/RERA/1257/334/PR/180210/001310", "project_name": "Landmark Green County Mangaluru", "promoter_name": "Landmark Infratech", "district": "Dakshina Kannada", "quality_score": 87 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [75.1245, 15.3621]}, "properties": { "registration_no": "PRM/KA/RERA/1259/348/PR/180715/001920", "project_name": "Tatwavidya Heights Hubballi", "promoter_name": "Tatwavidya Builders", "district": "Dharwad", "quality_score": 90 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [75.0124, 15.4412]}, "properties": { "registration_no": "PRM/KA/RERA/1259/348/PR/190320/002480", "project_name": "Venkatesh Enclave Dharwad", "promoter_name": "Venkatesh Developers", "district": "Dharwad", "quality_score": 86 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [74.5124, 15.8452]}, "properties": { "registration_no": "PRM/KA/RERA/1249/369/PR/180910/002010", "project_name": "Marvel Heights Belagavi", "promoter_name": "Marvel Builders", "district": "Belagavi", "quality_score": 89 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [74.4836, 16.2600]}, "properties": { "registration_no": "PRM/KA/RERA/1249/369/PR/250523/007778", "project_name": "Construction of 1331 Houses", "promoter_name": "Karnataka Slum Development Board", "district": "Belagavi", "quality_score": 85 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [74.7895, 13.3512]}, "properties": { "registration_no": "PRM/KA/RERA/1256/332/PR/180415/001510", "project_name": "Manipal Crest Udupi", "promoter_name": "Manipal Build-Infrastructures", "district": "Udupi", "quality_score": 93 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [75.5684, 13.9285]}, "properties": { "registration_no": "PRM/KA/RERA/1265/372/PR/190110/002240", "project_name": "Highland Paradise Shimoga", "promoter_name": "Highland Developers", "district": "Shimoga", "quality_score": 87 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [77.1025, 13.3385]}, "properties": { "registration_no": "PRM/KA/RERA/1267/376/PR/181105/002130", "project_name": "Siddaganga Enclave Tumakuru", "promoter_name": "Siddaganga Housing", "district": "Tumakuru", "quality_score": 88 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [75.9214, 14.4685]}, "properties": { "registration_no": "PRM/KA/RERA/1258/340/PR/190515/002610", "project_name": "Bapuji Meadows Davanagere", "promoter_name": "Bapuji Infrastructure", "district": "Davanagere", "quality_score": 86 } },
+          { "type": "Feature", "geometry": {"type": "Point", "coordinates": [76.8412, 17.3285]}, "properties": { "registration_no": "PRM/KA/RERA/1255/330/PR/181220/002190", "project_name": "Gulbarga Heights Kalaburagi", "promoter_name": "Gulbarga Builders", "district": "Kalaburagi", "quality_score": 85 } }
+        ];
+
+        // 1. RENDER INSTANTLY (0ms delay)
+        allGeoJsonFeatures = [...fallbackReraFeatures];
+        renderMapMarkers(allGeoJsonFeatures);
+        updateVisibleCount();
+
+        // 2. Fetch live GeoJSON in background
+        fetch('/api/v1/projects/geojson')
+          .then(res => res.json())
+          .then(data => {
+            if (data && data.features && data.features.length > 0) {
+              allGeoJsonFeatures = data.features;
+              renderMapMarkers(allGeoJsonFeatures);
+              updateVisibleCount();
+            }
+          })
+          .catch(err => {
+            console.warn("Background GeoJSON update skipped, fallback markers active:", err);
+          });
+
+        reraMap.on('moveend', updateVisibleCount);
+        reraMap.on('zoomend', updateVisibleCount);
+
+        setTimeout(() => {
+          if (reraMap) reraMap.invalidateSize();
+        }, 200);
+
+      } catch (err) {
+        console.error("Map initialization failed:", err);
+      }
+    }
+
+    function renderMapMarkers(features) {
+      if (!markersClusterGroup) return;
+      markersClusterGroup.clearLayers();
+
+      features.forEach((f, idx) => {
+        if (!f.geometry || !f.geometry.coordinates) return;
+        let [lng, lat] = f.geometry.coordinates;
+        if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
+
+        // Auto-correct if coordinates were passed as [lat, lng]
+        if (lng < 30 && lat > 50) {
+          const tmp = lng;
+          lng = lat;
+          lat = tmp;
+        }
+
+        if (lat < 8 || lat > 20 || lng < 70 || lng > 82) return; // Karnataka bounds check
+
+        const p = f.properties || {};
+        const projName = p.project_name || 'RERA Property';
+        const promoterName = p.promoter_name || 'Developer';
+        const district = p.district || 'Karnataka';
+        const score = p.quality_score || 85;
+
+        let scoreBadge = '90+ Score';
+        let triColor1 = "#34D399";
+        let triColor2 = "#059669";
+        let shadowColor = "rgba(16, 185, 129, 0.7)";
+
+        if (score < 80) {
+          scoreBadge = '75+ Caution';
+          triColor1 = "#FBBF24";
+          triColor2 = "#D97706";
+          shadowColor = "rgba(245, 158, 11, 0.7)";
+        }
+
+        const customIcon = L.divIcon({
+          className: 'custom-triangle-pin',
+          html: `
+            <div style="filter: drop-shadow(0 0 6px ${shadowColor}); display:flex; align-items:center; justify-content:center;">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <polygon points="10,2 2,18 18,18" fill="url(#greenTri_${idx})" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round" />
+                <defs>
+                  <linearGradient id="greenTri_${idx}" x1="10" y1="2" x2="10" y2="18" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="${triColor1}"/>
+                    <stop offset="1" stop-color="${triColor2}"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+          `,
+          iconSize: [20, 20],
+          iconAnchor: [10, 18],
+          popupAnchor: [0, -18]
+        });
+
+        const marker = L.marker([lat, lng], { icon: customIcon });
+
+        const popupContent = `
+          <div class="map-popup-card">
+            <span class="mono" style="font-size:0.68rem; color:#60A5FA; font-weight:700; text-transform:uppercase;">${district} • ${scoreBadge}</span>
+            <div class="map-popup-title">${projName}</div>
+            <div class="map-popup-sub">Developer: ${promoterName}</div>
+            <a href="/legal-report?q=${encodeURIComponent(projName)}" class="map-popup-btn">
+              Evaluate Legal Risk ↗
+            </a>
+          </div>
+        `;
+
+        marker.bindPopup(popupContent);
+        markersClusterGroup.addLayer(marker);
+      });
+
+      reraMap.addLayer(markersClusterGroup);
+    }
+
+    function zoomToRegion(center, zoomLevel, btn) {
+      if (btn) {
+        document.querySelectorAll('.map-zoom-pill').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      }
+      if (reraMap) {
+        reraMap.flyTo(center, zoomLevel, { duration: 1.2 });
+      }
+    }
+
+    function updateVisibleCount() {
+      if (!reraMap || !allGeoJsonFeatures) return;
+      const bounds = reraMap.getBounds();
+      let count = 0;
+      allGeoJsonFeatures.forEach(f => {
+        if (!f.geometry || !f.geometry.coordinates) return;
+        const [lng, lat] = f.geometry.coordinates;
+        if (lat && lng && bounds.contains([lat, lng])) {
+          count++;
+        }
+      });
+
+      const badge = document.getElementById('mapVisibleBadge');
+      if (badge) {
+        badge.innerHTML = `<strong>${count.toLocaleString()}</strong> Verified Projects in Visible Map Area`;
+      }
+    }
+
+    // Fuzzy search score helper (handles exact match, prefix match, word match, or minor typos)
+    function scoreFuzzyMatch(query, text) {
+      if (!query || !text) return 0;
+      const q = query.toLowerCase().trim();
+      const t = text.toLowerCase().trim();
+
+      if (t === q) return 100;
+      if (t.startsWith(q)) return 90;
+      if (t.includes(q)) return 80;
+
+      const qWords = q.split(/\s+/);
+      const tWords = t.split(/\s+/);
+      let matchCount = 0;
+      qWords.forEach(qw => {
+        if (tWords.some(tw => tw.startsWith(qw) || tw.includes(qw))) {
+          matchCount++;
+        }
+      });
+      if (matchCount > 0) {
+        return 50 + (matchCount / qWords.length) * 25;
+      }
+
+      if (q.length >= 4) {
+        const qSub = q.substring(0, Math.min(q.length, 5));
+        if (t.includes(qSub)) return 40;
+      }
+
+      return 0;
+    }
+
+    // Map Search Autocomplete Listener
+    const mapSearchInput = document.getElementById('mapSearchInput');
+    const mapSuggestionsBox = document.getElementById('mapSuggestionsBox');
+    const clearMapSearchBtn = document.getElementById('clearMapSearchBtn');
+    let mapSearchTimer = null;
+
+    if (mapSearchInput) {
+      mapSearchInput.addEventListener('input', function() {
+        clearTimeout(mapSearchTimer);
+        const val = this.value.trim();
+        if (clearMapSearchBtn) clearMapSearchBtn.style.display = val.length > 0 ? 'inline-block' : 'none';
+
+        if (val.length < 2) {
+          if (mapSuggestionsBox) mapSuggestionsBox.style.display = 'none';
+          renderMapMarkers(allGeoJsonFeatures);
+          updateVisibleCount();
+          return;
+        }
+
+        mapSearchTimer = setTimeout(() => {
+          const scored = [];
+          allGeoJsonFeatures.forEach(f => {
+            const p = f.properties || {};
+            const projName = p.project_name || '';
+            const promoterName = p.promoter_name || '';
+            const regNo = p.registration_no || '';
+            
+            const s1 = scoreFuzzyMatch(val, projName);
+            const s2 = scoreFuzzyMatch(val, promoterName);
+            const s3 = scoreFuzzyMatch(val, regNo);
+            const maxScore = Math.max(s1, s2, s3);
+
+            if (maxScore > 0) {
+              scored.push({ feature: f, score: maxScore });
+            }
+          });
+
+          scored.sort((a, b) => b.score - a.score);
+          const filteredFeatures = scored.map(s => s.feature);
+
+          if (scored.length > 0) {
+            mapSuggestionsBox.innerHTML = scored.slice(0, 8).map(item => {
+              const p = item.feature.properties || {};
+              const [lng, lat] = item.feature.geometry.coordinates || [0, 0];
+              const safeName = (p.project_name || '').replace(/'/g, "\\'");
+              return `
+                <div class="suggestion-item" onclick="selectMapProperty('${safeName}', ${lat}, ${lng})">
+                  <div>
+                    <div class="sug-title">${highlightMapMatch(p.project_name, val)}</div>
+                    <div class="sug-firm">Developer: ${p.promoter_name || 'N/A'} • ${p.district || 'Karnataka'}</div>
+                  </div>
+                  <div class="sug-reg" style="font-weight:700; color:#60A5FA;">Fly to Pin ↗</div>
+                </div>
+              `;
+            }).join('');
+            mapSuggestionsBox.style.display = 'block';
+          } else {
+            mapSuggestionsBox.innerHTML = '<div style="padding:0.85rem 1.25rem; font-size:0.82rem; color:var(--text-muted);">No exact property found. Type full name or developer.</div>';
+            mapSuggestionsBox.style.display = 'block';
+          }
+
+          renderMapMarkers(filteredFeatures);
+          updateVisibleCount(filteredFeatures.length);
+        }, 150);
+      });
+    }
+
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('#mapSearchInput') && !e.target.closest('#mapSuggestionsBox')) {
+        if (mapSuggestionsBox) mapSuggestionsBox.style.display = 'none';
+      }
+    });
+
+    function selectMapProperty(name, lat, lng) {
+      if (mapSearchInput) mapSearchInput.value = name;
+      if (mapSuggestionsBox) mapSuggestionsBox.style.display = 'none';
+
+      if (reraMap && lat && lng) {
+        reraMap.flyTo([lat, lng], 15, { duration: 1.4 });
+
+        setTimeout(() => {
+          if (markersClusterGroup) {
+            markersClusterGroup.eachLayer(layer => {
+              if (layer.getLatLng && Math.abs(layer.getLatLng().lat - lat) < 0.0001 && Math.abs(layer.getLatLng().lng - lng) < 0.0001) {
+                layer.openPopup();
+              }
+            });
+          }
+        }, 1500);
+      }
+    }
+
+    function clearMapSearch() {
+      if (mapSearchInput) mapSearchInput.value = '';
+      if (clearMapSearchBtn) clearMapSearchBtn.style.display = 'none';
+      if (mapSuggestionsBox) mapSuggestionsBox.style.display = 'none';
+      renderMapMarkers(allGeoJsonFeatures);
+      updateVisibleCount();
+    }
+
+    function highlightMapMatch(text, query) {
+      if (!query || !text) return text;
+      const reg = new RegExp(`(${query})`, 'gi');
+      return text.replace(reg, '<span style="color:#60A5FA; text-decoration:underline;">$1</span>');
+    }
+
+    // Document Procurement Concierge JS Handlers
+    function openProcurementModal(serviceId, serviceName, fee) {
+      document.getElementById('orderServiceId').value = serviceId;
+      document.getElementById('orderServiceName').value = serviceName;
+      document.getElementById('modalOrderTitle').innerText = `Order: ${serviceName}`;
+      document.getElementById('modalOrderFee').innerText = `₹${fee.toLocaleString()}`;
+      document.getElementById('orderStatusBox').style.display = 'none';
+      document.getElementById('procurementForm').reset();
+      document.getElementById('orderServiceId').value = serviceId;
+      document.getElementById('orderServiceName').value = serviceName;
+      document.getElementById('procurementModal').style.display = 'flex';
+    }
+
+    function closeProcurementModal() {
+      document.getElementById('procurementModal').style.display = 'none';
+    }
+
+    async function submitProcurementOrder(e) {
+      e.preventDefault();
+      const btn = document.getElementById('orderSubmitBtn');
+      const box = document.getElementById('orderStatusBox');
+      btn.disabled = true;
+      btn.innerText = '⏳ Submitting Order...';
+
+      const payload = {
+        service_id: document.getElementById('orderServiceId').value,
+        service_name: document.getElementById('orderServiceName').value,
+        property_name: document.getElementById('orderPropName').value,
+        survey_no: document.getElementById('orderSurveyNo').value,
+        district: 'Bengaluru Urban',
+        applicant_name: document.getElementById('orderApplicantName').value,
+        applicant_email: document.getElementById('orderApplicantEmail').value,
+        applicant_phone: document.getElementById('orderApplicantPhone').value,
+        notes: document.getElementById('orderNotes').value
+      };
+
+      try {
+        const res = await fetch('/api/document-procurement/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        box.style.display = 'block';
+        box.style.background = 'rgba(16, 185, 129, 0.15)';
+        box.style.border = '1px solid rgba(16, 185, 129, 0.4)';
+        box.style.color = '#34D399';
+        box.innerHTML = `✅ <strong>Order #${data.order_id} Confirmed!</strong><br/>${data.message}`;
+
+        btn.innerText = '✅ Order Confirmed';
+        setTimeout(() => {
+          closeProcurementModal();
+          btn.disabled = false;
+          btn.innerText = 'Confirm Order ↗';
+        }, 3500);
+      } catch (err) {
+        box.style.display = 'block';
+        box.style.background = 'rgba(239, 68, 68, 0.15)';
+        box.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+        box.style.color = '#FCA5A5';
+        box.innerText = `⚠️ Order submission failed. Please try again.`;
+        btn.disabled = false;
+        btn.innerText = 'Confirm Order ↗';
+      }
+    }
+    // Legal Verification Package JS Handlers
+    function openPackageOrderModal(pkgCode, pkgName, price) {
+      document.getElementById('pkgCode').value = pkgCode;
+      document.getElementById('pkgName').value = pkgName;
+      document.getElementById('modalPackageTitle').innerText = `Booking: ${pkgName}`;
+      document.getElementById('modalPackagePrice').innerText = `₹${price.toLocaleString()}`;
+      document.getElementById('pkgStatusBox').style.display = 'none';
+      document.getElementById('packageForm').reset();
+      document.getElementById('pkgCode').value = pkgCode;
+      document.getElementById('pkgName').value = pkgName;
+      document.getElementById('packageOrderModal').style.display = 'flex';
+    }
+
+    function closePackageOrderModal() {
+      document.getElementById('packageOrderModal').style.display = 'none';
+    }
+
+    async function submitPackageOrder(e) {
+      e.preventDefault();
+      const btn = document.getElementById('pkgSubmitBtn');
+      const box = document.getElementById('pkgStatusBox');
+      btn.disabled = true;
+      btn.innerText = '⏳ Processing Booking...';
+
+      const payload = {
+        package_code: document.getElementById('pkgCode').value,
+        package_name: document.getElementById('pkgName').value,
+        property_name: document.getElementById('pkgPropName').value,
+        survey_no: document.getElementById('pkgSurveyNo').value,
+        district: document.getElementById('pkgDistrict').value,
+        applicant_name: document.getElementById('pkgApplicantName').value,
+        applicant_email: document.getElementById('pkgApplicantEmail').value,
+        applicant_phone: document.getElementById('pkgApplicantPhone').value
+      };
+
+      try {
+        const res = await fetch('/api/legal-packages/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        box.style.display = 'block';
+        box.style.background = 'rgba(16, 185, 129, 0.15)';
+        box.style.border = '1px solid rgba(16, 185, 129, 0.4)';
+        box.style.color = '#34D399';
+        box.innerHTML = `✅ <strong>Booking #${data.booking_id} Confirmed!</strong><br/>${data.message}`;
+
+        btn.innerText = '✅ Booking Confirmed';
+        setTimeout(() => {
+          closePackageOrderModal();
+          btn.disabled = false;
+          btn.innerText = 'Confirm Booking ↗';
+        }, 3500);
+      } catch (err) {
+        box.style.display = 'block';
+        box.style.background = 'rgba(239, 68, 68, 0.15)';
+        box.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+        box.style.color = '#FCA5A5';
+        box.innerText = `⚠️ Package booking failed. Please try again.`;
+        btn.disabled = false;
+        btn.innerText = 'Confirm Booking ↗';
+      }
+    }
+
+    // Load Map as soon as DOM is ready
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      setTimeout(initReraMap, 100);
+    } else {
+      document.addEventListener('DOMContentLoaded', initReraMap);
+      window.addEventListener('load', initReraMap);
+    }
+  </script>
+
+
+</body>
+</html>

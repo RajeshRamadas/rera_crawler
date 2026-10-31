@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # ------------------------------------------------------------
+  # PostgreSQL Database Service
+  # ------------------------------------------------------------
+  db:
+    image: postgres:15-alpine
+    container_name: rera_db
+    restart: always
+    environment:
+      POSTGRES_DB: rera_db
+      POSTGRES_USER: rera_user
+      POSTGRES_PASSWORD: rera_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rera_user -d rera_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ------------------------------------------------------------
+  # FastAPI API Server Service
+  # ------------------------------------------------------------
+  api:
+    build: .
+    container_name: rera_api
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://rera_user:rera_password@db:5432/rera_db
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
+    volumes:
+      - ./rera_data:/app/rera_data
+      - ./uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ------------------------------------------------------------
+  # RERA Scraper / Crawler Worker Service (Optional / On-Demand)
+  # Run manually via: docker compose run crawler
+  # ------------------------------------------------------------
+  crawler:
+    build: .
+    container_name: rera_crawler_worker
+    profiles: ["tools"]
+    environment:
+      - DATABASE_URL=postgresql://rera_user:rera_password@db:5432/rera_db
+    volumes:
+      - ./rera_data:/app/rera_data
+    depends_on:
+      db:
+        condition: service_healthy
+    command: python rera_crawler.py --all --db-uri postgresql://rera_user:rera_password@db:5432/rera_db
+
+volumes:
+  postgres_data:

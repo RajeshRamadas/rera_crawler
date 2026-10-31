@@ -164,3 +164,131 @@ The crawler generates the following output files in the specified `--output-dir`
 | `--project-id` | Direct fetch by numeric internal `PROJECT_ID` |
 | `--from-html` | Parse a saved HTML file offline |
 | `--save-raw-html` | Save raw project detail HTML to a specified path |
+
+---
+
+## Location Intelligence & Developer Discovery API
+
+The project includes a production-grade PostGIS Location Intelligence and Developer Discovery REST API powered by FastAPI.
+
+### Launching the API Server
+
+```bash
+cd location_intelligence
+python3 -m uvicorn api.location:app --host 0.0.0.0 --port 8001 --reload
+```
+
+Interactive OpenAPI / Swagger Documentation is accessible in your browser at:
+`http://localhost:8001/docs`
+
+---
+
+### Key API Endpoints & Usage
+
+#### 1. Developer Projects Search (`GET /api/developers/{developer_name}/projects`)
+Search and list all projects developed by a specific developer/builder along with location scores and map image links.
+
+```bash
+# Search by Developer Name (Path Parameter)
+curl -X GET "http://localhost:8001/api/developers/Sobha%20Limited/projects"
+
+# Search by Developer Name (Query Parameter)
+curl -X GET "http://localhost:8001/api/developers/projects?developer=Prestige"
+```
+
+**Response Payload**:
+```json
+{
+  "developer": "Sobha Limited",
+  "total_projects": 2,
+  "projects": [
+    {
+      "project_id": 31,
+      "rera_id": "PRM/KA/RERA/1251/310/PR/300523/005959",
+      "name": "ELEGANT TRANQUILITY",
+      "developer": "Sobha Limited",
+      "city": "Bengaluru Urban",
+      "status": "active",
+      "location_score": 19.31,
+      "map_url": "/api/projects/31/location/map.png"
+    }
+  ]
+}
+```
+
+#### 2. Full Project Information (`GET /api/projects/{identifier}/full`)
+Unified endpoint supporting numeric `project_id`, `rera_id` string, or project `name`. Returns complete project metadata, developer info, location score, 9 category scores, top location USPs, key POIs, PostGIS site boundary GeoJSON, marketing static map URL, and 100% full scraped RERA JSON payload (`rera_details`).
+
+```bash
+# By Numeric Project ID
+curl -X GET "http://localhost:8001/api/projects/31/full"
+
+# By RERA Registration Number
+curl -X GET "http://localhost:8001/api/projects/PRM%2FKA%2FRERA%2F1251%2F310%2FPR%2F300523%2F005959/full"
+
+# Pretty-print JSON output in Terminal
+curl -s "http://localhost:8001/api/projects/31/full" | python3 -m json.tool
+```
+
+**Response Structure**:
+```json
+{
+  "project_id": 31,
+  "rera_id": "PRM/KA/RERA/1251/310/PR/300523/005959",
+  "name": "ELEGANT TRANQUILITY",
+  "developer": "Sobha Limited",
+  "city": "Bengaluru Urban",
+  "status": "active",
+  "latitude": 12.918378,
+  "longitude": 77.508538,
+  "rera_details": {
+    "project_overview_details": {
+      "Total Area Of Land (Sq Mtr)": "14062",
+      "Total Number of Inventories/Flats/Villas": "321",
+      "Number of Towers": "5",
+      "Proposed Completion Date": "30-09-2029"
+    },
+    "promoter_details": {
+      "PAN": "AAGFE6597G",
+      "GSTIN": "29AAGFE6597G1ZW",
+      "Promoter Name": "ELEGANT ALTIMA"
+    }
+  },
+  "location_score": 19.31,
+  "category_scores": {
+    "transport": 18.26,
+    "healthcare": 18.66,
+    "education": 19.52,
+    "employment": 18.25,
+    "shopping": 17.66
+  },
+  "top_usps": [
+    {
+      "rank": 1,
+      "headline_text": "0.8 km from Hebbal Railway Station",
+      "poi_id": 104,
+      "name": "Hebbal Railway Station",
+      "category": "transport",
+      "distance_km": 0.8
+    }
+  ],
+  "map": {
+    "url": "/api/projects/31/location/map.png"
+  }
+}
+```
+
+#### 3. Download / View Static Map Image (`GET /api/projects/{id}/location/map.png`)
+Download the custom high-fidelity marketing static map rendering complete with tile basemaps, POI markers, PostGIS site boundary polygon, and top USP overlay card.
+
+```bash
+curl "http://localhost:8001/api/projects/31/location/map.png" --output map_31.png
+```
+
+#### 4. List All Developers (`GET /api/developers`)
+Returns a ranked list of all builders and developers with project counts.
+
+```bash
+curl -X GET "http://localhost:8001/api/developers"
+```
+
