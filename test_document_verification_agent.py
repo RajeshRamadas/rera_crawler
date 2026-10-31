@@ -4,7 +4,9 @@ Needs the 5 sample projects from rera_data/project_details.jsonl loaded into the
 (DATABASE_URL), e.g.:
     python3 -c "import json,rera_crawler as r; s=r.PostgresStorage('<db uri>', force_init=True); [s.upsert_record(json.loads(l)) for l in open('rera_data/project_details.jsonl')]"
     python3 setup_api_columns.py
-Run:  python3 test_document_verification_agent.py
+OCR checks also need Tesseract (apt: tesseract-ocr tesseract-ocr-kan) or RapidOCR; without
+an OCR engine they are reported as SKIP instead of failing.
+Run:  python3 test_document_verification_agent.py      (or: pytest test_document_verification_agent.py)
 
 Runs the agent on a real crawled project (AARADHYA GARDENS, surveys 113/7A and 113/7B) with the
 downloads replaced by generated PDFs, so every check after the download step is exercised."""
@@ -113,80 +115,99 @@ def has(lst, s):
     return any(s.lower() in x.lower() for x in lst)
 
 
-# 1. Clean project
-r, cv = run("CLEAN")
-check(r["verdict_badge"] in ("CLEAR TO PROCEED", "REVIEW REQUIRED"), "clean project passes")
-check(not cv["critical_flags"], "clean: no critical flags")
-check(has(cv["passed"], "Owner names consistent"), "clean: owner chain cross-checked")
-check(has(cv["passed"], "matches the RERA project record"), "clean: RERA number matched to DB")
-check(r["entity_map"]["rera_validity_date"] == "31-12-2030", "RERA validity date = 31-12-2030 (was issue date)")
-firm = [d for d in r["per_document_results"] if "Annexure - 1 )" in d["title"]][0]
-check(firm["doc_type"] == "OTHER", "firm registration (Annexure-1) not mistaken for RERA cert")
-types = {d["doc_type"] for d in r["per_document_results"]}
-check({"RTC_PAHANI", "MUTATION_EXTRACT", "ENCUMBRANCE_CERT", "SALE_DEED", "KHATA", "CONVERSION_ORDER"} <= types,
-      "land docs classified by annexure")
+OCR_AVAILABLE = M.HAS_PYMUPDF and (M.HAS_RAPIDOCR or M.HAS_PYTESSERACT)
 
-# 2. Owner / survey / extent mismatch, PTCL, mortgage, B-khata
-r, cv = run("RISKY", {"per_survey": {"113/7B": {"rtc_owner": "Lakshmamma", "ec_survey": "45/2",
-                                               "rtc_extent": "1.20 acres"}},
-                      "rtc_extra": "Saguvali chit - PTCL grant land\n",
-                      "ec_body": "Simple Mortgage in favour of Canara Bank Rs 2,50,00,000 loan dated 12/05/2021\n",
-                      "khata": "B-Khata\n"})
-check(r["verdict_badge"] == "DO NOT BUY", "risky: DO NOT BUY")
-check(has(cv["critical_flags"], "Owner mismatch on Sy. No 113/7B"), "owner mismatch flagged (bug 1)")
-check(has(cv["critical_flags"], "Survey number mismatch"), "survey number mismatch flagged")
-check(has(cv["warnings"], "Extent mismatch on Sy. No 113/7B"), "extent mismatch flagged")
-check(has(cv["critical_flags"], "PTCL"), "PTCL flagged")
-check(has(cv["critical_flags"], "Active bank mortgage"), "active mortgage flagged")
-check(has(cv["critical_flags"], "B-Khata"), "B-Khata flagged")
 
-# 3. Released mortgage + bare 'NOC' word
-r, cv = run("RELEASED MORTGAGE", {"ec_body": "Simple Mortgage in favour of Canara Bank dated 12/05/2021\n"
-                                            "Release Deed registered 03/03/2024, mortgage released.\n"})
-check(not has(cv["critical_flags"], "mortgage"), "released mortgage is not flagged (bug 8)")
-check(has(cv["passed"], "released/discharged"), "released mortgage reported as released")
-r, cv = run("MORTGAGE + UNRELATED NOC", {"ec_body": "Simple Mortgage in favour of Canara Bank dated 12/05/2021\n"
-                                                   "Fire NOC obtained for the building.\n"})
-check(has(cv["critical_flags"], "Active bank mortgage"), "a fire NOC no longer counts as a discharge deed (bug 8)")
+def run_all():
+    """Run every scenario; returns the list of failed check messages."""
+    FAILS.clear()
+    # 1. Clean project
+    r, cv = run("CLEAN")
+    check(r["verdict_badge"] in ("CLEAR TO PROCEED", "REVIEW REQUIRED"), "clean project passes")
+    check(not cv["critical_flags"], "clean: no critical flags")
+    check(has(cv["passed"], "Owner names consistent"), "clean: owner chain cross-checked")
+    check(has(cv["passed"], "matches the RERA project record"), "clean: RERA number matched to DB")
+    check(r["entity_map"]["rera_validity_date"] == "31-12-2030", "RERA validity date = 31-12-2030 (was issue date)")
+    firm = [d for d in r["per_document_results"] if "Annexure - 1 )" in d["title"]][0]
+    check(firm["doc_type"] == "OTHER", "firm registration (Annexure-1) not mistaken for RERA cert")
+    types = {d["doc_type"] for d in r["per_document_results"]}
+    check({"RTC_PAHANI", "MUTATION_EXTRACT", "ENCUMBRANCE_CERT", "SALE_DEED", "KHATA", "CONVERSION_ORDER"} <= types,
+          "land docs classified by annexure")
 
-# 4. Nothing downloaded
-r, cv = run("ALL DOWNLOADS FAIL", fail_all=True)
-check(r["verdict_badge"] == "UNABLE TO VERIFY" and r["legal_risk_score"] is None, "no downloads -> UNABLE TO VERIFY (bug 3)")
-check(not cv["passed"], f"no downloads -> nothing passed (bug 2) {cv['passed']}")
+    # 2. Owner / survey / extent mismatch, PTCL, mortgage, B-khata
+    r, cv = run("RISKY", {"per_survey": {"113/7B": {"rtc_owner": "Lakshmamma", "ec_survey": "45/2",
+                                                   "rtc_extent": "1.20 acres"}},
+                          "rtc_extra": "Saguvali chit - PTCL grant land\n",
+                          "ec_body": "Simple Mortgage in favour of Canara Bank Rs 2,50,00,000 loan dated 12/05/2021\n",
+                          "khata": "B-Khata\n"})
+    check(r["verdict_badge"] == "DO NOT BUY", "risky: DO NOT BUY")
+    check(has(cv["critical_flags"], "Owner mismatch on Sy. No 113/7B"), "owner mismatch flagged (bug 1)")
+    check(has(cv["critical_flags"], "Survey number mismatch"), "survey number mismatch flagged")
+    check(has(cv["warnings"], "Extent mismatch on Sy. No 113/7B"), "extent mismatch flagged")
+    check(has(cv["critical_flags"], "PTCL"), "PTCL flagged")
+    check(has(cv["critical_flags"], "Active bank mortgage"), "active mortgage flagged")
+    check(has(cv["critical_flags"], "B-Khata"), "B-Khata flagged")
 
-# 5. RTC that cannot really be read (e.g. Kannada OCR'd with English only)
-garbage = "Ee ae ere ord dee cea orem eee aed ede Oe reese ered eee oee aed eed ee"
-r, cv = run("UNREADABLE RTC", {"rtc_text": garbage + "\n" + garbage})
-check(not has(cv["passed"], "No PTCL"), "unreadable RTC -> no false 'No PTCL' pass (bug 4)")
-check(has(cv["warnings"], "No readable RTC for Sy. No(s): 113/7A, 113/7B"), "unreadable RTC -> coverage warning")
-check(has(cv["warnings"], "mutation extracts only"), "unreadable RTC -> PTCL check marked as partial")
-check(r["verdict_badge"] == "MANUAL REVIEW REQUIRED", "unreadable RTC -> manual review verdict")
+    # 3. Released mortgage + bare 'NOC' word
+    r, cv = run("RELEASED MORTGAGE", {"ec_body": "Simple Mortgage in favour of Canara Bank dated 12/05/2021\n"
+                                                "Release Deed registered 03/03/2024, mortgage released.\n"})
+    check(not has(cv["critical_flags"], "mortgage"), "released mortgage is not flagged (bug 8)")
+    check(has(cv["passed"], "released/discharged"), "released mortgage reported as released")
+    r, cv = run("MORTGAGE + UNRELATED NOC", {"ec_body": "Simple Mortgage in favour of Canara Bank dated 12/05/2021\n"
+                                                       "Fire NOC obtained for the building.\n"})
+    check(has(cv["critical_flags"], "Active bank mortgage"), "a fire NOC no longer counts as a discharge deed (bug 8)")
 
-# 6. Kannada RTC text (as produced by kan+eng OCR or a text-layer PDF)
-kn_rtc = ("ಪಹಣಿ ಪತ್ರಿಕೆ Sy. No: 113/7A ಗ್ರಾಮ ಉತ್ತರಹಳ್ಳಿ ಹೋಬಳಿ ಕೆಂಗೇರಿ ತಾಲ್ಲೂಕು ಬೆಂಗಳೂರು ದಕ್ಷಿಣ\n"
-          "Khatedar: Ramesh Gowda ದರಖಾಸ್ತು ಮಂಜೂರು ಜಮೀನು\n")
-it = A()._classify_and_extract({"title": "RTC (Annexure-43) -- Survey No 113/7A", "doc_type_hint": "RTC_PAHANI",
-                                 "bytes": b"x", "text": kn_rtc, "is_readable": True, "pages": 1,
-                                 "extraction_method": "pdfplumber"})
-check(it["entities"].get("ptcl_flag") and it["status"] == "CRITICAL", "Kannada grant-land term flagged (bug 4)")
-check(it["entities"].get("language") == "Kannada", "Kannada RTC detected as Kannada")
-kn_ec = "ಋಣಭಾರ ಪ್ರಮಾಣ ಪತ್ರ Survey No 113/7A Owner: Ramesh Gowda ಅಡಮಾನ ಕೆನರಾ ಬ್ಯಾಂಕ್ " * 2
-it = A()._classify_and_extract({"title": "Encumbrance Certificate (Annexure-46) -- Survey No 113/7A",
-                                 "doc_type_hint": "ENCUMBRANCE_CERT", "bytes": b"x", "text": kn_ec,
-                                 "is_readable": True, "pages": 1, "extraction_method": "pdfplumber"})
-check(it["entities"].get("has_active_mortgage"), "Kannada mortgage term (ಅಡಮಾನ) flagged")
+    # 4. Nothing downloaded
+    r, cv = run("ALL DOWNLOADS FAIL", fail_all=True)
+    check(r["verdict_badge"] == "UNABLE TO VERIFY" and r["legal_risk_score"] is None, "no downloads -> UNABLE TO VERIFY (bug 3)")
+    check(not cv["passed"], f"no downloads -> nothing passed (bug 2) {cv['passed']}")
 
-# 7. Scanned RERA certificate (OCR)
-r, cv = run("SCANNED RERA CERT", scanned_rera=True)
-check(r["entity_map"]["rera_registration_no"] == "PRM/KA/RERA/1251/310/PR/030926/008907", "OCR read RERA number")
-check(r["entity_map"]["rera_validity_date"] == "31-12-2030", "OCR validity date correct (bug 5)")
+    # 5. RTC that cannot really be read (e.g. Kannada OCR'd with English only)
+    garbage = "Ee ae ere ord dee cea orem eee aed ede Oe reese ered eee oee aed eed ee"
+    r, cv = run("UNREADABLE RTC", {"rtc_text": garbage + "\n" + garbage})
+    check(not has(cv["passed"], "No PTCL"), "unreadable RTC -> no false 'No PTCL' pass (bug 4)")
+    check(has(cv["warnings"], "No readable RTC for Sy. No(s): 113/7A, 113/7B"), "unreadable RTC -> coverage warning")
+    check(has(cv["warnings"], "mutation extracts only"), "unreadable RTC -> PTCL check marked as partial")
+    check(r["verdict_badge"] == "MANUAL REVIEW REQUIRED", "unreadable RTC -> manual review verdict")
 
-# 8. Upload path
-open(os.path.join(tempfile.gettempdir(), "up.pdf"), "wb").write(pdf(docs_for("113/7A", {})[M.DOCTYPE_EC]))
-res = A().verify_local_document(os.path.join(tempfile.gettempdir(), "up.pdf"), "EC")
-check(res["doc_type"] == "ENCUMBRANCE_CERT" and res["status"] == "VERIFIED" and "bytes" not in res,
-      f"verify_local_document works (bug 9) -> {res['doc_type']} {res['status']}")
-json.dumps(res)  # must be JSON serialisable for the DB
+    # 6. Kannada RTC text (as produced by kan+eng OCR or a text-layer PDF)
+    kn_rtc = ("ಪಹಣಿ ಪತ್ರಿಕೆ Sy. No: 113/7A ಗ್ರಾಮ ಉತ್ತರಹಳ್ಳಿ ಹೋಬಳಿ ಕೆಂಗೇರಿ ತಾಲ್ಲೂಕು ಬೆಂಗಳೂರು ದಕ್ಷಿಣ\n"
+              "Khatedar: Ramesh Gowda ದರಖಾಸ್ತು ಮಂಜೂರು ಜಮೀನು\n")
+    it = A()._classify_and_extract({"title": "RTC (Annexure-43) -- Survey No 113/7A", "doc_type_hint": "RTC_PAHANI",
+                                     "bytes": b"x", "text": kn_rtc, "is_readable": True, "pages": 1,
+                                     "extraction_method": "pdfplumber"})
+    check(it["entities"].get("ptcl_flag") and it["status"] == "CRITICAL", "Kannada grant-land term flagged (bug 4)")
+    check(it["entities"].get("language") == "Kannada", "Kannada RTC detected as Kannada")
+    kn_ec = "ಋಣಭಾರ ಪ್ರಮಾಣ ಪತ್ರ Survey No 113/7A Owner: Ramesh Gowda ಅಡಮಾನ ಕೆನರಾ ಬ್ಯಾಂಕ್ " * 2
+    it = A()._classify_and_extract({"title": "Encumbrance Certificate (Annexure-46) -- Survey No 113/7A",
+                                     "doc_type_hint": "ENCUMBRANCE_CERT", "bytes": b"x", "text": kn_ec,
+                                     "is_readable": True, "pages": 1, "extraction_method": "pdfplumber"})
+    check(it["entities"].get("has_active_mortgage"), "Kannada mortgage term (ಅಡಮಾನ) flagged")
 
-print("\n" + ("ALL CHECKS PASSED" if not FAILS else f"{len(FAILS)} FAILED: {FAILS}"))
-sys.exit(1 if FAILS else 0)
+    # 7. Scanned RERA certificate (OCR)
+    if OCR_AVAILABLE:
+        r, cv = run("SCANNED RERA CERT", scanned_rera=True)
+        check(r["entity_map"]["rera_registration_no"] == "PRM/KA/RERA/1251/310/PR/030926/008907", "OCR read RERA number")
+        check(r["entity_map"]["rera_validity_date"] == "31-12-2030", "OCR validity date correct (bug 5)")
+    else:
+        print("  SKIP  scanned RERA cert OCR checks: no OCR engine (install tesseract-ocr tesseract-ocr-kan)")
+
+    # 8. Upload path
+    open(os.path.join(tempfile.gettempdir(), "up.pdf"), "wb").write(pdf(docs_for("113/7A", {})[M.DOCTYPE_EC]))
+    res = A().verify_local_document(os.path.join(tempfile.gettempdir(), "up.pdf"), "EC")
+    check(res["doc_type"] == "ENCUMBRANCE_CERT" and res["status"] == "VERIFIED" and "bytes" not in res,
+          f"verify_local_document works (bug 9) -> {res['doc_type']} {res['status']}")
+    json.dumps(res)  # must be JSON serialisable for the DB
+
+    return list(FAILS)
+
+
+def test_document_verification_scenarios():
+    fails = run_all()
+    assert not fails, f"{len(fails)} checks failed: {fails}"
+
+
+if __name__ == "__main__":
+    fails = run_all()
+    print("\n" + ("ALL CHECKS PASSED" if not fails else f"{len(fails)} FAILED: {fails}"))
+    sys.exit(1 if fails else 0)

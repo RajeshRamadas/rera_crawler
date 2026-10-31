@@ -2,13 +2,14 @@
 """
 Populate and index database columns required by api_server.py and frontend web app.
 """
+import os
 import psycopg2
 import psycopg2.extras
 import time
 import re
 from collections import defaultdict
 
-DB_URI = "postgresql://rera_user:rera_password@localhost:5432/rera_db"
+DB_URI = os.getenv("DATABASE_URL", "postgresql://rera_user:rera_password@localhost:5432/rera_db")
 
 _PLOT_KEYS = {'Plot Type (Site Dimension in Mtr)', 'Plot Size', 'Plot Type'}
 _CONFIG_KEYS = ['Unit Type', 'Type of Inventory', 'Plot Type (Site Dimension in Mtr)', 'Plot Size', 'Plot Type']
